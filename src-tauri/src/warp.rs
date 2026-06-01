@@ -37,7 +37,6 @@ fn find_terminal() -> Option<(String, Vec<String>)> {
 pub async fn install_warp() -> Result<String, String> {
     println!("[WARP Installer] Starting Cloudflare WARP interactive installer process...");
 
-    // Define the script content with clear step-by-step instructions in Vietnamese
     let script_content = r#"#!/bin/bash
 # Interactive Cloudflare WARP installer wizard for NetWarp-Manager
 
@@ -49,6 +48,21 @@ BLUE='\033[0;34m'
 CYAN='\033[0;36m'
 BOLD='\033[1m'
 NC='\033[0m' # No Color
+
+# Cleanup handler to ensure downloaded RPM packages and the script itself are removed on script exit or interruption
+cleanup() {
+    rm -f /tmp/cloudflare-warp-*.rpm 2>/dev/null
+    rm -f "$0" 2>/dev/null
+}
+
+# Interrupt handler to safely clean up and terminate the shell immediately on Ctrl+C (SIGINT) or SIGTERM
+on_interrupt() {
+    cleanup
+    exit 1
+}
+
+trap cleanup EXIT
+trap on_interrupt INT TERM
 
 clear
 echo -e "${CYAN}============================================================${NC}"
