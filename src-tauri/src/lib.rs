@@ -235,6 +235,59 @@ async fn get_warp_status() -> Result<String, String> {
     Ok(status)
 }
 
+/// Lấy chế độ hoạt động hiện tại của WARP
+/// Chạy lệnh `warp-cli settings list` và bóc tách "Mode:"
+#[tauri::command]
+async fn get_warp_mode() -> Result<String, String> {
+    let output = Command::new("warp-cli")
+        .args(["settings", "list"])
+        .output()
+        .map_err(|e| format!("Không thể gọi settings list: {}", e))?;
+
+    if !output.status.success() {
+        let err_msg = String::from_utf8_lossy(&output.stderr).to_string();
+        return Err(format!("Lỗi khi lấy cài đặt WARP: {}", err_msg));
+    }
+
+    let stdout_str = String::from_utf8_lossy(&output.stdout);
+    for line in stdout_str.lines() {
+        let trimmed = line.trim();
+        if trimmed.contains("Mode:") {
+            if trimmed.contains("DnsOverHttps") {
+                return Ok("doh".to_string());
+            } else if trimmed.contains("WarpWithDnsOverHttps") || trimmed.contains("WarpAndDnsOverHttps") {
+                return Ok("warp+doh".to_string());
+            } else if trimmed.contains("Warp") {
+                return Ok("warp".to_string());
+            } else {
+                if let Some(idx) = trimmed.find("Mode:") {
+                    let mode_part = trimmed[idx + 5..].trim().to_string();
+                    return Ok(mode_part.to_lowercase());
+                }
+            }
+        }
+    }
+    Ok("unknown".to_string())
+}
+
+/// Thiết lập chế độ hoạt động mới cho WARP
+/// Chạy lệnh `warp-cli mode <mode>`
+#[tauri::command]
+async fn set_warp_mode(mode: String) -> Result<String, String> {
+    let output = Command::new("warp-cli")
+        .args(["mode", &mode])
+        .output()
+        .map_err(|e| format!("Không thể thực thi lệnh warp-cli: {}", e))?;
+
+    if output.status.success() {
+        let stdout = String::from_utf8_lossy(&output.stdout).to_string();
+        Ok(stdout)
+    } else {
+        let stderr = String::from_utf8_lossy(&output.stderr).to_string();
+        Err(format!("Lỗi đặt chế độ WARP: {}", stderr))
+    }
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -244,7 +297,9 @@ pub fn run() {
             connect_wifi,
             install_warp,
             warp_toggle,
-            get_warp_status
+            get_warp_status,
+            get_warp_mode,
+            set_warp_mode
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

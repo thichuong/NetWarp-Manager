@@ -5,6 +5,9 @@ const { invoke } = window.__TAURI__.core;
 let btnScan, iconScan, wifiContainer, wifiCount, activeWifiNet;
 let btnInstall, btnConnect, btnCancel, wifiForm, wifiPassword, passwordModal, modalSsid;
 let ledDot, ledPing, warpStatusText, warpNetworkText, warpToggle, warpLogs, toast, toastMessage, toastIcon;
+let btnModeDoh, btnModeWarpDoh;
+let currentWarpMode = "";
+let isSettingMode = false;
 
 // Lưu trữ SSID đang được chọn để kết nối
 let selectedSsid = "";
@@ -49,6 +52,9 @@ function initDOMElements() {
   toast = document.getElementById("toast");
   toastMessage = document.getElementById("toast-message");
   toastIcon = document.getElementById("toast-icon");
+
+  btnModeDoh = document.getElementById("mode-doh");
+  btnModeWarpDoh = document.getElementById("mode-warpdoh");
 }
 
 // Đăng ký các sự kiện tương tác
@@ -70,6 +76,10 @@ function registerEvents() {
 
   // Switch Toggle bật/tắt WARP
   warpToggle.addEventListener("change", handleWarpToggle);
+
+  // Sự kiện chuyển đổi chế độ hoạt động WARP
+  btnModeDoh.addEventListener("click", () => handleModeChange("doh"));
+  btnModeWarpDoh.addEventListener("click", () => handleModeChange("warp+doh"));
 }
 
 // Hàm ghi log vào bảng console nhỏ trên UI
@@ -308,9 +318,24 @@ async function getWarpStatus() {
   try {
     const status = await invoke("get_warp_status");
     updateWarpUI(status);
+    
+    // Nếu WARP đã được cài đặt, lấy thêm chế độ hoạt động hiện tại
+    if (status !== "Not Installed" && !isSettingMode) {
+      try {
+        const mode = await invoke("get_warp_mode");
+        currentWarpMode = mode;
+        updateWarpModeUI(mode);
+        disableModeButtons(false);
+      } catch (err) {
+        // Bỏ qua lỗi lấy mode âm thầm
+      }
+    } else if (status === "Not Installed") {
+      disableModeButtons(true);
+    }
   } catch (err) {
     // Không log liên tục lỗi định kỳ để tránh làm ngập log panel
     updateWarpUI("Disconnected");
+    disableModeButtons(true);
   }
 }
 
@@ -414,3 +439,50 @@ async function installWarp() {
     btnInstall.disabled = false;
   }
 }
+
+// 6. THAY ĐỔI CHẾ ĐỘ HOẠT ĐỘNG CLOUDFLARE WARP
+async function handleModeChange(mode) {
+  if (isSettingMode) return;
+  isSettingMode = true;
+  disableModeButtons(true);
+
+  logMessage(`Đang chuyển chế độ WARP sang: ${mode.toUpperCase()}...`);
+  showToast(`Đang chuyển sang chế độ ${mode.toUpperCase()}...`);
+
+  try {
+    const res = await invoke("set_warp_mode", { mode });
+    showToast(`Đã chuyển sang chế độ ${mode.toUpperCase()}!`);
+    logMessage(`Kết quả chuyển chế độ: ${res}`);
+    currentWarpMode = mode;
+    updateWarpModeUI(mode);
+  } catch (err) {
+    showToast(`Lỗi chuyển chế độ: ${err}`, true);
+    logMessage(`Lỗi chuyển chế độ: ${err}`);
+  } finally {
+    isSettingMode = false;
+    getWarpStatus();
+  }
+}
+
+function disableModeButtons(disabled) {
+  if (btnModeDoh) btnModeDoh.disabled = disabled;
+  if (btnModeWarpDoh) btnModeWarpDoh.disabled = disabled;
+}
+
+function updateWarpModeUI(mode) {
+  const activeClass = "bg-gradient-to-r from-orange-500/25 to-amber-500/25 text-orange-400 border-orange-500/35 shadow-[0_0_12px_rgba(249,115,22,0.15)]";
+  const inactiveClass = "text-slate-500 hover:text-slate-300 border-transparent";
+
+  [
+    { btn: btnModeDoh, key: "doh" },
+    { btn: btnModeWarpDoh, key: "warp+doh" }
+  ].forEach(({ btn, key }) => {
+    if (!btn) return;
+    if (key === mode) {
+      btn.className = `py-2.5 px-1 rounded-xl text-[10px] font-bold tracking-wide transition-all duration-200 focus:outline-none flex flex-col items-center justify-center gap-1.5 border ${activeClass}`;
+    } else {
+      btn.className = `py-2.5 px-1 rounded-xl text-[10px] font-bold tracking-wide transition-all duration-200 focus:outline-none flex flex-col items-center justify-center gap-1.5 border ${inactiveClass}`;
+    }
+  });
+}
+
