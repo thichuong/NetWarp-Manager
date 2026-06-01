@@ -117,22 +117,54 @@ env WEBKIT_DISABLE_COMPOSITING_MODE=1 ./src-tauri/target/release/bundle/appimage
 
 ## 📁 Cấu Trúc Thư Mục Dự Án
 
+Dự án được phân rã thành các module nhỏ độc lập ở cả hai phía Frontend và Backend nhằm nâng cao tính dễ đọc, dễ bảo trì và tối ưu hiệu suất:
+
 ```text
 NetWarp-Manager/
-├── src/                      # Giao diện người dùng (Frontend)
-│   ├── assets/               # Hình ảnh, tài nguyên tĩnh
-│   ├── index.html            # Cấu trúc giao diện ứng dụng (Tailwind CSS)
-│   ├── main.js               # Logic điều khiển, gọi lệnh Tauri và cập nhật DOM
-│   └── styles.css            # Tùy biến scrollbar và các hiệu ứng animation nâng cao
-├── src-tauri/                # Mã nguồn Backend (Rust & Tauri)
+├── src/                          # Giao diện người dùng (Frontend)
+│   ├── assets/                   # Biểu tượng SVG, logo ứng dụng
+│   ├── components/               # Các mảnh giao diện HTML động (Template Components)
+│   │   ├── header.html           # Thanh tiêu đề chính và logo
+│   │   ├── footer.html           # Thanh chân trang thông tin phiên bản
+│   │   ├── speed_wifi_section.html # Biểu đồ tốc độ, chẩn đoán Ping & Wi-Fi
+│   │   ├── warp_control_section.html # Toggle Cloudflare WARP, chế độ & logs console
+│   │   ├── wifi_modal.html       # Hộp thoại hiển thị danh sách mạng Wi-Fi
+│   │   ├── password_modal.html   # Hộp thoại nhập mật khẩu Wi-Fi
+│   │   └── toast.html            # Khung hiển thị thông báo góc màn hình
+│   ├── js/                       # Logic JavaScript phân rã dạng Module
+│   │   ├── loader.js             # Tải động các component HTML vào index.html
+│   │   ├── dom.js                # Ánh xạ và quản lý tập trung các phần tử DOM
+│   │   ├── state.js              # Quản lý trạng thái chia sẻ toàn cục (Global State)
+│   │   ├── ui.js                 # Điều khiển ẩn hiện modal, cập nhật giao diện mạng
+│   │   ├── wifi.js               # Quét và gửi tín hiệu kết nối Wi-Fi qua Rust IPC
+│   │   ├── warp.js               # Quản lý toggle trạng thái và chế độ Cloudflare WARP
+│   │   └── diagnostics.js        # Vòng lặp đo lường tốc độ mạng IO & Ping chẩn đoán
+│   ├── index.html                # Điểm neo cấu trúc và liên kết CSS/JS chính
+│   ├── main.js                   # Điểm khởi chạy (Entry Point) của Frontend
+│   ├── styles.css                # Định nghĩa scrollbar, hoạt ảnh LED và hiệu ứng kính
+│   └── design_ui.md              # 🎨 Chi tiết triết lý và quy chuẩn thiết kế UI
+├── src-tauri/                    # Mã nguồn Backend (Rust & Tauri)
 │   ├── src/
-│   │   ├── lib.rs            # Định nghĩa các tauri::command (nmcli, warp-cli, rpm, systemctl)
-│   │   └── main.rs           # Điểm khởi chạy ứng dụng Tauri
-│   ├── Cargo.toml            # Quản lý thư viện phụ thuộc của Rust
-│   └── tauri.conf.json       # Tệp cấu hình ứng dụng Tauri v2
-├── package.json              # Quản lý script và thư viện Node.js
-└── README.md                 # Tài liệu hướng dẫn dự án
+│   │   ├── main.rs               # Điểm khởi chạy ứng dụng (Bootstrap)
+│   │   ├── lib.rs                # Đăng ký handler, plugin và cấu hình Tauri IPC
+│   │   ├── wifi.rs               # Điều khiển nmcli quét và quản lý kết nối Wi-Fi
+│   │   ├── warp.rs               # Điều phối dịch vụ Cloudflare WARP & Polkit installer
+│   │   └── net_utils.rs          # Đo tốc độ mạng qua proc/net/dev và Ping chẩn đoán
+│   ├── Cargo.toml                # Quản lý thư viện phụ thuộc của Rust
+│   └── tauri.conf.json           # File cấu hình ứng dụng Tauri v2
+├── architecture.md               # 🏛️ Chi tiết kiến trúc phân rã & luồng dữ liệu IPC
+├── LICENSE                       # 📄 Giấy phép MIT bản quyền phần mềm
+├── package.json                  # Quản lý script biên dịch và gói node_modules
+└── README.md                     # Tài liệu hướng dẫn sử dụng dự án
 ```
+
+---
+
+## 🏛️ Tài Liệu Kỹ Thuật Chi Tiết
+
+Để tìm hiểu sâu hơn về cách ứng dụng hoạt động, bạn có thể tham khảo các tài liệu chuyên biệt sau:
+*   [**Tài liệu Kiến trúc Hệ thống (architecture.md)**](file:///home/exblackhole/Desktop/NetWarp-Manager/architecture.md): Giải thích chi tiết về luồng đi của dữ liệu, cơ chế giao tiếp IPC qua Tauri Bridge, cách hoạt động bất đồng bộ phi chặn (non-blocking thread) và bảo mật Polkit.
+*   [**Tài liệu Thiết kế Giao diện (src/design_ui.md)**](file:///home/exblackhole/Desktop/NetWarp-Manager/src/design_ui.md): Mô tả triết lý thiết kế Cyberpunk Glassmorphism kết hợp đơn sắc Monochrome tinh tế, bộ màu sắc chỉ thị trạng thái chức năng, quy chuẩn phông chữ và tối ưu hóa layout 1600x900.
 
 ---
 
@@ -142,8 +174,11 @@ Dự án sử dụng cơ chế bảo mật cao cấp của Tauri v2:
 *   Mọi câu lệnh can thiệp hệ thống (`nmcli`, `dnf`, `rpm`, `systemctl`) đều được đóng gói an toàn phía Backend Rust. Giao diện Frontend hoàn toàn không thể trực tiếp chạy lệnh Shell tùy ý, tránh rủi ro bảo mật injection.
 *   Việc cài đặt dịch vụ hệ thống được phân quyền minh bạch thông qua cơ chế Polkit của Linux (`pkexec`), yêu cầu người dùng nhập mật khẩu xác thực đồ họa chuẩn của hệ điều hành Fedora.
 
+Dự án được phân phối dưới dạng phần mềm mã nguồn mở theo cơ chế cấp phép kép [**MIT License hoặc Apache License, Version 2.0**](file:///home/exblackhole/Desktop/NetWarp-Manager/LICENSE) (tùy bạn lựa chọn).
+
 ---
 
 <p align="center">
   Được hoàn thiện với 💖 dành cho cộng đồng người dùng Fedora Linux.
 </p>
+
