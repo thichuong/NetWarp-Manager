@@ -28,17 +28,17 @@ glob = "0.3"
 unsafe_code = "deny"
 
 [lints.clippy]
-# Cấm sử dụng unwrap() để tránh gây crash ngầm
+# Deny using unwrap() to prevent silent crashes
 unwrap_used = "deny"
-# Cấm sử dụng expect() để tránh crash
+# Deny using expect() to prevent crashes
 expect_used = "deny"
-# Cấm sử dụng panic!
+# Deny using panic!
 panic = "deny"
-# Cảnh báo các lệnh cắt chuỗi / chỉ mục mảng không an toàn
+# Warn on unsafe array indexing or string slicing
 indexing_slicing = "warn"
-# Thúc đẩy các tiêu chuẩn hiệu năng tốt của Clippy
+# Promote good performance standards of Clippy
 perf = { level = "deny", priority = -1 }
-# Khuyến nghị viết mã chuẩn chỉ, dễ đọc
+# Encourage standard, highly-readable code style
 style = { level = "warn", priority = -1 }
 
 [profile.release]

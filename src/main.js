@@ -1,37 +1,44 @@
 // WiWarp Frontend - JavaScript logic
 const { invoke } = window.__TAURI__.core;
 
-// Tham chiếu các thành phần DOM
+// DOM Element References
 let btnScan, iconScan, wifiContainer, wifiCount, activeWifiNet;
 let btnInstall, btnConnect, btnCancel, wifiForm, wifiPassword, passwordModal, modalSsid;
 let ledDot, ledPing, warpStatusText, warpNetworkText, warpToggle, warpLogs, toast, toastMessage, toastIcon;
 let warpModeBadgeContainer, warpModeBadge;
 let btnModeDoh, btnModeWarpDoh;
+
+// NEW: Network Utilities DOM Elements
+let btnPing, btnTrace, netConsole;
+
+// Internal state storage
 let currentWarpMode = "";
 let isSettingMode = false;
-
-// Lưu trữ thông tin mạng đang được chọn để kết nối
 let selectedBssid = "";
 let selectedSsid = "";
 let isScanning = false;
 let isTogglingWarp = false;
 
-// Khởi chạy khi DOM đã load hoàn chỉnh
+// NEW: Network utilities execution state
+let isPinging = false;
+let isTracing = false;
+
+// Launch initialization when DOM is fully loaded
 window.addEventListener("DOMContentLoaded", () => {
   initDOMElements();
   registerEvents();
   
-  // Quét Wi-Fi lần đầu
+  // Initial Wi-Fi scan
   scanWifi();
   
-  // Lấy trạng thái và chế độ WARP ban đầu
+  // Fetch initial WARP status and operating mode
   getInitialStatus();
   
-  // Bắt đầu chu kỳ thăm dò (polling) trạng thái Cloudflare WARP định kỳ mỗi 5 giây
+  // Start polling Cloudflare WARP connection status every 5 seconds
   pollWarpStatus();
 });
 
-// Khởi tạo các tham chiếu DOM
+// Initialize DOM element references
 function initDOMElements() {
   btnScan = document.getElementById("btn-scan");
   iconScan = document.getElementById("icon-scan");
@@ -63,41 +70,50 @@ function initDOMElements() {
 
   btnModeDoh = document.getElementById("mode-doh");
   btnModeWarpDoh = document.getElementById("mode-warpdoh");
+
+  // NEW: Network utilities DOM elements
+  btnPing = document.getElementById("btn-ping");
+  btnTrace = document.getElementById("btn-trace");
+  netConsole = document.getElementById("net-console");
 }
 
-// Đăng ký các sự kiện tương tác
+// Register interactive element events
 function registerEvents() {
-  // Sự kiện quét Wi-Fi
+  // Wi-Fi Scanning action
   btnScan.addEventListener("click", scanWifi);
 
-  // Mở modal kết nối khi click mạng trong danh sách được quản lý động
+  // Close connection password modal
   btnCancel.addEventListener("click", closeModal);
 
-  // Form submit mật khẩu Wi-Fi
+  // Submit password to connect to secured Wi-Fi
   wifiForm.addEventListener("submit", (e) => {
     e.preventDefault();
     connectWifi();
   });
 
-  // Nút cài đặt WARP
+  // Install WARP action
   btnInstall.addEventListener("click", installWarp);
 
-  // Switch Toggle bật/tắt WARP
+  // Toggle switch to enable/disable Cloudflare WARP
   warpToggle.addEventListener("change", handleWarpToggle);
 
-  // Sự kiện chuyển đổi chế độ hoạt động WARP
+  // WARP operating mode switch actions
   btnModeDoh.addEventListener("click", () => handleModeChange("doh"));
   btnModeWarpDoh.addEventListener("click", () => handleModeChange("warp+doh"));
+
+  // NEW: Network utility button events
+  btnPing.addEventListener("click", runPing);
+  btnTrace.addEventListener("click", runTraceIp);
 }
 
-// Hàm ghi log vào bảng console nhỏ trên UI
+// Logs messages into the scrolling system logs terminal panel
 function logMessage(message) {
   const time = new Date().toLocaleTimeString();
   const logLine = `[${time}] ${message}\n`;
   warpLogs.textContent = logLine + warpLogs.textContent;
 }
 
-// Hiển thị Toast thông báo hiện đại
+// Displays modern Toast popup notification
 function showToast(message, isError = false) {
   toastMessage.textContent = message;
   
@@ -119,42 +135,42 @@ function showToast(message, isError = false) {
     `;
   }
 
-  // Slide up và mờ
+  // Slide up and reveal toast
   toast.classList.remove("translate-y-10", "opacity-0", "pointer-events-none");
   toast.classList.add("translate-y-0", "opacity-100");
 
-  // Tự ẩn sau 4 giây
+  // Automatically fade out after 4 seconds
   setTimeout(() => {
     toast.classList.add("translate-y-10", "opacity-0", "pointer-events-none");
     toast.classList.remove("translate-y-0", "opacity-100");
   }, 4000);
 }
 
-// 1. QUẢN LÝ WI-FI: QUÉT DANH SÁCH MẠNG
+// 1. WI-FI MANAGER: SCAN FOR IN-RANGE NETWORKS
 async function scanWifi() {
   if (isScanning) return;
   isScanning = true;
   
-  // Hiệu ứng quay icon scan
+  // Trigger scan icon rotation animation
   iconScan.classList.add("anim-scan");
   btnScan.disabled = true;
   
-  logMessage("Đang quét các mạng Wi-Fi...");
+  logMessage("Scanning for Wi-Fi networks...");
   
   try {
     const list = await invoke("get_wifi_list");
     wifiCount.textContent = list.length;
     renderWifiList(list);
-    logMessage(`Đã quét xong. Tìm thấy ${list.length} mạng khả dụng.`);
+    logMessage(`Scan finished. Found ${list.length} networks in range.`);
   } catch (err) {
-    showToast(`Quét Wi-Fi thất bại: ${err}`, true);
-    logMessage(`Lỗi quét Wi-Fi: ${err}`);
+    showToast(`Wi-Fi scan failed: ${err}`, true);
+    logMessage(`Wi-Fi scan error: ${err}`);
     wifiContainer.innerHTML = `
       <div class="py-12 flex flex-col items-center justify-center space-y-2 text-red-400">
         <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
         </svg>
-        <p class="text-sm">Không thể quét Wi-Fi. Hãy đảm bảo card mạng đã bật.</p>
+        <p class="text-sm">Could not scan Wi-Fi. Make sure your network card is enabled.</p>
       </div>
     `;
   } finally {
@@ -164,33 +180,32 @@ async function scanWifi() {
   }
 }
 
-// Hàm render danh sách Wi-Fi với CSS Tailwind cao cấp
+// Renders the list of Wi-Fi networks with high-fidelity styles
 function renderWifiList(networks) {
   if (networks.length === 0) {
     wifiContainer.innerHTML = `
       <div class="py-12 flex flex-col items-center justify-center text-slate-500">
-        <p class="text-sm">Không tìm thấy mạng Wi-Fi nào.</p>
+        <p class="text-sm">No Wi-Fi networks found.</p>
       </div>
     `;
-    activeWifiNet.textContent = "Chưa kết nối Wi-Fi";
+    activeWifiNet.textContent = "No Wi-Fi Connection";
     return;
   }
 
-  // Khởi tạo trạng thái mặc định
   let hasActiveConnection = false;
   wifiContainer.innerHTML = "";
 
   networks.forEach((net) => {
     const item = document.createElement("div");
     
-    // Tạo sóng Wi-Fi SVG động dựa trên signal
+    // Dynamic Wi-Fi signal SVG based on signal strength percentage
     const wifiSvg = getWifiSignalSvg(net.signal);
     
     if (net.active) {
       hasActiveConnection = true;
-      activeWifiNet.innerHTML = `Đang kết nối: <strong class="text-teal-400">${net.ssid} (${net.band})</strong>`;
+      activeWifiNet.innerHTML = `Connected: <strong class="text-teal-400">${net.ssid} (${net.band})</strong>`;
       
-      // Thiết kế card active với viền xanh lục phát sáng
+      // Design card for the active/connected network with glowing green borders
       item.className = "flex items-center justify-between p-3.5 bg-teal-950/20 hover:bg-teal-900/20 border border-teal-500/40 hover:border-teal-400/60 rounded-2xl cursor-pointer transition-all duration-200 group active:scale-[0.99] shadow-[0_0_15px_rgba(20,184,166,0.15)]";
       
       item.innerHTML = `
@@ -201,25 +216,24 @@ function renderWifiList(networks) {
           <div>
             <h4 class="text-sm font-bold text-teal-300 truncate max-w-[240px]">${net.ssid}</h4>
             <div class="text-[10px] text-teal-500 font-semibold space-y-0.5 mt-0.5">
-              <div>MAC: <span class="font-mono text-teal-400/80">${net.bssid}</span> | Băng tần: <span class="text-teal-400/80">${net.band} (${net.frequency})</span></div>
-              <div>Tín hiệu: ${net.signal}% | Kênh: ${net.channel} | Bảo mật: ${net.security || "Mở"}</div>
+              <div>MAC: <span class="font-mono text-teal-400/80">${net.bssid}</span> | Band: <span class="text-teal-400/80">${net.band} (${net.frequency})</span></div>
+              <div>Signal: ${net.signal}% | Channel: ${net.channel} | Security: ${net.security || "Open"}</div>
             </div>
           </div>
         </div>
         <div class="flex items-center space-x-2 shrink-0">
           <span class="text-[10px] bg-teal-500/10 text-teal-300 px-2.5 py-1 rounded-lg border border-teal-500/20 font-bold flex items-center gap-1.5">
             <span class="w-1.5 h-1.5 rounded-full bg-teal-400 animate-pulse"></span>
-            Đã kết nối
+            Connected
           </span>
         </div>
       `;
       
-      // Nhấp vào mạng đang kết nối thì thông báo
       item.addEventListener("click", () => {
-        showToast(`Bạn đang ở trong kết nối mạng "${net.ssid}" rồi.`);
+        showToast(`You are already connected to "${net.ssid}".`);
       });
     } else {
-      // Thiết kế card mạng khả dụng bình thường
+      // Standard card design for available networks
       item.className = "flex items-center justify-between p-3.5 bg-slate-950/40 hover:bg-slate-800/40 border border-slate-800/40 hover:border-slate-700/60 rounded-2xl cursor-pointer transition-all duration-200 group active:scale-[0.99]";
       
       item.innerHTML = `
@@ -230,17 +244,16 @@ function renderWifiList(networks) {
           <div>
             <h4 class="text-sm font-semibold text-slate-200 group-hover:text-white transition-colors truncate max-w-[240px]">${net.ssid}</h4>
             <div class="text-[10px] text-slate-500 group-hover:text-slate-400 font-medium space-y-0.5 mt-0.5 transition-colors">
-              <div>MAC: <span class="font-mono text-slate-400/80 group-hover:text-teal-400/60">${net.bssid}</span> | Băng tần: <span class="text-slate-400/80 group-hover:text-teal-400/60">${net.band} (${net.frequency})</span></div>
-              <div>Tín hiệu: ${net.signal}% | Kênh: ${net.channel} | Bảo mật: ${net.security || "Mở"}</div>
+              <div>MAC: <span class="font-mono text-slate-400/80 group-hover:text-teal-400/60">${net.bssid}</span> | Band: <span class="text-slate-400/80 group-hover:text-teal-400/60">${net.band} (${net.frequency})</span></div>
+              <div>Signal: ${net.signal}% | Channel: ${net.channel} | Security: ${net.security || "Open"}</div>
             </div>
           </div>
         </div>
         <div class="flex items-center space-x-2 shrink-0">
-          <span class="text-[10px] bg-slate-800/80 group-hover:bg-teal-500/10 text-slate-400 group-hover:text-teal-300 px-2.5 py-1 rounded-lg border border-slate-700/40 group-hover:border-teal-500/20 font-semibold transition-all">Kết nối</span>
+          <span class="text-[10px] bg-slate-800/80 group-hover:bg-teal-500/10 text-slate-400 group-hover:text-teal-300 px-2.5 py-1 rounded-lg border border-slate-700/40 group-hover:border-teal-500/20 font-semibold transition-all">Connect</span>
         </div>
       `;
       
-      // Bắt sự kiện click mở modal nhập pass
       item.addEventListener("click", () => openPasswordModal(net.bssid, net.ssid, net.band, net.frequency));
     }
     
@@ -248,36 +261,36 @@ function renderWifiList(networks) {
   });
 
   if (!hasActiveConnection) {
-    activeWifiNet.textContent = "Chưa kết nối Wi-Fi";
+    activeWifiNet.textContent = "No Wi-Fi Connection";
   }
 }
 
-// Trả về SVG sóng Wi-Fi theo cường độ sóng (%)
+// Maps Wi-Fi signal strength (%) to appropriate SVG wave lines
 function getWifiSignalSvg(signal) {
-  // Sóng cực mạnh (>= 75%)
+  // Strong signal (>= 75%)
   if (signal >= 75) {
     return `<svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M17.778 8.111a10.027 10.027 0 00-11.556 0 1 1 0 101.156 1.632 10.027 10.027 0 0011.556 0zm-2.31 2.31a6.762 6.762 0 00-6.936 0 1 1 0 10.693 1.488 6.762 6.762 0 006.936 0zM10 14a1.5 1.5 0 100-3 1.5 1.5 0 000 3z" clip-rule="evenodd"/></svg>`;
   }
-  // Sóng khá (50% - 74%)
+  // Moderate signal (50% - 74%)
   if (signal >= 50) {
     return `<svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path d="M15.467 10.421a6.762 6.762 0 00-6.936 0 1 1 0 10.693 1.488 6.762 6.762 0 006.936 0zM10 14a1.5 1.5 0 100-3 1.5 1.5 0 000 3z"/></svg>`;
   }
-  // Sóng trung bình (25% - 49%)
+  // Weak signal (25% - 49%)
   if (signal >= 25) {
     return `<svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path d="M10 14a1.5 1.5 0 100-3 1.5 1.5 0 000 3z"/></svg>`;
   }
-  // Sóng yếu (< 25%)
+  // Very weak signal (< 25%)
   return `<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M12 20h.01"/></svg>`;
 }
 
-// Mở modal nhập mật khẩu Wi-Fi
+// Opens the sliding password entry dialog modal
 function openPasswordModal(bssid, ssid, band, frequency) {
   selectedBssid = bssid;
   selectedSsid = ssid;
-  modalSsid.innerHTML = `${ssid} <span class="text-[10px] text-teal-400 block mt-1 font-mono">BSSID: ${bssid} | Băng tần: ${band} (${frequency})</span>`;
+  modalSsid.innerHTML = `${ssid} <span class="text-[10px] text-teal-400 block mt-1 font-mono">BSSID: ${bssid} | Band: ${band} (${frequency})</span>`;
   wifiPassword.value = "";
   
-  // Trực quan hoá Modal mượt mà
+  // Reveal password modal with transition
   passwordModal.classList.remove("opacity-0", "pointer-events-none");
   passwordModal.classList.add("opacity-100");
   passwordModal.firstElementChild.classList.remove("scale-90");
@@ -285,7 +298,7 @@ function openPasswordModal(bssid, ssid, band, frequency) {
   wifiPassword.focus();
 }
 
-// Đóng modal
+// Closes the Wi-Fi password modal
 function closeModal() {
   passwordModal.classList.add("opacity-0", "pointer-events-none");
   passwordModal.classList.remove("opacity-100");
@@ -293,27 +306,27 @@ function closeModal() {
   passwordModal.firstElementChild.classList.remove("scale-100");
 }
 
-// 2. KẾT NỐI VÀO WI-FI
+// 2. WI-FI MANAGER: EXECUTE NETWORK CONNECTION
 async function connectWifi() {
   const password = wifiPassword.value;
   btnConnect.classList.add("btn-loading");
   btnConnect.disabled = true;
   btnCancel.disabled = true;
 
-  logMessage(`Đang cố gắng kết nối tới Wi-Fi: "${selectedSsid}" (${selectedBssid})...`);
-  showToast(`Đang kết nối tới ${selectedSsid}...`);
+  logMessage(`Attempting connection to Wi-Fi: "${selectedSsid}" (${selectedBssid})...`);
+  showToast(`Connecting to ${selectedSsid}...`);
 
   try {
     const res = await invoke("connect_wifi", { bssid: selectedBssid, password: password || null });
-    showToast("Kết nối Wi-Fi thành công!");
-    logMessage(`Kết nối thành công: ${res}`);
-    activeWifiNet.innerHTML = `Đang kết nối: <strong class="text-teal-400">${selectedSsid}</strong>`;
+    showToast("Wi-Fi connected successfully!");
+    logMessage(`Connection successful: ${res}`);
+    activeWifiNet.innerHTML = `Connected: <strong class="text-teal-400">${selectedSsid}</strong>`;
     closeModal();
-    // Refresh lại danh sách mạng
+    // Refresh list of surrounding networks after 2 seconds
     setTimeout(scanWifi, 2000);
   } catch (err) {
-    showToast(`Kết nối thất bại: ${err}`, true);
-    logMessage(`Lỗi kết nối Wi-Fi: ${err}`);
+    showToast(`Connection failed: ${err}`, true);
+    logMessage(`Wi-Fi connection error: ${err}`);
   } finally {
     btnConnect.classList.remove("btn-loading");
     btnConnect.disabled = false;
@@ -321,10 +334,10 @@ async function connectWifi() {
   }
 }
 
-// 3. THĂM DÒ (POLLING) TRẠNG THÁI CLOUDFLARE WARP
+// 3. CLOUDFLARE WARP POLLING LOOP
 let isFetchingWarpStatus = false;
 
-// Đồng bộ chế độ WARP hiện tại từ backend
+// Synchronizes the actual WARP operating mode from backend settings
 async function syncWarpMode() {
   try {
     const mode = await invoke("get_warp_mode");
@@ -332,16 +345,17 @@ async function syncWarpMode() {
     updateWarpModeUI(mode);
     disableModeButtons(false);
   } catch (err) {
-    // Bỏ qua lỗi lấy mode âm thầm
+    // Silently bypass mode query failures during initialization
   }
 }
 
-// Lấy trạng thái và chế độ hoạt động ban đầu
+// Retrieve initial system statuses on load
 async function getInitialStatus() {
   await getWarpStatus();
   await syncWarpMode();
 }
 
+// Recurring status poll for Cloudflare WARP state
 async function pollWarpStatus() {
   if (isFetchingWarpStatus) return;
   isFetchingWarpStatus = true;
@@ -350,12 +364,12 @@ async function pollWarpStatus() {
     await getWarpStatus();
   } finally {
     isFetchingWarpStatus = false;
-    // Lên lịch chạy lần tiếp theo sau 5 giây kể từ khi lần trước hoàn tất
+    // Reschedule next status retrieval cycle in 5 seconds
     setTimeout(pollWarpStatus, 5000);
   }
 }
 
-// Lấy trạng thái của WARP và đồng bộ hóa giao diện người dùng
+// Queries WARP daemon connection status and updates dashboard LEDs/badges
 async function getWarpStatus() {
   try {
     const status = await invoke("get_warp_status");
@@ -368,22 +382,24 @@ async function getWarpStatus() {
       disableModeButtons(false);
     }
   } catch (err) {
-    // Không log liên tục lỗi định kỳ để tránh làm ngập log panel
+    // Avoid flood logs in case backend daemon is temporarily asleep
     updateWarpUI("Disconnected");
     disableModeButtons(true);
     if (warpModeBadgeContainer) warpModeBadgeContainer.classList.add("hidden");
   }
 }
 
-// Cập nhật giao diện tương ứng với trạng thái WARP
+// Renders the overall WARP UI elements depending on current status value
 function updateWarpUI(status) {
-  // Xử lý các trạng thái: Connected, Disconnected, Connecting, Not Installed
+  // Handles: Connected, Disconnected, Connecting, Not Installed
   if (status === "Connected") {
     ledDot.className = "relative inline-flex rounded-full h-4 w-4 bg-emerald-500 shadow-[0_0_12px_rgba(16,185,129,0.7)] transition-all duration-300";
     ledPing.className = "animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75";
-    warpStatusText.textContent = "Đã Kết Nối";
+    warpStatusText.textContent = "Connected";
     warpStatusText.className = "text-sm font-semibold mt-1 text-emerald-400 uppercase tracking-widest";
-    warpNetworkText.textContent = "Dữ liệu của bạn hiện đang được bảo vệ và tối ưu hoá.";
+    if (warpNetworkText) {
+      warpNetworkText.textContent = "Your network traffic is securely encrypted and optimized.";
+    }
     
     warpToggle.disabled = false;
     if (!isTogglingWarp) {
@@ -392,30 +408,36 @@ function updateWarpUI(status) {
   } else if (status === "Connecting") {
     ledDot.className = "relative inline-flex rounded-full h-4 w-4 bg-amber-500 shadow-[0_0_12px_rgba(245,158,11,0.7)] transition-all duration-300";
     ledPing.className = "animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75";
-    warpStatusText.textContent = "Đang kết nối...";
+    warpStatusText.textContent = "Connecting...";
     warpStatusText.className = "text-sm font-semibold mt-1 text-amber-400 uppercase tracking-widest";
-    warpNetworkText.textContent = "Đang thiết lập kênh truyền an toàn...";
+    if (warpNetworkText) {
+      warpNetworkText.textContent = "Establishing a secure connection tunnel...";
+    }
     
     warpToggle.disabled = true;
   } else if (status === "Not Installed") {
     ledDot.className = "relative inline-flex rounded-full h-4 w-4 bg-slate-500 shadow-none transition-all duration-300";
     ledPing.className = "hidden";
-    warpStatusText.textContent = "Chưa Cài Đặt";
+    warpStatusText.textContent = "Not Installed";
     warpStatusText.className = "text-sm font-semibold mt-1 text-slate-400 uppercase tracking-widest";
-    warpNetworkText.textContent = "Không tìm thấy Cloudflare WARP trên Fedora.";
+    if (warpNetworkText) {
+      warpNetworkText.textContent = "Could not find Cloudflare WARP client on Fedora.";
+    }
     
     warpToggle.disabled = true;
     warpToggle.checked = false;
     
-    // Thêm hiệu ứng nhấp nháy thu hút sự chú ý vào nút Cài đặt nếu chưa cài
+    // Add pulsing visual cues to the install action button
     btnInstall.classList.add("animate-pulse");
   } else {
-    // Trạng thái Disconnected
+    // Disconnected state
     ledDot.className = "relative inline-flex rounded-full h-4 w-4 bg-red-500 shadow-[0_0_12px_rgba(239,68,68,0.7)] transition-all duration-300";
     ledPing.className = "animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75";
-    warpStatusText.textContent = "Đã Ngắt Kết Nối";
+    warpStatusText.textContent = "Disconnected";
     warpStatusText.className = "text-sm font-semibold mt-1 text-red-400 uppercase tracking-widest";
-    warpNetworkText.textContent = "Hệ thống mạng an toàn và riêng tư.";
+    if (warpNetworkText) {
+      warpNetworkText.textContent = "Your network connection is direct and unprotected.";
+    }
     
     warpToggle.disabled = false;
     if (!isTogglingWarp) {
@@ -425,7 +447,7 @@ function updateWarpUI(status) {
   }
 }
 
-// 4. BẬT / TẮT CLOUDFLARE WARP
+// 4. CLOUDFLARE WARP: ENABLE / DISABLE TOGGLE CONTROL
 async function handleWarpToggle() {
   if (isTogglingWarp) return;
   isTogglingWarp = true;
@@ -433,71 +455,71 @@ async function handleWarpToggle() {
   const wantConnect = warpToggle.checked;
   warpToggle.disabled = true;
   
-  logMessage(`Đang thực hiện ${wantConnect ? "BẬT" : "TẮT"} Cloudflare WARP...`);
+  logMessage(`Triggering WARP ${wantConnect ? "CONNECTION" : "DISCONNECTION"}...`);
+  showToast(wantConnect ? "Activating WARP protection..." : "Deactivating WARP protection...");
   
   try {
     const res = await invoke("warp_toggle", { connect: wantConnect });
-    showToast(wantConnect ? "Đang bật bảo vệ WARP!" : "Đã ngắt bảo vệ WARP.");
+    showToast(wantConnect ? "WARP connection command sent!" : "WARP disconnection command sent.");
     logMessage(`WARP Command Output: ${res}`);
-    // Đợi 1 giây rồi cập nhật trạng thái ngay
-    setTimeout(getWarpStatus, 1000);
   } catch (err) {
-    showToast(`Điều khiển WARP thất bại: ${err}`, true);
-    logMessage(`Lỗi điều khiển WARP: ${err}`);
-    // Rollback lại toggle switch trên UI
+    showToast(`WARP control failed: ${err}`, true);
+    logMessage(`WARP control error: ${err}`);
+    // Rollback the checkbox GUI toggle switch
     warpToggle.checked = !wantConnect;
   } finally {
     isTogglingWarp = false;
-    warpToggle.disabled = false;
+    // Always query and synchronize with the actual daemon status from backend
+    await getWarpStatus();
   }
 }
 
-// 5. CÀI ĐẶT CLOUDFLARE WARP TRÊN FEDORA
+// 5. CLOUDFLARE WARP: SYSTEM INSTALLATION (FEDORA PKEXEC)
 async function installWarp() {
   btnInstall.classList.add("btn-loading");
   btnInstall.disabled = true;
   
-  logMessage("Đang tiến hành tải và cài đặt Cloudflare WARP...");
-  logMessage("Bước 1: Gọi lệnh 'dnf download cloudflare-warp'...");
-  showToast("Bắt đầu cài đặt WARP...");
+  logMessage("Initiating Cloudflare WARP install process...");
+  logMessage("Step 1: Running 'dnf download cloudflare-warp'...");
+  showToast("Installing Cloudflare WARP...");
 
   try {
     const result = await invoke("install_warp");
-    showToast("Cài đặt Cloudflare WARP thành công!");
-    logMessage(`Cài đặt hoàn tất: ${result}`);
-    // Cập nhật lại UI lập tức
+    showToast("Cloudflare WARP installed successfully!");
+    logMessage(`Installation completed: ${result}`);
+    // Instantly trigger sync and refresh
     await getWarpStatus();
     await syncWarpMode();
   } catch (err) {
-    showToast(`Cài đặt WARP thất bại: ${err}`, true);
-    logMessage(`LỖI cài đặt WARP: ${err}`);
+    showToast(`WARP installation failed: ${err}`, true);
+    logMessage(`WARP installation error: ${err}`);
   } finally {
     btnInstall.classList.remove("btn-loading");
     btnInstall.disabled = false;
   }
 }
 
-// 6. THAY ĐỔI CHẾ ĐỘ HOẠT ĐỘNG CLOUDFLARE WARP
+// 6. CLOUDFLARE WARP: CHANGE OPERATING MODE
 async function handleModeChange(mode) {
   if (isSettingMode) return;
   isSettingMode = true;
 
-  // Cập nhật UI ngay lập tức (Optimistic Update) giúp nút sáng lên ngay lập tức khi click!
+  // Optimistic UI state switch for instantaneous visual feedback
   currentWarpMode = mode;
   updateWarpModeUI(mode);
   disableModeButtons(true);
 
-  logMessage(`Đang chuyển chế độ WARP sang: ${mode.toUpperCase()}...`);
-  showToast(`Đang chuyển sang chế độ ${mode.toUpperCase()}...`);
+  logMessage(`Switching WARP mode to: ${mode.toUpperCase()}...`);
+  showToast(`Switching to ${mode.toUpperCase()} mode...`);
 
   try {
     const res = await invoke("set_warp_mode", { mode });
-    showToast(`Đã chuyển sang chế độ ${mode.toUpperCase()}!`);
-    logMessage(`Kết quả chuyển chế độ: ${res}`);
+    showToast(`Mode switched to ${mode.toUpperCase()}!`);
+    logMessage(`Mode switch result: ${res}`);
   } catch (err) {
-    showToast(`Lỗi chuyển chế độ: ${err}`, true);
-    logMessage(`Lỗi chuyển chế độ: ${err}`);
-    // Load lại chế độ thực tế để đồng bộ lại
+    showToast(`Mode switch failed: ${err}`, true);
+    logMessage(`Mode switch error: ${err}`);
+    // Rollback to the actual mode fetched from backend
     await syncWarpMode();
   } finally {
     isSettingMode = false;
@@ -505,11 +527,13 @@ async function handleModeChange(mode) {
   }
 }
 
+// Enforces temporary disable status on toggle buttons
 function disableModeButtons(disabled) {
   if (btnModeDoh) btnModeDoh.disabled = disabled;
   if (btnModeWarpDoh) btnModeWarpDoh.disabled = disabled;
 }
 
+// Updates background styling properties of mode buttons based on active mode string
 function updateWarpModeUI(mode) {
   const activeClass = "bg-gradient-to-r from-orange-500 to-amber-500 text-white border-transparent shadow-[0_0_15px_rgba(249,115,22,0.4)] scale-[1.02]";
   const inactiveClass = "text-slate-400 hover:text-slate-200 border-transparent hover:bg-slate-900/40";
@@ -520,20 +544,20 @@ function updateWarpModeUI(mode) {
   ].forEach(({ btn, key }) => {
     if (!btn) return;
     if (key === mode) {
-      btn.className = `py-2.5 px-1 rounded-xl text-[10px] font-bold tracking-wide transition-all duration-200 focus:outline-none flex flex-col items-center justify-center gap-1.5 border ${activeClass}`;
+      btn.className = `py-2 px-1 rounded-xl text-[10px] font-bold tracking-wide transition-all duration-200 focus:outline-none flex flex-col items-center justify-center gap-1.5 border ${activeClass}`;
     } else {
-      btn.className = `py-2.5 px-1 rounded-xl text-[10px] font-bold tracking-wide transition-all duration-200 focus:outline-none flex flex-col items-center justify-center gap-1.5 border ${inactiveClass}`;
+      btn.className = `py-2 px-1 rounded-xl text-[10px] font-bold tracking-wide transition-all duration-200 focus:outline-none flex flex-col items-center justify-center gap-1.5 border ${inactiveClass}`;
     }
   });
 
-  // Cập nhật nhãn/badge trạng thái hiển thị rõ ràng chế độ hiện tại
+  // Updates status badge text with friendly descriptions
   if (warpModeBadge && warpModeBadgeContainer) {
     if (mode === "doh") {
       warpModeBadge.innerHTML = `
         <svg class="w-3 h-3 animate-pulse text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M13 10V3L4 14h7v7l9-11h-7z"/>
         </svg>
-        <span>Chế độ: DoH (Chỉ DNS)</span>
+        <span>Mode: DoH (DNS Only)</span>
       `;
       warpModeBadge.className = "inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-orange-500/10 text-orange-400 border border-orange-500/20 shadow-[0_0_10px_rgba(249,115,22,0.1)]";
       warpModeBadgeContainer.classList.remove("hidden");
@@ -542,7 +566,7 @@ function updateWarpModeUI(mode) {
         <svg class="w-3 h-3 animate-pulse text-teal-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
         </svg>
-        <span>Chế độ: WARP + DoH (Tối đa)</span>
+        <span>Mode: WARP + DoH (Max)</span>
       `;
       warpModeBadge.className = "inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-teal-500/10 text-teal-400 border border-teal-500/20 shadow-[0_0_10px_rgba(20,184,166,0.1)]";
       warpModeBadgeContainer.classList.remove("hidden");
@@ -551,7 +575,7 @@ function updateWarpModeUI(mode) {
         <svg class="w-3 h-3 animate-pulse text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
         </svg>
-        <span>Chế độ: ${mode.toUpperCase()}</span>
+        <span>Mode: ${mode.toUpperCase()}</span>
       `;
       warpModeBadge.className = "inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-slate-500/10 text-slate-400 border border-slate-500/20 shadow-none";
       warpModeBadgeContainer.classList.remove("hidden");
@@ -559,3 +583,78 @@ function updateWarpModeUI(mode) {
   }
 }
 
+// 7. NEW: NETWORK UTILITIES HANDLERS
+async function runPing() {
+  if (isPinging) return;
+  isPinging = true;
+  btnPing.disabled = true;
+  
+  netConsole.innerHTML = `<span class="text-slate-400">$ ping -c 4 1.1.1.1</span><br><span class="text-amber-400 animate-pulse">Pinging Cloudflare DNS (1.1.1.1) with 4 packets...</span>`;
+  logMessage("Sending ping requests to 1.1.1.1...");
+  
+  try {
+    const res = await invoke("ping_target", { target: "1.1.1.1" });
+    const cleanOutput = res.replace(/\n/g, "<br>");
+    netConsole.innerHTML = `<span class="text-slate-400">$ ping -c 4 1.1.1.1</span><br><span class="text-emerald-400">${cleanOutput}</span>`;
+    showToast("Ping request completed!");
+    logMessage("Ping to 1.1.1.1 completed.");
+  } catch (err) {
+    const errOutput = err.replace(/\n/g, "<br>");
+    netConsole.innerHTML = `<span class="text-slate-400">$ ping -c 4 1.1.1.1</span><br><span class="text-red-400">Error: ${errOutput}</span>`;
+    showToast("Ping request failed!", true);
+    logMessage(`Ping failed: ${err}`);
+  } finally {
+    isPinging = false;
+    btnPing.disabled = false;
+    netConsole.scrollTop = netConsole.scrollHeight;
+  }
+}
+
+async function runTraceIp() {
+  if (isTracing) return;
+  isTracing = true;
+  btnTrace.disabled = true;
+  
+  netConsole.innerHTML = `<span class="text-slate-400">$ curl -s http://ip-api.com/json/</span><br><span class="text-amber-400 animate-pulse">Tracing public IP geolocation databases...</span>`;
+  logMessage("Querying public IP address details...");
+  
+  try {
+    const res = await invoke("trace_ip");
+    const info = JSON.parse(res);
+    
+    if (info.status === "fail") {
+      throw new Error(info.message || "Failed to query GeoIP API");
+    }
+    
+    // Check if network is routed through Cloudflare (WARP)
+    const isWarp = (info.isp || "").toLowerCase().includes("cloudflare") || 
+                   (info.org || "").toLowerCase().includes("cloudflare") || 
+                   (info.as || "").toLowerCase().includes("cloudflare");
+                   
+    const warpBadge = isWarp 
+      ? `<span class="bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-2 py-0.5 rounded text-[8px] font-bold">WARP ACTIVE</span>` 
+      : `<span class="bg-red-500/20 text-red-400 border border-red-500/30 px-2 py-0.5 rounded text-[8px] font-bold">DIRECT CONNECTION</span>`;
+
+    const outputHtml = `
+      <span class="text-slate-400">$ curl -s http://ip-api.com/json/</span><br>
+      <div class="space-y-0.5 mt-1.5 text-slate-300">
+        <div><span class="text-teal-400 font-bold">Public IP:</span> ${info.query} ${warpBadge}</div>
+        <div><span class="text-teal-400 font-bold">Provider (ISP):</span> ${info.isp} (${info.org || "N/A"})</div>
+        <div><span class="text-teal-400 font-bold">Location:</span> ${info.city}, ${info.regionName}, ${info.country}</div>
+        <div><span class="text-teal-400 font-bold">Coordinates:</span> Lat ${info.lat}, Lon ${info.lon} (${info.timezone})</div>
+      </div>
+    `;
+    
+    netConsole.innerHTML = outputHtml;
+    showToast("IP address trace completed!");
+    logMessage(`Public IP traces complete. Current IP: ${info.query}`);
+  } catch (err) {
+    netConsole.innerHTML = `<span class="text-slate-400">$ curl -s http://ip-api.com/json/</span><br><span class="text-red-400">Error query IP traces: ${err.message || err}</span>`;
+    showToast("Failed to trace public IP address!", true);
+    logMessage(`IP trace failed: ${err}`);
+  } finally {
+    isTracing = false;
+    btnTrace.disabled = false;
+    netConsole.scrollTop = 0;
+  }
+}
