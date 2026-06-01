@@ -61,8 +61,8 @@
     <!-- Main Content Grid -->
     <main class="relative z-10 max-w-6xl w-full mx-auto p-6 grid grid-cols-1 lg:grid-cols-12 gap-6 flex-grow">
       
-      <!-- SECTION 1: WI-FI NETWORK MANAGER (Col-span 7) -->
-      <section class="lg:col-span-7 bg-slate-900/40 border border-slate-800/80 backdrop-blur-xl rounded-3xl p-6 shadow-2xl flex flex-col justify-between h-[680px]">
+      <!-- SECTION 1: WI-FI NETWORK MANAGER (Col-span 5) -->
+      <section class="lg:col-span-5 bg-slate-900/40 border border-slate-800/80 backdrop-blur-xl rounded-3xl p-6 shadow-2xl flex flex-col justify-between h-[680px]">
         <div>
           <div class="flex items-center justify-between mb-4">
             <div class="flex items-center space-x-2">
@@ -97,8 +97,8 @@
         </div>
       </section>
 
-      <!-- SECTION 2: CLOUDFLARE WARP & UTILITIES (Col-span 5) -->
-      <section class="lg:col-span-5 bg-slate-900/40 border border-slate-800/80 backdrop-blur-xl rounded-3xl p-6 shadow-2xl flex flex-col justify-between h-[680px]">
+      <!-- SECTION 2: CLOUDFLARE WARP & SYSTEM CONTROL (Col-span 3) -->
+      <section class="lg:col-span-3 bg-slate-900/40 border border-slate-800/80 backdrop-blur-xl rounded-3xl p-6 shadow-2xl flex flex-col justify-between h-[680px]">
         <div class="flex flex-col items-center justify-center flex-grow py-3 text-center w-full">
           
           <!-- Cloudflare WARP Logo & LED Shield -->
@@ -117,13 +117,13 @@
             </span>
           </div>
 
-          <h2 class="text-xl font-extrabold text-slate-200">Cloudflare WARP (1.1.1.1)</h2>
-          <p id="warp-status-text" class="text-sm font-semibold mt-0.5 text-red-400 uppercase tracking-widest">Disconnected</p>
-          <p id="warp-network-text" class="text-xs text-slate-400 mt-2 max-w-xs mx-auto">Your network connection is direct and unprotected.</p>
+          <h2 class="text-lg font-extrabold text-slate-200">Cloudflare WARP</h2>
+          <p id="warp-status-text" class="text-xs font-semibold mt-0.5 text-red-400 uppercase tracking-widest">Disconnected</p>
+          <p id="warp-network-text" class="text-[10px] text-slate-400 mt-2 max-w-xs mx-auto">Your network connection is direct and unprotected.</p>
           
           <!-- Operating Mode Status Badge -->
           <div id="warp-mode-badge-container" class="mt-2 hidden">
-            <span id="warp-mode-badge" class="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-orange-500/10 text-orange-400 border border-orange-500/20 shadow-[0_0_10px_rgba(249,115,22,0.1)]">
+            <span id="warp-mode-badge" class="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider bg-orange-500/10 text-orange-400 border border-orange-500/20 shadow-[0_0_10px_rgba(249,115,22,0.1)]">
               <svg class="w-3 h-3 animate-pulse text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M13 10V3L4 14h7v7l9-11h-7z"/>
               </svg>
@@ -132,58 +132,30 @@
           </div>
 
           <!-- iOS-style Switch Toggle to control WARP -->
-          <div class="mt-4 flex items-center justify-center space-x-4">
-            <span class="text-xs text-slate-400 font-semibold uppercase tracking-wider">Enable WARP</span>
+          <div class="mt-4 flex items-center justify-center space-x-3">
+            <span class="text-[10px] text-slate-400 font-semibold uppercase tracking-wider">Enable WARP</span>
             <label class="relative inline-flex items-center cursor-pointer">
               <input type="checkbox" id="warp-toggle" class="sr-only peer" disabled>
-              <div class="w-14 h-8 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[4px] after:left-[4px] after:bg-slate-300 after:border-slate-300 after:border after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:bg-gradient-to-r peer-checked:from-orange-500 peer-checked:to-amber-500 peer-checked:after:bg-white peer-checked:after:border-white transition-all duration-300 shadow-md"></div>
+              <div class="w-12 h-7 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[3px] after:left-[4px] after:bg-slate-300 after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-gradient-to-r peer-checked:from-orange-500 peer-checked:to-amber-500 peer-checked:after:bg-white peer-checked:after:border-white transition-all duration-300 shadow-md"></div>
             </label>
           </div>
 
           <!-- WARP Operation Mode Toggles -->
           <div class="mt-4 w-full border-t border-slate-800/60 pt-4">
-            <span class="block text-[10px] font-semibold text-slate-400 mb-2 uppercase tracking-wider text-center">Operation Mode</span>
+            <span class="block text-[9px] font-semibold text-slate-400 mb-2 uppercase tracking-wider text-center">Operation Mode</span>
             <div class="grid grid-cols-2 gap-2 bg-slate-950/80 p-1.5 rounded-2xl border border-slate-800/80 max-w-xs mx-auto">
-              <button id="mode-doh" type="button" class="py-2 px-1 rounded-xl text-[10px] font-bold tracking-wide transition-all duration-200 focus:outline-none flex flex-col items-center justify-center gap-1.5 text-slate-500 hover:text-slate-300 border border-transparent">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <button id="mode-doh" type="button" class="py-2 px-1 rounded-xl text-[9px] font-bold tracking-wide transition-all duration-200 focus:outline-none flex flex-col items-center justify-center gap-1.5 text-slate-500 hover:text-slate-300 border border-transparent">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/>
                 </svg>
-                <span>DNS over DoH</span>
+                <span>DoH DNS</span>
               </button>
-              <button id="mode-warpdoh" type="button" class="py-2 px-1 rounded-xl text-[10px] font-bold tracking-wide transition-all duration-200 focus:outline-none flex flex-col items-center justify-center gap-1.5 text-slate-500 hover:text-slate-300 border border-transparent">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <button id="mode-warpdoh" type="button" class="py-2 px-1 rounded-xl text-[9px] font-bold tracking-wide transition-all duration-200 focus:outline-none flex flex-col items-center justify-center gap-1.5 text-slate-500 hover:text-slate-300 border border-transparent">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
                 </svg>
-                <span>WARP + DoH</span>
+                <span>WARP+DoH</span>
               </button>
-            </div>
-          </div>
-
-          <!-- NEW: Network Utilities Section -->
-          <div class="mt-4 w-full border-t border-slate-800/60 pt-4">
-            <span class="block text-[10px] font-semibold text-slate-400 mb-2.5 uppercase tracking-wider text-center flex items-center justify-center gap-1.5">
-              <svg class="w-3.5 h-3.5 text-teal-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M13 10V3L4 14h7v7l9-11h-7z"/>
-              </svg>
-              <span>Network Utilities</span>
-            </span>
-            <div class="grid grid-cols-2 gap-2 mb-2 max-w-xs mx-auto">
-              <button id="btn-ping" class="group flex items-center justify-center space-x-1.5 bg-slate-950/80 hover:bg-slate-900 border border-slate-800 hover:border-slate-700 active:scale-[0.98] text-[10px] font-bold text-slate-300 hover:text-white py-2 rounded-xl transition duration-150">
-                <svg class="w-3 h-3 text-teal-400 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M13 10V3L4 14h7v7l9-11h-7z"/>
-                </svg>
-                <span>Ping 1.1.1.1</span>
-              </button>
-              <button id="btn-trace" class="group flex items-center justify-center space-x-1.5 bg-slate-950/80 hover:bg-slate-900 border border-slate-800 hover:border-slate-700 active:scale-[0.98] text-[10px] font-bold text-slate-300 hover:text-white py-2 rounded-xl transition duration-150">
-                <svg class="w-3 h-3 text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9"/>
-                </svg>
-                <span>Trace IP</span>
-              </button>
-            </div>
-            <!-- Interactive terminal mini console -->
-            <div id="net-console" class="bg-slate-950 border border-slate-900 rounded-xl p-2.5 text-[9px] font-mono text-teal-400 h-22 overflow-y-auto custom-scrollbar text-left max-w-sm mx-auto shadow-inner">
-              $ Ready to run ping or IP tracing utilities.
             </div>
           </div>
 
@@ -193,11 +165,11 @@
         <div class="space-y-2 mt-2">
           <div class="flex gap-2">
             <!-- Install WARP button -->
-            <button id="btn-install" class="flex-1 bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 active:scale-95 text-white font-semibold py-2.5 px-4 rounded-2xl shadow-lg shadow-orange-500/10 transition duration-200 flex items-center justify-center space-x-2 text-xs">
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <button id="btn-install" class="flex-1 bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 active:scale-95 text-white font-semibold py-2 px-3 rounded-2xl shadow-lg shadow-orange-500/10 transition duration-200 flex items-center justify-center space-x-1.5 text-xs">
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
               </svg>
-              <span>Install WARP (Fedora)</span>
+              <span>Install WARP</span>
             </button>
           </div>
 
@@ -205,6 +177,135 @@
           <div class="bg-slate-950/80 border border-slate-800/80 rounded-2xl p-2.5 text-[9px] font-mono text-slate-400 h-14 overflow-y-auto custom-scrollbar" id="warp-logs">
             [System] Wi-Fi and Cloudflare WARP manager active.
           </div>
+        </div>
+      </section>
+
+      <!-- SECTION 3: NETWORK DASHBOARD & DIAGNOSTICS (Col-span 4) -->
+      <section class="lg:col-span-4 bg-slate-900/40 border border-slate-800/80 backdrop-blur-xl rounded-3xl p-6 shadow-2xl flex flex-col justify-between h-[680px]">
+        <div class="space-y-4 h-full flex flex-col justify-between">
+          
+          <!-- Speed Test Card -->
+          <div class="bg-slate-950/60 border border-slate-800/80 rounded-2xl p-4 flex flex-col justify-between h-[210px] shadow-inner">
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
+                <svg class="w-3.5 h-3.5 text-teal-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+                </svg>
+                Real-time Speed
+              </span>
+              <span class="text-[9px] font-semibold text-teal-400 bg-teal-500/10 px-2 py-0.5 rounded-full border border-teal-500/20 animate-pulse">LIVE</span>
+            </div>
+            
+            <div class="grid grid-cols-2 gap-3 my-auto">
+              <!-- Download Metric -->
+              <div class="bg-slate-900/60 border border-slate-800/60 rounded-xl p-2.5 flex flex-col justify-center">
+                <span class="text-[9px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1">
+                  <svg class="w-2.5 h-2.5 text-teal-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 14l-7 7m0 0l-7-7m7 7V3"/>
+                  </svg>
+                  Download
+                </span>
+                <span id="speed-download" class="text-base font-black text-teal-300 tracking-tight mt-1">0.00 KB/s</span>
+              </div>
+              <!-- Upload Metric -->
+              <div class="bg-slate-900/60 border border-slate-800/60 rounded-xl p-2.5 flex flex-col justify-center">
+                <span class="text-[9px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1">
+                  <svg class="w-2.5 h-2.5 text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 10l7-7m0 0l7 7m-7-7v18"/>
+                  </svg>
+                  Upload
+                </span>
+                <span id="speed-upload" class="text-base font-black text-orange-400 tracking-tight mt-1">0.00 KB/s</span>
+              </div>
+            </div>
+
+            <!-- Sparkline Chart Container -->
+            <div class="relative w-full h-[65px] bg-slate-950 border border-slate-900 rounded-xl overflow-hidden mt-1.5 flex items-center justify-center">
+              <canvas id="speed-chart" class="w-full h-full block z-10"></canvas>
+              <!-- Grid line overlays for a cyber dashboard look -->
+              <div class="absolute inset-0 grid grid-cols-6 grid-rows-3 pointer-events-none opacity-10">
+                <div class="border-b border-r border-slate-500"></div>
+                <div class="border-b border-r border-slate-500"></div>
+                <div class="border-b border-r border-slate-500"></div>
+                <div class="border-b border-r border-slate-500"></div>
+                <div class="border-b border-r border-slate-500"></div>
+                <div class="border-b border-slate-500"></div>
+                <div class="border-b border-r border-slate-500"></div>
+                <div class="border-b border-r border-slate-500"></div>
+                <div class="border-b border-r border-slate-500"></div>
+                <div class="border-b border-r border-slate-500"></div>
+                <div class="border-b border-r border-slate-500"></div>
+                <div class="border-b border-slate-500"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Latency Card -->
+          <div class="bg-slate-950/60 border border-slate-800/80 rounded-2xl p-4 flex flex-col justify-between h-[180px] shadow-inner">
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
+                <svg class="w-3.5 h-3.5 text-teal-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                </svg>
+                Latency (Ping)
+              </span>
+              <span class="text-[8px] font-bold text-slate-500 tracking-wider">AUTO (5S)</span>
+            </div>
+
+            <div class="flex-grow flex flex-col justify-center space-y-2.5">
+              <!-- Cloudflare DNS -->
+              <div class="flex items-center justify-between p-2 bg-slate-900/40 border border-slate-900 rounded-xl">
+                <div class="flex items-center space-x-2">
+                  <span class="w-2 h-2 rounded-full bg-teal-400"></span>
+                  <div class="text-[10px] font-bold text-slate-200">Cloudflare DNS <span class="font-mono text-slate-500">(1.1.1.1)</span></div>
+                </div>
+                <span id="ping-cloudflare" class="text-xs font-black text-teal-400 font-mono">-- ms</span>
+              </div>
+              
+              <!-- Google DNS -->
+              <div class="flex items-center justify-between p-2 bg-slate-900/40 border border-slate-900 rounded-xl">
+                <div class="flex items-center space-x-2">
+                  <span class="w-2 h-2 rounded-full bg-blue-400"></span>
+                  <div class="text-[10px] font-bold text-slate-200">Google DNS <span class="font-mono text-slate-500">(8.8.8.8)</span></div>
+                </div>
+                <span id="ping-google" class="text-xs font-black text-blue-400 font-mono">-- ms</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- IP Geolocation Card -->
+          <div class="bg-slate-950/60 border border-slate-800/80 rounded-2xl p-4 flex flex-col justify-between h-[210px] shadow-inner">
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
+                <svg class="w-3.5 h-3.5 text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
+                </svg>
+                Public IP Geolocation
+              </span>
+              <span id="trace-warp-badge" class="bg-red-500/10 text-red-400 border border-red-500/20 px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-wider transition-all duration-300">DIRECT</span>
+            </div>
+
+            <div class="flex-grow flex flex-col justify-center space-y-1.5 text-[10px] text-slate-300">
+              <div class="flex justify-between py-0.5 border-b border-slate-900/60">
+                <span class="font-semibold text-slate-400">IP Address:</span>
+                <span id="trace-ip-address" class="font-black text-slate-100 font-mono">Fetching...</span>
+              </div>
+              <div class="flex justify-between py-0.5 border-b border-slate-900/60">
+                <span class="font-semibold text-slate-400">ISP Provider:</span>
+                <span id="trace-isp" class="font-bold text-slate-100 truncate max-w-[140px]">Fetching...</span>
+              </div>
+              <div class="flex justify-between py-0.5 border-b border-slate-900/60">
+                <span class="font-semibold text-slate-400">Location:</span>
+                <span id="trace-location" class="font-bold text-slate-100 truncate max-w-[140px]">Fetching...</span>
+              </div>
+              <div class="flex justify-between py-0.5">
+                <span class="font-semibold text-slate-400">Coordinates:</span>
+                <span id="trace-coords" class="font-bold text-slate-100 font-mono">Fetching...</span>
+              </div>
+            </div>
+          </div>
+
         </div>
       </section>
 

@@ -2,7 +2,7 @@ pub mod net_utils;
 pub mod warp;
 pub mod wifi;
 
-use net_utils::{ping_target, trace_ip};
+use net_utils::{get_network_io, ping_multiple, ping_target, trace_ip};
 use warp::{get_warp_mode, get_warp_status, install_warp, set_warp_mode, warp_toggle};
 use wifi::{connect_wifi, get_wifi_list};
 
@@ -21,7 +21,9 @@ pub fn run() {
             get_warp_mode,
             set_warp_mode,
             ping_target,
-            trace_ip
+            trace_ip,
+            get_network_io,
+            ping_multiple
         ])
         .run(tauri::generate_context!())
     {

@@ -8,8 +8,10 @@ let ledDot, ledPing, warpStatusText, warpNetworkText, warpToggle, warpLogs, toas
 let warpModeBadgeContainer, warpModeBadge;
 let btnModeDoh, btnModeWarpDoh;
 
-// NEW: Network Utilities DOM Elements
-let btnPing, btnTrace, netConsole;
+// Network Dashboard DOM Elements
+let speedDownload, speedUpload, speedChart, speedCtx;
+let pingCloudflare, pingGoogle;
+let traceWarpBadge, traceIpAddress, traceIsp, traceLocation, traceCoords;
 
 // Internal state storage
 let currentWarpMode = "";
@@ -19,9 +21,12 @@ let selectedSsid = "";
 let isScanning = false;
 let isTogglingWarp = false;
 
-// NEW: Network utilities execution state
-let isPinging = false;
-let isTracing = false;
+// Network speed and sparkline monitoring state
+let lastRxBytes = 0;
+let lastTxBytes = 0;
+let lastSpeedTime = Date.now();
+let speedHistory = []; // holds { rx: number, tx: number }
+const MAX_HISTORY_POINTS = 30; // sparkline points count
 
 // Launch initialization when DOM is fully loaded
 window.addEventListener("DOMContentLoaded", () => {
@@ -33,6 +38,12 @@ window.addEventListener("DOMContentLoaded", () => {
   
   // Fetch initial WARP status and operating mode
   getInitialStatus();
+
+  // Start real-time network speed monitor (every 1s)
+  startNetworkSpeedMonitor();
+
+  // Load first-time network diagnostics
+  updateNetworkDiagnostics();
   
   // Start polling Cloudflare WARP connection status every 5 seconds
   pollWarpStatus();
@@ -71,10 +82,22 @@ function initDOMElements() {
   btnModeDoh = document.getElementById("mode-doh");
   btnModeWarpDoh = document.getElementById("mode-warpdoh");
 
-  // NEW: Network utilities DOM elements
-  btnPing = document.getElementById("btn-ping");
-  btnTrace = document.getElementById("btn-trace");
-  netConsole = document.getElementById("net-console");
+  // Network Dashboard DOM elements
+  speedDownload = document.getElementById("speed-download");
+  speedUpload = document.getElementById("speed-upload");
+  speedChart = document.getElementById("speed-chart");
+  if (speedChart) {
+    speedCtx = speedChart.getContext("2d");
+  }
+
+  pingCloudflare = document.getElementById("ping-cloudflare");
+  pingGoogle = document.getElementById("ping-google");
+
+  traceWarpBadge = document.getElementById("trace-warp-badge");
+  traceIpAddress = document.getElementById("trace-ip-address");
+  traceIsp = document.getElementById("trace-isp");
+  traceLocation = document.getElementById("trace-location");
+  traceCoords = document.getElementById("trace-coords");
 }
 
 // Register interactive element events
@@ -100,10 +123,6 @@ function registerEvents() {
   // WARP operating mode switch actions
   btnModeDoh.addEventListener("click", () => handleModeChange("doh"));
   btnModeWarpDoh.addEventListener("click", () => handleModeChange("warp+doh"));
-
-  // NEW: Network utility button events
-  btnPing.addEventListener("click", runPing);
-  btnTrace.addEventListener("click", runTraceIp);
 }
 
 // Logs messages into the scrolling system logs terminal panel
@@ -334,7 +353,7 @@ async function connectWifi() {
   }
 }
 
-// 3. CLOUDFLARE WARP POLLING LOOP
+// 3. CLOUDFLARE WARP STATUS POLLING
 let isFetchingWarpStatus = false;
 
 // Synchronizes the actual WARP operating mode from backend settings
@@ -362,6 +381,8 @@ async function pollWarpStatus() {
 
   try {
     await getWarpStatus();
+    // Periodically update diagnostics alongside the 5s status loop
+    updateNetworkDiagnostics();
   } finally {
     isFetchingWarpStatus = false;
     // Reschedule next status retrieval cycle in 5 seconds
@@ -396,9 +417,9 @@ function updateWarpUI(status) {
     ledDot.className = "relative inline-flex rounded-full h-4 w-4 bg-emerald-500 shadow-[0_0_12px_rgba(16,185,129,0.7)] transition-all duration-300";
     ledPing.className = "animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75";
     warpStatusText.textContent = "Connected";
-    warpStatusText.className = "text-sm font-semibold mt-1 text-emerald-400 uppercase tracking-widest";
+    warpStatusText.className = "text-xs font-semibold mt-1 text-emerald-400 uppercase tracking-widest";
     if (warpNetworkText) {
-      warpNetworkText.textContent = "Your network traffic is securely encrypted and optimized.";
+      warpNetworkText.textContent = "Your network traffic is securely encrypted.";
     }
     
     warpToggle.disabled = false;
@@ -409,9 +430,9 @@ function updateWarpUI(status) {
     ledDot.className = "relative inline-flex rounded-full h-4 w-4 bg-amber-500 shadow-[0_0_12px_rgba(245,158,11,0.7)] transition-all duration-300";
     ledPing.className = "animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75";
     warpStatusText.textContent = "Connecting...";
-    warpStatusText.className = "text-sm font-semibold mt-1 text-amber-400 uppercase tracking-widest";
+    warpStatusText.className = "text-xs font-semibold mt-1 text-amber-400 uppercase tracking-widest";
     if (warpNetworkText) {
-      warpNetworkText.textContent = "Establishing a secure connection tunnel...";
+      warpNetworkText.textContent = "Establishing a secure connection...";
     }
     
     warpToggle.disabled = true;
@@ -419,9 +440,9 @@ function updateWarpUI(status) {
     ledDot.className = "relative inline-flex rounded-full h-4 w-4 bg-slate-500 shadow-none transition-all duration-300";
     ledPing.className = "hidden";
     warpStatusText.textContent = "Not Installed";
-    warpStatusText.className = "text-sm font-semibold mt-1 text-slate-400 uppercase tracking-widest";
+    warpStatusText.className = "text-xs font-semibold mt-1 text-slate-400 uppercase tracking-widest";
     if (warpNetworkText) {
-      warpNetworkText.textContent = "Could not find Cloudflare WARP client on Fedora.";
+      warpNetworkText.textContent = "Could not find Cloudflare WARP client.";
     }
     
     warpToggle.disabled = true;
@@ -434,9 +455,9 @@ function updateWarpUI(status) {
     ledDot.className = "relative inline-flex rounded-full h-4 w-4 bg-red-500 shadow-[0_0_12px_rgba(239,68,68,0.7)] transition-all duration-300";
     ledPing.className = "animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75";
     warpStatusText.textContent = "Disconnected";
-    warpStatusText.className = "text-sm font-semibold mt-1 text-red-400 uppercase tracking-widest";
+    warpStatusText.className = "text-xs font-semibold mt-1 text-red-400 uppercase tracking-widest";
     if (warpNetworkText) {
-      warpNetworkText.textContent = "Your network connection is direct and unprotected.";
+      warpNetworkText.textContent = "Your network connection is direct.";
     }
     
     warpToggle.disabled = false;
@@ -471,6 +492,8 @@ async function handleWarpToggle() {
     isTogglingWarp = false;
     // Always query and synchronize with the actual daemon status from backend
     await getWarpStatus();
+    // Instantly refresh diagnostics to update the new IP and Latency metrics
+    updateNetworkDiagnostics();
   }
 }
 
@@ -524,6 +547,8 @@ async function handleModeChange(mode) {
   } finally {
     isSettingMode = false;
     disableModeButtons(false);
+    // Instantly trigger network diagnostics update to display new routing latency
+    updateNetworkDiagnostics();
   }
 }
 
@@ -544,9 +569,9 @@ function updateWarpModeUI(mode) {
   ].forEach(({ btn, key }) => {
     if (!btn) return;
     if (key === mode) {
-      btn.className = `py-2 px-1 rounded-xl text-[10px] font-bold tracking-wide transition-all duration-200 focus:outline-none flex flex-col items-center justify-center gap-1.5 border ${activeClass}`;
+      btn.className = `py-2 px-1 rounded-xl text-[9px] font-bold tracking-wide transition-all duration-200 focus:outline-none flex flex-col items-center justify-center gap-1.5 border ${activeClass}`;
     } else {
-      btn.className = `py-2 px-1 rounded-xl text-[10px] font-bold tracking-wide transition-all duration-200 focus:outline-none flex flex-col items-center justify-center gap-1.5 border ${inactiveClass}`;
+      btn.className = `py-2 px-1 rounded-xl text-[9px] font-bold tracking-wide transition-all duration-200 focus:outline-none flex flex-col items-center justify-center gap-1.5 border ${inactiveClass}`;
     }
   });
 
@@ -557,9 +582,9 @@ function updateWarpModeUI(mode) {
         <svg class="w-3 h-3 animate-pulse text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M13 10V3L4 14h7v7l9-11h-7z"/>
         </svg>
-        <span>Mode: DoH (DNS Only)</span>
+        <span>Mode: DoH DNS Only</span>
       `;
-      warpModeBadge.className = "inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-orange-500/10 text-orange-400 border border-orange-500/20 shadow-[0_0_10px_rgba(249,115,22,0.1)]";
+      warpModeBadge.className = "inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider bg-orange-500/10 text-orange-400 border border-orange-500/20 shadow-[0_0_10px_rgba(249,115,22,0.1)]";
       warpModeBadgeContainer.classList.remove("hidden");
     } else if (mode === "warp+doh") {
       warpModeBadge.innerHTML = `
@@ -568,7 +593,7 @@ function updateWarpModeUI(mode) {
         </svg>
         <span>Mode: WARP + DoH (Max)</span>
       `;
-      warpModeBadge.className = "inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-teal-500/10 text-teal-400 border border-teal-500/20 shadow-[0_0_10px_rgba(20,184,166,0.1)]";
+      warpModeBadge.className = "inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider bg-teal-500/10 text-teal-400 border border-teal-500/20 shadow-[0_0_10px_rgba(20,184,166,0.1)]";
       warpModeBadgeContainer.classList.remove("hidden");
     } else {
       warpModeBadge.innerHTML = `
@@ -577,84 +602,254 @@ function updateWarpModeUI(mode) {
         </svg>
         <span>Mode: ${mode.toUpperCase()}</span>
       `;
-      warpModeBadge.className = "inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-slate-500/10 text-slate-400 border border-slate-500/20 shadow-none";
+      warpModeBadge.className = "inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider bg-slate-500/10 text-slate-400 border border-slate-500/20 shadow-none";
       warpModeBadgeContainer.classList.remove("hidden");
     }
   }
 }
 
-// 7. NEW: NETWORK UTILITIES HANDLERS
-async function runPing() {
-  if (isPinging) return;
-  isPinging = true;
-  btnPing.disabled = true;
-  
-  netConsole.innerHTML = `<span class="text-slate-400">$ ping -c 4 1.1.1.1</span><br><span class="text-amber-400 animate-pulse">Pinging Cloudflare DNS (1.1.1.1) with 4 packets...</span>`;
-  logMessage("Sending ping requests to 1.1.1.1...");
-  
+// 7. REAL-TIME NETWORK SPEED MONITORING (1S TIMER)
+async function startNetworkSpeedMonitor() {
   try {
-    const res = await invoke("ping_target", { target: "1.1.1.1" });
-    const cleanOutput = res.replace(/\n/g, "<br>");
-    netConsole.innerHTML = `<span class="text-slate-400">$ ping -c 4 1.1.1.1</span><br><span class="text-emerald-400">${cleanOutput}</span>`;
-    showToast("Ping request completed!");
-    logMessage("Ping to 1.1.1.1 completed.");
-  } catch (err) {
-    const errOutput = err.replace(/\n/g, "<br>");
-    netConsole.innerHTML = `<span class="text-slate-400">$ ping -c 4 1.1.1.1</span><br><span class="text-red-400">Error: ${errOutput}</span>`;
-    showToast("Ping request failed!", true);
-    logMessage(`Ping failed: ${err}`);
-  } finally {
-    isPinging = false;
-    btnPing.disabled = false;
-    netConsole.scrollTop = netConsole.scrollHeight;
+    const io = await invoke("get_network_io");
+    lastRxBytes = io.rx_bytes;
+    lastTxBytes = io.tx_bytes;
+    lastSpeedTime = Date.now();
+  } catch (e) {
+    console.error("Failed to read initial network bytes:", e);
+  }
+
+  // Monitor network I/O every 1 second
+  setInterval(updateNetworkSpeed, 1000);
+}
+
+async function updateNetworkSpeed() {
+  try {
+    const io = await invoke("get_network_io");
+    const now = Date.now();
+    const timeDiffSec = (now - lastSpeedTime) / 1000;
+    if (timeDiffSec <= 0) return;
+
+    // Handle overflow or reset events safely
+    const rxDiff = io.rx_bytes > lastRxBytes ? io.rx_bytes - lastRxBytes : 0;
+    const txDiff = io.tx_bytes > lastTxBytes ? io.tx_bytes - lastTxBytes : 0;
+
+    const downSpeed = rxDiff / timeDiffSec; // bytes per second
+    const upSpeed = txDiff / timeDiffSec; // bytes per second
+
+    // Update frontend text components
+    if (speedDownload) speedDownload.textContent = formatSpeed(downSpeed);
+    if (speedUpload) speedUpload.textContent = formatSpeed(upSpeed);
+
+    // Save historical points to build smooth visual chart
+    speedHistory.push({ rx: downSpeed, tx: upSpeed });
+    if (speedHistory.length > MAX_HISTORY_POINTS) {
+      speedHistory.shift();
+    }
+
+    // Paint dynamic sparklines onto canvas
+    drawSparkline();
+
+    // Cache values for the next tick
+    lastRxBytes = io.rx_bytes;
+    lastTxBytes = io.tx_bytes;
+    lastSpeedTime = now;
+  } catch (e) {
+    // Suppress system errors to keep UI smooth and persistent
   }
 }
 
-async function runTraceIp() {
-  if (isTracing) return;
-  isTracing = true;
-  btnTrace.disabled = true;
-  
-  netConsole.innerHTML = `<span class="text-slate-400">$ curl -s http://ip-api.com/json/</span><br><span class="text-amber-400 animate-pulse">Tracing public IP geolocation databases...</span>`;
-  logMessage("Querying public IP address details...");
-  
+// Format raw bytes per second to human readable speeds
+function formatSpeed(bytesPerSec) {
+  if (bytesPerSec < 1024) {
+    return `${bytesPerSec.toFixed(1)} B/s`;
+  }
+  const kb = bytesPerSec / 1024;
+  if (kb < 1024) {
+    return `${kb.toFixed(2)} KB/s`;
+  }
+  const mb = kb / 1024;
+  return `${mb.toFixed(2)} MB/s`;
+}
+
+// Renders an anti-aliased retina-ready double sparkline canvas chart
+function drawSparkline() {
+  if (!speedCtx || !speedChart || speedHistory.length < 2) return;
+
+  const dpr = window.devicePixelRatio || 1;
+  const displayWidth = speedChart.clientWidth;
+  const displayHeight = speedChart.clientHeight;
+
+  // Adapt backing store dynamically to ensure pixel-perfect resolution on HiDPI displays
+  if (speedChart.width !== displayWidth * dpr || speedChart.height !== displayHeight * dpr) {
+    speedChart.width = displayWidth * dpr;
+    speedChart.height = displayHeight * dpr;
+  }
+
+  // Reset transforms and apply display ratio scaling
+  speedCtx.resetTransform();
+  speedCtx.scale(dpr, dpr);
+
+  // Clear previous drawings
+  speedCtx.clearRect(0, 0, displayWidth, displayHeight);
+
+  // Determine scaling factor by finding the maximum download/upload point
+  let maxVal = 10240; // minimum scale threshold of 10 KB/s to look natural on idle networks
+  speedHistory.forEach(pt => {
+    if (pt.rx > maxVal) maxVal = pt.rx;
+    if (pt.tx > maxVal) maxVal = pt.tx;
+  });
+
+  const padding = 2;
+  const plotWidth = displayWidth - padding * 2;
+  const plotHeight = displayHeight - padding * 2;
+  const step = plotWidth / (MAX_HISTORY_POINTS - 1);
+
+  // Sub-routine to trace, stroke, and fill paths smoothly
+  function drawCurve(dataKey, strokeColor, fillColor) {
+    speedCtx.beginPath();
+    
+    for (let i = 0; i < speedHistory.length; i++) {
+      const x = padding + i * step;
+      const val = speedHistory[i][dataKey];
+      const y = padding + plotHeight - (val / maxVal) * plotHeight;
+      
+      if (i === 0) {
+        speedCtx.moveTo(x, y);
+      } else {
+        speedCtx.lineTo(x, y);
+      }
+    }
+
+    // Stroke outline path
+    speedCtx.strokeStyle = strokeColor;
+    speedCtx.lineWidth = 1.6;
+    speedCtx.lineCap = "round";
+    speedCtx.lineJoin = "round";
+    speedCtx.stroke();
+
+    // Close path boundary down to bottom coordinates to fill area
+    speedCtx.lineTo(padding + (speedHistory.length - 1) * step, padding + plotHeight);
+    speedCtx.lineTo(padding, padding + plotHeight);
+    speedCtx.closePath();
+
+    // Create beautiful transparent gradient under the line
+    const grad = speedCtx.createLinearGradient(0, 0, 0, displayHeight);
+    grad.addColorStop(0, fillColor);
+    grad.addColorStop(1, "rgba(2, 6, 23, 0)"); // Fades cleanly into deep background slate
+    
+    speedCtx.fillStyle = grad;
+    speedCtx.fill();
+  }
+
+  // Draw Download curve (Teal styling)
+  drawCurve("rx", "#2dd4bf", "rgba(45, 212, 191, 0.12)");
+
+  // Draw Upload curve (Orange styling)
+  drawCurve("tx", "#fb923c", "rgba(251, 146, 60, 0.08)");
+}
+
+// 8. DIAGNOSTICS & NETWORK DIAGRAM MONITORING (PING / GEOLOCATION)
+let isCheckingDiagnostics = false;
+
+async function updateNetworkDiagnostics() {
+  if (isCheckingDiagnostics) return;
+  isCheckingDiagnostics = true;
+
+  // Run quick latency checks and public IP geolocations asynchronously in parallel
+  await Promise.all([
+    runQuickPings(),
+    runIPTracing()
+  ]);
+
+  isCheckingDiagnostics = false;
+}
+
+// Runs parallel non-blocking pings to common secure DNS targets
+async function runQuickPings() {
+  try {
+    const results = await invoke("ping_multiple", { targets: ["1.1.1.1", "8.8.8.8"] });
+    
+    results.forEach(res => {
+      if (res.target === "1.1.1.1") {
+        if (pingCloudflare) {
+          if (res.latency !== null) {
+            pingCloudflare.textContent = `${res.latency.toFixed(1)} ms`;
+            pingCloudflare.className = "text-xs font-black text-teal-400 font-mono";
+          } else {
+            pingCloudflare.textContent = "Offline";
+            pingCloudflare.className = "text-xs font-black text-red-500 font-mono";
+          }
+        }
+      } else if (res.target === "8.8.8.8") {
+        if (pingGoogle) {
+          if (res.latency !== null) {
+            pingGoogle.textContent = `${res.latency.toFixed(1)} ms`;
+            pingGoogle.className = "text-xs font-black text-blue-400 font-mono";
+          } else {
+            pingGoogle.textContent = "Offline";
+            pingGoogle.className = "text-xs font-black text-red-500 font-mono";
+          }
+        }
+      }
+    });
+  } catch (e) {
+    console.error("Failed to run quick pings:", e);
+    if (pingCloudflare) {
+      pingCloudflare.textContent = "Offline";
+      pingCloudflare.className = "text-xs font-black text-red-500 font-mono";
+    }
+    if (pingGoogle) {
+      pingGoogle.textContent = "Offline";
+      pingGoogle.className = "text-xs font-black text-red-500 font-mono";
+    }
+  }
+}
+
+// Query geolocation coordinates and determine VPN / WARP state
+async function runIPTracing() {
   try {
     const res = await invoke("trace_ip");
     const info = JSON.parse(res);
-    
+
     if (info.status === "fail") {
       throw new Error(info.message || "Failed to query GeoIP API");
     }
-    
-    // Check if network is routed through Cloudflare (WARP)
+
+    // Refresh telemetry components in view
+    if (traceIpAddress) traceIpAddress.textContent = info.query || "N/A";
+    if (traceIsp) traceIsp.textContent = info.isp || "N/A";
+    if (traceLocation) {
+      traceLocation.textContent = `${info.city || "N/A"}, ${info.countryCode || info.country || "N/A"}`;
+    }
+    if (traceCoords) {
+      traceCoords.textContent = `Lat ${info.lat?.toFixed(3) || "N/A"}, Lon ${info.lon?.toFixed(3) || "N/A"}`;
+    }
+
+    // Detect if IP is routed through Cloudflare to flag WARP state
     const isWarp = (info.isp || "").toLowerCase().includes("cloudflare") || 
                    (info.org || "").toLowerCase().includes("cloudflare") || 
                    (info.as || "").toLowerCase().includes("cloudflare");
-                   
-    const warpBadge = isWarp 
-      ? `<span class="bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-2 py-0.5 rounded text-[8px] font-bold">WARP ACTIVE</span>` 
-      : `<span class="bg-red-500/20 text-red-400 border border-red-500/30 px-2 py-0.5 rounded text-[8px] font-bold">DIRECT CONNECTION</span>`;
 
-    const outputHtml = `
-      <span class="text-slate-400">$ curl -s http://ip-api.com/json/</span><br>
-      <div class="space-y-0.5 mt-1.5 text-slate-300">
-        <div><span class="text-teal-400 font-bold">Public IP:</span> ${info.query} ${warpBadge}</div>
-        <div><span class="text-teal-400 font-bold">Provider (ISP):</span> ${info.isp} (${info.org || "N/A"})</div>
-        <div><span class="text-teal-400 font-bold">Location:</span> ${info.city}, ${info.regionName}, ${info.country}</div>
-        <div><span class="text-teal-400 font-bold">Coordinates:</span> Lat ${info.lat}, Lon ${info.lon} (${info.timezone})</div>
-      </div>
-    `;
+    if (traceWarpBadge) {
+      if (isWarp) {
+        traceWarpBadge.textContent = "WARP ACTIVE";
+        traceWarpBadge.className = "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-wider transition-all duration-300 shadow-[0_0_8px_rgba(16,185,129,0.15)]";
+      } else {
+        traceWarpBadge.textContent = "DIRECT";
+        traceWarpBadge.className = "bg-red-500/10 text-red-400 border border-red-500/20 px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-wider transition-all duration-300";
+      }
+    }
+  } catch (e) {
+    console.error("IP trace error:", e);
+    if (traceIpAddress) traceIpAddress.textContent = "Offline/Fail";
+    if (traceIsp) traceIsp.textContent = "Connection offline";
+    if (traceLocation) traceLocation.textContent = "Unknown location";
+    if (traceCoords) traceCoords.textContent = "N/A";
     
-    netConsole.innerHTML = outputHtml;
-    showToast("IP address trace completed!");
-    logMessage(`Public IP traces complete. Current IP: ${info.query}`);
-  } catch (err) {
-    netConsole.innerHTML = `<span class="text-slate-400">$ curl -s http://ip-api.com/json/</span><br><span class="text-red-400">Error query IP traces: ${err.message || err}</span>`;
-    showToast("Failed to trace public IP address!", true);
-    logMessage(`IP trace failed: ${err}`);
-  } finally {
-    isTracing = false;
-    btnTrace.disabled = false;
-    netConsole.scrollTop = 0;
+    if (traceWarpBadge) {
+      traceWarpBadge.textContent = "OFFLINE";
+      traceWarpBadge.className = "bg-slate-800 text-slate-500 border border-slate-700 px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-wider";
+    }
   }
 }
