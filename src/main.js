@@ -10,7 +10,8 @@ let btnModeDoh, btnModeWarpDoh;
 let currentWarpMode = "";
 let isSettingMode = false;
 
-// Lưu trữ SSID đang được chọn để kết nối
+// Lưu trữ thông tin mạng đang được chọn để kết nối
+let selectedBssid = "";
 let selectedSsid = "";
 let isScanning = false;
 let isTogglingWarp = false;
@@ -184,7 +185,7 @@ function renderWifiList(networks) {
     
     if (net.active) {
       hasActiveConnection = true;
-      activeWifiNet.innerHTML = `Đang kết nối: <strong class="text-teal-400">${net.ssid}</strong>`;
+      activeWifiNet.innerHTML = `Đang kết nối: <strong class="text-teal-400">${net.ssid} (${net.band})</strong>`;
       
       // Thiết kế card active với viền xanh lục phát sáng
       item.className = "flex items-center justify-between p-3.5 bg-teal-950/20 hover:bg-teal-900/20 border border-teal-500/40 hover:border-teal-400/60 rounded-2xl cursor-pointer transition-all duration-200 group active:scale-[0.99] shadow-[0_0_15px_rgba(20,184,166,0.15)]";
@@ -195,11 +196,14 @@ function renderWifiList(networks) {
             ${wifiSvg}
           </div>
           <div>
-            <h4 class="text-sm font-bold text-teal-300 truncate max-w-[200px]">${net.ssid}</h4>
-            <span class="text-[10px] text-teal-500 font-semibold">Tín hiệu: ${net.signal}% (Tốt nhất)</span>
+            <h4 class="text-sm font-bold text-teal-300 truncate max-w-[240px]">${net.ssid}</h4>
+            <div class="text-[10px] text-teal-500 font-semibold space-y-0.5 mt-0.5">
+              <div>MAC: <span class="font-mono text-teal-400/80">${net.bssid}</span> | Băng tần: <span class="text-teal-400/80">${net.band} (${net.frequency})</span></div>
+              <div>Tín hiệu: ${net.signal}% | Kênh: ${net.channel} | Bảo mật: ${net.security || "Mở"}</div>
+            </div>
           </div>
         </div>
-        <div class="flex items-center space-x-2">
+        <div class="flex items-center space-x-2 shrink-0">
           <span class="text-[10px] bg-teal-500/10 text-teal-300 px-2.5 py-1 rounded-lg border border-teal-500/20 font-bold flex items-center gap-1.5">
             <span class="w-1.5 h-1.5 rounded-full bg-teal-400 animate-pulse"></span>
             Đã kết nối
@@ -221,17 +225,20 @@ function renderWifiList(networks) {
             ${wifiSvg}
           </div>
           <div>
-            <h4 class="text-sm font-semibold text-slate-200 group-hover:text-white transition-colors truncate max-w-[200px]">${net.ssid}</h4>
-            <span class="text-[10px] text-slate-500 font-medium">Tín hiệu: ${net.signal}%</span>
+            <h4 class="text-sm font-semibold text-slate-200 group-hover:text-white transition-colors truncate max-w-[240px]">${net.ssid}</h4>
+            <div class="text-[10px] text-slate-500 group-hover:text-slate-400 font-medium space-y-0.5 mt-0.5 transition-colors">
+              <div>MAC: <span class="font-mono text-slate-400/80 group-hover:text-teal-400/60">${net.bssid}</span> | Băng tần: <span class="text-slate-400/80 group-hover:text-teal-400/60">${net.band} (${net.frequency})</span></div>
+              <div>Tín hiệu: ${net.signal}% | Kênh: ${net.channel} | Bảo mật: ${net.security || "Mở"}</div>
+            </div>
           </div>
         </div>
-        <div class="flex items-center space-x-2">
+        <div class="flex items-center space-x-2 shrink-0">
           <span class="text-[10px] bg-slate-800/80 group-hover:bg-teal-500/10 text-slate-400 group-hover:text-teal-300 px-2.5 py-1 rounded-lg border border-slate-700/40 group-hover:border-teal-500/20 font-semibold transition-all">Kết nối</span>
         </div>
       `;
       
       // Bắt sự kiện click mở modal nhập pass
-      item.addEventListener("click", () => openPasswordModal(net.ssid));
+      item.addEventListener("click", () => openPasswordModal(net.bssid, net.ssid, net.band, net.frequency));
     }
     
     wifiContainer.appendChild(item);
@@ -261,9 +268,10 @@ function getWifiSignalSvg(signal) {
 }
 
 // Mở modal nhập mật khẩu Wi-Fi
-function openPasswordModal(ssid) {
+function openPasswordModal(bssid, ssid, band, frequency) {
+  selectedBssid = bssid;
   selectedSsid = ssid;
-  modalSsid.textContent = ssid;
+  modalSsid.innerHTML = `${ssid} <span class="text-[10px] text-teal-400 block mt-1 font-mono">BSSID: ${bssid} | Băng tần: ${band} (${frequency})</span>`;
   wifiPassword.value = "";
   
   // Trực quan hoá Modal mượt mà
@@ -289,11 +297,11 @@ async function connectWifi() {
   btnConnect.disabled = true;
   btnCancel.disabled = true;
 
-  logMessage(`Đang cố gắng kết nối tới Wi-Fi: "${selectedSsid}"...`);
+  logMessage(`Đang cố gắng kết nối tới Wi-Fi: "${selectedSsid}" (${selectedBssid})...`);
   showToast(`Đang kết nối tới ${selectedSsid}...`);
 
   try {
-    const res = await invoke("connect_wifi", { ssid: selectedSsid, password: password || null });
+    const res = await invoke("connect_wifi", { bssid: selectedBssid, password: password || null });
     showToast("Kết nối Wi-Fi thành công!");
     logMessage(`Kết nối thành công: ${res}`);
     activeWifiNet.innerHTML = `Đang kết nối: <strong class="text-teal-400">${selectedSsid}</strong>`;

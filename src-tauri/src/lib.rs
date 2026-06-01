@@ -1,22 +1,68 @@
 // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
 use std::process::Command;
 use std::env;
-use std::collections::HashMap;
 
-// Cấu trúc đại diện cho mạng Wi-Fi trả về cho Frontend
+// Cấu trúc đại diện cho mạng Wi-Fi trả về cho Frontend với đầy đủ thông tin chi tiết
 #[derive(serde::Serialize, serde::Deserialize, Clone, Debug)]
 pub struct WifiNetwork {
+    bssid: String,
     ssid: String,
+    channel: i32,
+    frequency: String,
+    band: String,
     signal: i32,
+    security: String,
     active: bool,
 }
 
+/// Phân tách dòng kết quả ở chế độ terse (-t) của nmcli
+/// Hỗ trợ chuẩn xác các ký tự hai chấm bị escape bằng dấu gạch chéo ngược (`\:`)
+fn split_terse_line(line: &str) -> Vec<String> {
+    let mut parts = Vec::new();
+    let mut current = String::new();
+    let mut chars = line.chars().peekable();
+    while let Some(c) = chars.next() {
+        if c == '\\' {
+            if let Some(&next_c) = chars.peek() {
+                if next_c == ':' || next_c == '\\' {
+                    current.push(next_c);
+                    chars.next(); // tiêu thụ ký tự tiếp theo
+                    continue;
+                }
+            }
+            current.push(c);
+        } else if c == ':' {
+            parts.push(current);
+            current = String::new();
+        } else {
+            current.push(c);
+        }
+    }
+    parts.push(current);
+    parts
+}
+
+/// Xác định băng tần hoạt động dựa trên chuỗi tần số (ví dụ: "5180 MHz")
+fn get_wifi_band(freq_str: &str) -> String {
+    let freq_num = freq_str
+        .split_whitespace()
+        .next()
+        .and_then(|s| s.parse::<i32>().ok());
+
+    match freq_num {
+        Some(f) if f >= 2400 && f <= 2500 => "2.4 GHz".to_string(),
+        Some(f) if f >= 4900 && f <= 5900 => "5 GHz".to_string(),
+        Some(f) if f >= 5925 && f <= 7125 => "6 GHz".to_string(),
+        _ => "Không rõ".to_string(),
+    }
+}
+
 /// Lấy danh sách các mạng Wi-Fi khả dụng xung quanh
-/// Sử dụng lệnh `nmcli -t -f ACTIVE,SSID,SIGNAL dev wifi list`
+/// Sử dụng lệnh `nmcli -t -f ACTIVE,BSSID,SSID,CHAN,FREQ,SIGNAL,SECURITY dev wifi list`
 #[tauri::command]
 async fn get_wifi_list() -> Result<Vec<WifiNetwork>, String> {
     let output = Command::new("nmcli")
-        .args(["-t", "-f", "ACTIVE,SSID,SIGNAL", "dev", "wifi", "list"])
+        .args(["-t", "-f", "ACTIVE,BSSID,SSID,CHAN,FREQ,SIGNAL,SECURITY", "dev", "wifi", "list"])
         .output()
         .map_err(|e| format!("Không thể thực thi lệnh nmcli: {}", e))?;
 
@@ -26,7 +72,7 @@ async fn get_wifi_list() -> Result<Vec<WifiNetwork>, String> {
     }
 
     let stdout_str = String::from_utf8_lossy(&output.stdout);
-    let mut network_map: HashMap<String, (i32, bool)> = HashMap::new();
+    let mut wifi_list: Vec<WifiNetwork> = Vec::new();
 
     // Duyệt qua từng dòng kết quả từ nmcli
     for line in stdout_str.lines() {
@@ -35,49 +81,38 @@ async fn get_wifi_list() -> Result<Vec<WifiNetwork>, String> {
             continue;
         }
 
-        // Tách trường ACTIVE (yes hoặc no) bằng strip_prefix
-        let (content, active) = if let Some(stripped) = trimmed.strip_prefix("yes:") {
-            (stripped, true)
-        } else if let Some(stripped) = trimmed.strip_prefix("no:") {
-            (stripped, false)
-        } else {
+        let parts = split_terse_line(trimmed);
+        if parts.len() < 7 {
             continue;
+        }
+
+        let active = parts[0].trim() == "yes";
+        let bssid = parts[1].trim().to_string();
+        let ssid = parts[2].trim().to_string();
+        let channel = parts[3].trim().parse::<i32>().unwrap_or(0);
+        let frequency = parts[4].trim().to_string();
+        let band = get_wifi_band(&frequency);
+        let signal = parts[5].trim().parse::<i32>().unwrap_or(0);
+        let security = parts[6].trim().to_string();
+
+        // Bỏ qua các mạng không có SSID (trừ khi là mạng ẩn nhưng nmcli thường để SSID trống)
+        let display_ssid = if ssid.is_empty() {
+            "<Mạng ẩn>".to_string()
+        } else {
+            ssid
         };
 
-        // Tìm dấu hai chấm cuối cùng để phân tách SSID và cột sóng (SIGNAL)
-        if let Some(last_colon_idx) = content.rfind(':') {
-            let (raw_ssid, signal_str) = content.split_at(last_colon_idx);
-            let signal_str = &signal_str[1..]; // Loại bỏ dấu ':' ở đầu
-
-            // Parse cường độ tín hiệu (SIGNAL)
-            if let Ok(signal) = signal_str.trim().parse::<i32>() {
-                // Unescape ký tự đặc biệt (nmcli escape dấu hai chấm bằng \:)
-                let ssid = raw_ssid.replace("\\:", ":").trim().to_string();
-                if ssid.is_empty() {
-                    continue;
-                }
-
-                // Loại bỏ trùng lặp, giữ mạng có tín hiệu mạnh nhất và ưu tiên active
-                network_map
-                    .entry(ssid)
-                    .and_modify(|(s, a)| {
-                        if active {
-                            *a = true;
-                        }
-                        if signal > *s {
-                            *s = signal;
-                        }
-                    })
-                    .or_insert((signal, active));
-            }
-        }
+        wifi_list.push(WifiNetwork {
+            bssid,
+            ssid: display_ssid,
+            channel,
+            frequency,
+            band,
+            signal,
+            security,
+            active,
+        });
     }
-
-    // Chuyển đổi HashMap sang Vec
-    let mut wifi_list: Vec<WifiNetwork> = network_map
-        .into_iter()
-        .map(|(ssid, (signal, active))| WifiNetwork { ssid, signal, active })
-        .collect();
 
     // Sắp xếp: Mạng đang kết nối lên đầu tiên, các mạng còn lại sắp xếp theo tín hiệu giảm dần
     wifi_list.sort_by(|a, b| {
@@ -93,12 +128,12 @@ async fn get_wifi_list() -> Result<Vec<WifiNetwork>, String> {
     Ok(wifi_list)
 }
 
-/// Kết nối vào một mạng Wi-Fi với SSID và Mật khẩu tùy chọn
-/// Sử dụng lệnh `nmcli dev wifi connect <ssid> password <password>`
+/// Kết nối vào một mạng Wi-Fi bằng BSSID (địa chỉ MAC) và Mật khẩu tùy chọn
+/// Sử dụng lệnh `nmcli dev wifi connect <bssid> password <password>`
 #[tauri::command]
-async fn connect_wifi(ssid: String, password: Option<String>) -> Result<String, String> {
+async fn connect_wifi(bssid: String, password: Option<String>) -> Result<String, String> {
     let mut cmd = Command::new("nmcli");
-    cmd.arg("dev").arg("wifi").arg("connect").arg(&ssid);
+    cmd.arg("dev").arg("wifi").arg("connect").arg(&bssid);
 
     if let Some(ref pwd) = password {
         if !pwd.trim().is_empty() {

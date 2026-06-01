@@ -11,8 +11,8 @@
     "windows": [
       {
         "title": "WiWarp - Quản lý Mạng & Cloudflare WARP",
-        "width": 1050,
-        "height": 800,
+        "width": 1200,
+        "height": 850,
         "resizable": true
       }
     ],
