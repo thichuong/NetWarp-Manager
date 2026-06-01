@@ -5,6 +5,7 @@ const { invoke } = window.__TAURI__.core;
 let btnScan, iconScan, wifiContainer, wifiCount, activeWifiNet;
 let btnInstall, btnConnect, btnCancel, wifiForm, wifiPassword, passwordModal, modalSsid;
 let ledDot, ledPing, warpStatusText, warpNetworkText, warpToggle, warpLogs, toast, toastMessage, toastIcon;
+let warpModeBadgeContainer, warpModeBadge;
 let btnModeDoh, btnModeWarpDoh;
 let currentWarpMode = "";
 let isSettingMode = false;
@@ -52,6 +53,9 @@ function initDOMElements() {
   toast = document.getElementById("toast");
   toastMessage = document.getElementById("toast-message");
   toastIcon = document.getElementById("toast-icon");
+
+  warpModeBadgeContainer = document.getElementById("warp-mode-badge-container");
+  warpModeBadge = document.getElementById("warp-mode-badge");
 
   btnModeDoh = document.getElementById("mode-doh");
   btnModeWarpDoh = document.getElementById("mode-warpdoh");
@@ -331,11 +335,13 @@ async function getWarpStatus() {
       }
     } else if (status === "Not Installed") {
       disableModeButtons(true);
+      if (warpModeBadgeContainer) warpModeBadgeContainer.classList.add("hidden");
     }
   } catch (err) {
     // Không log liên tục lỗi định kỳ để tránh làm ngập log panel
     updateWarpUI("Disconnected");
     disableModeButtons(true);
+    if (warpModeBadgeContainer) warpModeBadgeContainer.classList.add("hidden");
   }
 }
 
@@ -444,6 +450,10 @@ async function installWarp() {
 async function handleModeChange(mode) {
   if (isSettingMode) return;
   isSettingMode = true;
+
+  // Cập nhật UI ngay lập tức (Optimistic Update) giúp nút sáng lên ngay lập tức khi click!
+  currentWarpMode = mode;
+  updateWarpModeUI(mode);
   disableModeButtons(true);
 
   logMessage(`Đang chuyển chế độ WARP sang: ${mode.toUpperCase()}...`);
@@ -453,14 +463,14 @@ async function handleModeChange(mode) {
     const res = await invoke("set_warp_mode", { mode });
     showToast(`Đã chuyển sang chế độ ${mode.toUpperCase()}!`);
     logMessage(`Kết quả chuyển chế độ: ${res}`);
-    currentWarpMode = mode;
-    updateWarpModeUI(mode);
   } catch (err) {
     showToast(`Lỗi chuyển chế độ: ${err}`, true);
     logMessage(`Lỗi chuyển chế độ: ${err}`);
+    // Load lại chế độ thực tế để đồng bộ lại
+    getWarpStatus();
   } finally {
     isSettingMode = false;
-    getWarpStatus();
+    disableModeButtons(false);
   }
 }
 
@@ -470,8 +480,8 @@ function disableModeButtons(disabled) {
 }
 
 function updateWarpModeUI(mode) {
-  const activeClass = "bg-gradient-to-r from-orange-500/25 to-amber-500/25 text-orange-400 border-orange-500/35 shadow-[0_0_12px_rgba(249,115,22,0.15)]";
-  const inactiveClass = "text-slate-500 hover:text-slate-300 border-transparent";
+  const activeClass = "bg-gradient-to-r from-orange-500 to-amber-500 text-white border-transparent shadow-[0_0_15px_rgba(249,115,22,0.4)] scale-[1.02]";
+  const inactiveClass = "text-slate-400 hover:text-slate-200 border-transparent hover:bg-slate-900/40";
 
   [
     { btn: btnModeDoh, key: "doh" },
@@ -484,5 +494,37 @@ function updateWarpModeUI(mode) {
       btn.className = `py-2.5 px-1 rounded-xl text-[10px] font-bold tracking-wide transition-all duration-200 focus:outline-none flex flex-col items-center justify-center gap-1.5 border ${inactiveClass}`;
     }
   });
+
+  // Cập nhật nhãn/badge trạng thái hiển thị rõ ràng chế độ hiện tại
+  if (warpModeBadge && warpModeBadgeContainer) {
+    if (mode === "doh") {
+      warpModeBadge.innerHTML = `
+        <svg class="w-3 h-3 animate-pulse text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+        </svg>
+        <span>Chế độ: DoH (Chỉ DNS)</span>
+      `;
+      warpModeBadge.className = "inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-orange-500/10 text-orange-400 border border-orange-500/20 shadow-[0_0_10px_rgba(249,115,22,0.1)]";
+      warpModeBadgeContainer.classList.remove("hidden");
+    } else if (mode === "warp+doh") {
+      warpModeBadge.innerHTML = `
+        <svg class="w-3 h-3 animate-pulse text-teal-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
+        </svg>
+        <span>Chế độ: WARP + DoH (Tối đa)</span>
+      `;
+      warpModeBadge.className = "inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-teal-500/10 text-teal-400 border border-teal-500/20 shadow-[0_0_10px_rgba(20,184,166,0.1)]";
+      warpModeBadgeContainer.classList.remove("hidden");
+    } else {
+      warpModeBadge.innerHTML = `
+        <svg class="w-3 h-3 animate-pulse text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+        </svg>
+        <span>Chế độ: ${mode.toUpperCase()}</span>
+      `;
+      warpModeBadge.className = "inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-slate-500/10 text-slate-400 border border-slate-500/20 shadow-none";
+      warpModeBadgeContainer.classList.remove("hidden");
+    }
+  }
 }
 
