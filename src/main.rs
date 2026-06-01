@@ -1,5 +1,10 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
-#![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic, clippy::indexing_slicing)]
+#![allow(
+    clippy::unwrap_used,
+    clippy::expect_used,
+    clippy::panic,
+    clippy::indexing_slicing
+)]
 
 mod net_utils;
 mod warp;
@@ -102,7 +107,7 @@ async fn main() -> Result<(), slint::PlatformError> {
             append_log(&ui, "[Wi-Fi] Initiating active airwaves scan...");
 
             let ui_inner_weak = ui_change_weak.clone();
-            
+
             // Execute Wi-Fi scan in background thread
             tokio::spawn(async move {
                 match wifi::get_wifi_list().await {
@@ -351,6 +356,106 @@ async fn main() -> Result<(), slint::PlatformError> {
                         let _ = ui_inner_weak.upgrade_in_event_loop(move |ui| {
                             append_log(&ui, &format!("[WARP] Operating mode changed: {}", msg));
                         });
+
+                        // Query and update warp mode details immediately
+                        let warp_mode = warp::get_warp_mode()
+                            .await
+                            .unwrap_or_else(|_| "DoH".to_string());
+
+                        let ui_mode_update = ui_inner_weak.clone();
+                        let warp_mode_clone = warp_mode.clone();
+                        let _ = ui_mode_update.upgrade_in_event_loop(move |ui| {
+                            ui.set_warp_mode_badge(format!("Mode: {}", warp_mode_clone).into());
+                            ui.set_warp_mode_doh_active(
+                                !warp_mode_clone.to_lowercase().contains("warp"),
+                            );
+                        });
+
+                        // 1. Immediately refresh Public IP & Geolocation
+                        let ui_geo = ui_inner_weak.clone();
+                        tokio::spawn(async move {
+                            if let Ok(raw_json) = net_utils::trace_ip().await {
+                                if let Ok(parsed) =
+                                    serde_json::from_str::<serde_json::Value>(&raw_json)
+                                {
+                                    let ip = parsed
+                                        .get("query")
+                                        .and_then(|v| v.as_str())
+                                        .unwrap_or("Unknown")
+                                        .to_string();
+                                    let isp = parsed
+                                        .get("isp")
+                                        .and_then(|v| v.as_str())
+                                        .unwrap_or("Unknown")
+                                        .to_string();
+                                    let city = parsed
+                                        .get("city")
+                                        .and_then(|v| v.as_str())
+                                        .unwrap_or("")
+                                        .to_string();
+                                    let country = parsed
+                                        .get("country")
+                                        .and_then(|v| v.as_str())
+                                        .unwrap_or("")
+                                        .to_string();
+                                    let location = if city.is_empty() {
+                                        country
+                                    } else {
+                                        format!("{}, {}", city, country)
+                                    };
+                                    let lat =
+                                        parsed.get("lat").and_then(|v| v.as_f64()).unwrap_or(0.0);
+                                    let lon =
+                                        parsed.get("lon").and_then(|v| v.as_f64()).unwrap_or(0.0);
+                                    let coords = format!("{:.4}, {:.4}", lat, lon);
+
+                                    let is_warp = isp.to_lowercase().contains("cloudflare");
+                                    let badge = if is_warp { "WARP" } else { "DIRECT" };
+
+                                    let slint_geo = IPGeolocatorInfo {
+                                        ip: ip.into(),
+                                        isp: isp.clone().into(),
+                                        location: location.into(),
+                                        coordinates: coords.into(),
+                                        warp_badge: badge.into(),
+                                    };
+                                    let _ = ui_geo.upgrade_in_event_loop(move |ui| {
+                                        ui.set_geo_info(slint_geo);
+                                        append_log(
+                                            &ui,
+                                            &format!(
+                                                "[GeoIP] Coordinates synced. ISP: {} ({})",
+                                                isp, badge
+                                            ),
+                                        );
+                                    });
+                                }
+                            }
+                        });
+
+                        // 2. Immediately refresh Ping latencies
+                        let ui_ping = ui_inner_weak.clone();
+                        tokio::spawn(async move {
+                            let targets = vec!["1.1.1.1".to_string(), "8.8.8.8".to_string()];
+                            if let Ok(results) = net_utils::ping_multiple(targets).await {
+                                let _ = ui_ping.upgrade_in_event_loop(move |ui| {
+                                    for res in results {
+                                        let slint_res = PingResult {
+                                            target: res.target.clone().into(),
+                                            latency: res.latency.unwrap_or(999.0) as f32,
+                                            status: res.status.into(),
+                                        };
+
+                                        if res.target == "1.1.1.1" {
+                                            ui.set_ping1(slint_res);
+                                        } else if res.target == "8.8.8.8" {
+                                            ui.set_ping2(slint_res);
+                                        }
+                                    }
+                                    append_log(&ui, "[Diagnostics] Latency diagnostics refreshed.");
+                                });
+                            }
+                        });
                     }
                     Err(e) => {
                         let _ = ui_inner_weak.upgrade_in_event_loop(move |ui| {
@@ -502,14 +607,23 @@ async fn main() -> Result<(), slint::PlatformError> {
         }
     });
 
-    // Loop 3: Wi-Fi active interface, Cloudflare WARP Daemon status and Mode (5 seconds interval)
+    // Loop 3: Wi-Fi active interface, Cloudflare WARP Daemon status and Mode (1 second interval)
     let ui_status_weak = ui_weak.clone();
     tokio::spawn(async move {
         let mut last_warp_state = String::new();
+        let mut last_warp_mode = String::new();
+        let mut last_wifi_ssid = String::new();
+        let mut geo_cooldown_counter = 0;
 
         loop {
+            let mut current_wifi_ssid = String::new();
+
             // Polling active Wi-Fi connection
             if let Ok(active_opt) = wifi::get_active_wifi().await {
+                if let Some(ref active) = active_opt {
+                    current_wifi_ssid = active.ssid.clone();
+                }
+
                 let ui_wifi_weak = ui_status_weak.clone();
                 let _ = ui_wifi_weak.upgrade_in_event_loop(move |ui| {
                     if let Some(active) = active_opt {
@@ -563,10 +677,19 @@ async fn main() -> Result<(), slint::PlatformError> {
 
             let ui_warp_inner = ui_status_weak.clone();
 
-            // Detect if connection state changed to trigger immediate Geo IP Geolocation refresh
-            let state_changed = warp_status != last_warp_state;
+            // Detect if connection state, warp mode, or wifi SSID changed to trigger immediate Geo IP refresh
+            let state_changed = warp_status != last_warp_state
+                || warp_mode != last_warp_mode
+                || current_wifi_ssid != last_wifi_ssid
+                || geo_cooldown_counter >= 30; // Periodic check every 30 seconds
+
             if state_changed {
                 last_warp_state = warp_status.clone();
+                last_warp_mode = warp_mode.clone();
+                last_wifi_ssid = current_wifi_ssid.clone();
+                geo_cooldown_counter = 0;
+            } else {
+                geo_cooldown_counter += 1;
             }
 
             let _ = ui_warp_inner.upgrade_in_event_loop(move |ui| {
@@ -600,10 +723,26 @@ async fn main() -> Result<(), slint::PlatformError> {
                         if let Ok(raw_json) = net_utils::trace_ip().await {
                             if let Ok(parsed) = serde_json::from_str::<serde_json::Value>(&raw_json)
                             {
-                                let ip = parsed.get("query").and_then(|v| v.as_str()).unwrap_or("Unknown").to_string();
-                                let isp = parsed.get("isp").and_then(|v| v.as_str()).unwrap_or("Unknown").to_string();
-                                let city = parsed.get("city").and_then(|v| v.as_str()).unwrap_or("").to_string();
-                                let country = parsed.get("country").and_then(|v| v.as_str()).unwrap_or("").to_string();
+                                let ip = parsed
+                                    .get("query")
+                                    .and_then(|v| v.as_str())
+                                    .unwrap_or("Unknown")
+                                    .to_string();
+                                let isp = parsed
+                                    .get("isp")
+                                    .and_then(|v| v.as_str())
+                                    .unwrap_or("Unknown")
+                                    .to_string();
+                                let city = parsed
+                                    .get("city")
+                                    .and_then(|v| v.as_str())
+                                    .unwrap_or("")
+                                    .to_string();
+                                let country = parsed
+                                    .get("country")
+                                    .and_then(|v| v.as_str())
+                                    .unwrap_or("")
+                                    .to_string();
                                 let location = if city.is_empty() {
                                     country
                                 } else {
@@ -639,11 +778,11 @@ async fn main() -> Result<(), slint::PlatformError> {
                 }
             });
 
-            tokio::time::sleep(std::time::Duration::from_millis(5000)).await;
+            tokio::time::sleep(std::time::Duration::from_millis(1000)).await;
         }
     });
 
-    // Loop 4: Ping Diagnostics Latencies (5 seconds interval)
+    // Loop 4: Ping Diagnostics Latencies (1 second interval)
     let ui_ping_weak = ui_weak.clone();
     tokio::spawn(async move {
         loop {
@@ -666,7 +805,7 @@ async fn main() -> Result<(), slint::PlatformError> {
                     }
                 });
             }
-            tokio::time::sleep(std::time::Duration::from_millis(5000)).await;
+            tokio::time::sleep(std::time::Duration::from_millis(1000)).await;
         }
     });
 
@@ -676,10 +815,26 @@ async fn main() -> Result<(), slint::PlatformError> {
         tokio::time::sleep(std::time::Duration::from_millis(1500)).await;
         if let Ok(raw_json) = net_utils::trace_ip().await {
             if let Ok(parsed) = serde_json::from_str::<serde_json::Value>(&raw_json) {
-                let ip = parsed.get("query").and_then(|v| v.as_str()).unwrap_or("Unknown").to_string();
-                let isp = parsed.get("isp").and_then(|v| v.as_str()).unwrap_or("Unknown").to_string();
-                let city = parsed.get("city").and_then(|v| v.as_str()).unwrap_or("").to_string();
-                let country = parsed.get("country").and_then(|v| v.as_str()).unwrap_or("").to_string();
+                let ip = parsed
+                    .get("query")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("Unknown")
+                    .to_string();
+                let isp = parsed
+                    .get("isp")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("Unknown")
+                    .to_string();
+                let city = parsed
+                    .get("city")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("")
+                    .to_string();
+                let country = parsed
+                    .get("country")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("")
+                    .to_string();
                 let location = if city.is_empty() {
                     country
                 } else {
