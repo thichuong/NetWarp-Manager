@@ -58,13 +58,16 @@ export async function openPasswordModal(bssid, ssid, band, frequency, isSaved = 
   // Reset password field values and type back to default password
   el.wifiPassword.value = "";
   el.wifiPassword.type = "password";
+  if (el.wifiLockBssid) {
+    el.wifiLockBssid.checked = true; // Default to checked for new profiles
+  }
   if (el.svgEyeIcon) {
     el.svgEyeIcon.innerHTML = `
       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l18 18" />
     `;
   }
 
-  // If the profile is saved, fetch the stored password and autofill
+  // If the profile is saved, fetch the stored password and locked BSSID state
   if (isSaved) {
     try {
       const { invoke } = window.__TAURI__.core;
@@ -73,8 +76,20 @@ export async function openPasswordModal(bssid, ssid, band, frequency, isSaved = 
         el.wifiPassword.value = savedPwd;
         logMessage(`Autofilled saved password for "${ssid}".`);
       }
+      
+      const lockedBssid = await invoke("get_wifi_locked_bssid", { ssid });
+      if (el.wifiLockBssid) {
+        // If lockedBssid is empty, the connection is free to roam.
+        // If lockedBssid matches the current BSSID (case insensitive), we set checked to true.
+        if (lockedBssid && lockedBssid.trim().toLowerCase() === bssid.trim().toLowerCase()) {
+          el.wifiLockBssid.checked = true;
+          logMessage(`BSSID locking is currently active for "${ssid}" targeting BSSID ${bssid}.`);
+        } else {
+          el.wifiLockBssid.checked = false;
+        }
+      }
     } catch (err) {
-      logMessage(`Failed to read saved password for "${ssid}": ${err}`);
+      logMessage(`Failed to read saved profile metadata for "${ssid}": ${err}`);
     }
   }
   

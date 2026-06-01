@@ -11,57 +11,82 @@
   <img src="https://img.shields.io/badge/Fedora-Linux-3C6EB4?style=for-the-badge&logo=fedora&logoColor=white" alt="Fedora OS" />
 </p>
 
-**WiWarp** là một ứng dụng Desktop cao cấp, gọn nhẹ được xây dựng trên nền tảng **Tauri v2**, **Rust** và **Vanilla HTML/CSS/JS** kết hợp **Tailwind CSS**. Ứng dụng cung cấp giao diện người dùng theo phong cách *Cyberpunk Glassmorphism* tuyệt đẹp, giúp người dùng trên hệ điều hành **Fedora Linux** quản lý kết nối Wi-Fi cục bộ và tích hợp, điều khiển dịch vụ **Cloudflare WARP (1.1.1.1)** một cách dễ dàng và trực quan.
+**WiWarp** là một ứng dụng Desktop cao cấp, gọn nhẹ được xây dựng trên nền tảng **Tauri v2**, **Rust** và **Vanilla HTML/CSS/JS** kết hợp **Tailwind CSS**. Ứng dụng cung cấp giao diện người dùng theo phong cách *Cyberpunk Glassmorphism* tuyệt đẹp, giúp người dùng trên hệ điều hành **Fedora Linux** giải quyết triệt để các bài toán kết nối mạng phức tạp, quản lý Wi-Fi cục bộ và tích hợp điều khiển dịch vụ **Cloudflare WARP (1.1.1.1)** một cách dễ dàng và trực quan.
 
 ---
 
-## ✨ Tính Năng Nổi Bật
+## ⚡ 2 TÍNH NĂNG TRỌNG TÂM ĐỘC QUYỀN
 
-### 📶 1. Trình Quản Lý Wi-Fi Thông Minh
-*   **Quét mạng thời gian thực**: Sử dụng `nmcli` quét và tìm kiếm nhanh chóng toàn bộ các mạng Wi-Fi khả dụng xung quanh.
-*   **Chỉ số sóng trực quan**: Phân cấp tín hiệu mạng động (Sóng cực mạnh, sóng khá, trung bình, yếu) hiển thị qua các biểu tượng SVG tương ứng.
-*   **Kết nối an toàn**: Hỗ trợ kết nối Wi-Fi có mật khẩu hoặc không có mật khẩu thông qua hộp thoại nhập mật khẩu (Modal) trượt mượt mà.
-*   **Ưu tiên mạng hiện tại**: Tự động đưa Wi-Fi đang kết nối lên đầu danh sách với huy hiệu (Badge) **"Đã kết nối"** và hiệu ứng LED xanh dịu mắt.
+### 🛡️ 1. Giải Pháp Cloudflare WARP cho Fedora Linux (Vượt Qua Giới Hạn `webkit2gtk3`)
 
-### 🛡️ 2. Tích Hợp Sâu Cloudflare WARP (1.1.1.1)
-*   **Trình Cài Đặt Terminal Tương Tác**:
-    1.  Tự động phát hiện các ứng dụng Terminal Emulator (như GNOME Terminal, Konsole, Ptyxis, v.v.) hiện có trên máy người dùng và mở một cửa sổ dòng lệnh thực tế.
-    2.  Chạy một kịch bản tương tác (Interactive Bash Script) bằng Tiếng Việt hướng dẫn người dùng cài đặt từng bước an toàn qua `sudo`.
-    3.  **Tự động phát hiện thông minh:** Nếu phát hiện Cloudflare WARP đã được cài đặt sẵn, script sẽ đề xuất nhấn **ENTER** để bỏ qua cài đặt gói, tránh lỗi xung đột hệ thống.
-    4.  **Vượt qua Dependency cứng nhắc:** Tải gói RPM bằng `dnf download` và cài đặt bằng lệnh nâng cấp `sudo rpm -Uvh --nodeps` giúp bỏ qua lỗi thiếu thư viện đồ họa lỗi thời `webkit2gtk3` trên Fedora mới.
-    5.  **Tự động dọn dẹp toàn diện (Self-cleaning Trap):** Sử dụng các bẫy tín hiệu `trap` để tự động xóa sạch toàn bộ tệp RPM tạm (~220MB) và **tự xóa chính tệp script** `.sh` tạm khi kết thúc thành công hoặc khi người dùng bấm `Ctrl+C` hủy bỏ giữa chừng.
-    6.  Kích hoạt dịch vụ hệ thống `warp-svc` và hướng dẫn đăng ký client mới (`warp-cli registration new` - xử lý đồng ý TOS trực quan trong TTY thật).
-*   **Bật/Tắt dễ dàng**: Công tắc Toggle Switch phong cách iOS hiện đại để bật/tắt kết nối WARP chỉ với một chạm.
-*   **Thăm dò trạng thái liên tục (Polling)**: Đồng bộ hóa giao diện người dùng theo thời gian thực (mỗi 3 giây) với các trạng thái: *Đang kết nối...*, *Đã kết nối*, *Đã ngắt kết nối*, hoặc *Chưa cài đặt*.
-*   **Hệ thống đèn LED Cyberpunk**: Đèn LED chỉ báo trạng thái kết nối màu Đỏ/Vàng/Xanh/Xám có hiệu ứng nhấp nháy (LED Pulse) cực kỳ bắt mắt.
-*   **Linh hoạt chuyển đổi 3 chế độ hoạt động (WARP Modes)**:
-    *   ⚡ **DNS over DoH**: Chỉ thực hiện mã hóa và bảo mật các truy vấn DNS thông qua HTTPS.
-    *   🛡️ **WARP (Cơ bản)**: Định tuyến toàn bộ lưu lượng mạng của bạn qua mạng riêng ảo VPN của Cloudflare.
-    *   🔒 **WARP + DoH**: Kết hợp hoàn hảo cả VPN bảo mật lưu lượng lẫn mã hóa các truy vấn DNS an toàn tuyệt đối.
+> [!IMPORTANT]
+> **Vấn đề kỹ thuật:** Ứng dụng Cloudflare WARP GUI chính thức trên Linux yêu cầu thư viện đồ họa cũ `webkit2gtk3`. Thư viện này đã bị loại bỏ hoàn toàn trên các bản phân phối Fedora hiện đại (như Fedora 39, 40, 41+), khiến người dùng không thể cài đặt hoặc sử dụng bình thường được.
 
-### 📋 3. Console Logs & Toast Thông Báo Cao Cấp
-*   **Nhật ký hệ thống mini**: Bảng điều khiển logs thu nhỏ tích hợp trực tiếp trên giao diện hiển thị các tiến trình chạy lệnh hệ thống giúp nhà phát triển và người dùng dễ dàng theo dõi.
-*   **Hệ thống Toast hiện đại**: Thông báo nhỏ gọn ở góc màn hình xuất hiện mượt mà khi kết nối thành công hoặc phát sinh lỗi kèm biểu tượng tương thích.
+**Cách WiWarp giải quyết triệt để:**
+* **Bypass Dependency thông minh:** Sử dụng backend Rust kết hợp với **Trình Cài Đặt Terminal Tương tác cao cấp (Interactive Terminal Installer)**.
+  1. Tự động phát hiện các ứng dụng Terminal Emulator (như GNOME Terminal, Konsole, Ptyxis, v.v.) hiện có trên máy người dùng và khởi chạy một cửa sổ dòng lệnh thực tế.
+  2. Tự động tải gói cài đặt bằng `dnf download cloudflare-warp` và thực hiện lệnh cài đặt nâng cấp bỏ qua kiểm tra thư viện bị thiếu: `sudo rpm -Uvh --nodeps /tmp/cloudflare-warp-*.rpm`.
+  3. Kích hoạt dịch vụ hệ thống `warp-svc` và hướng dẫn đăng ký client mới (`warp-cli registration new` - xử lý đồng ý TOS trực quan trong TTY thật).
+* **Tự dọn dẹp hệ thống (Self-cleaning Trap):** Sử dụng các bẫy tín hiệu `trap` trong script Bash để tự động xóa sạch toàn bộ tệp RPM tạm (~220MB) và **tự xóa chính tệp script** `.sh` tạm khi kết thúc thành công hoặc khi người dùng bấm `Ctrl+C` hủy bỏ giữa chừng, đảm bảo không lưu lại rác hệ thống.
+* **Bật/Tắt dễ dàng**: Công tắc Toggle Switch phong cách iOS hiện đại để bật/tắt kết nối WARP chỉ với một chạm.
+* **Thăm dò trạng thái liên tục (Polling)**: Đồng bộ hóa giao diện người dùng theo thời gian thực (mỗi 3 giây) với các trạng thái: *Đang kết nối...*, *Đã kết nối*, *Đã ngắt kết nối*, hoặc *Chưa cài đặt*.
+* **Linh hoạt chuyển đổi 3 chế độ hoạt động (WARP Modes)**:
+  * ⚡ **DNS over DoH**: Chỉ thực hiện mã hóa và bảo mật các truy vấn DNS thông qua HTTPS.
+  * 🛡️ **WARP (Cơ bản)**: Định tuyến toàn bộ lưu lượng mạng của bạn qua mạng riêng ảo VPN của Cloudflare.
+  * 🔒 **WARP + DoH**: Kết hợp hoàn hảo cả VPN bảo mật lưu lượng lẫn mã hóa các truy vấn DNS an toàn tuyệt đối.
 
 ---
 
-## 🛠️ Công Nghệ Sử Dụng
+### 📶 2. Khóa Mạng Wi-Fi Theo BSSID (MAC Address) & Băng Tần (Hỗ Trợ Wi-Fi 6)
 
-*   **Frontend**: Vanilla HTML5, JavaScript (ES6+), CSS3 (Custom Scrollbars, animations), Tailwind CSS CDN (với cấu hình Inter font cao cấp).
-*   **Backend**: Rust, Tauri v2 (API giao tiếp IPC hiệu suất cao, an toàn).
-*   **Hệ thống thực thi**: Lệnh hệ thống Linux (`nmcli`, `dnf`, `rpm`, `systemctl`, `pkexec`) được gọi bất đồng bộ từ Rust giúp giao diện UI không bao giờ bị đóng băng (non-blocking).
+> [!TIP]
+> **Vấn đề kỹ thuật:** Trong môi trường nhiều Access Point (AP) phát cùng một tên mạng SSID (hệ thống Mesh gia đình/doanh nghiệp) hoặc Router phát song song nhiều băng tần (2.4 GHz, 5 GHz, 6 GHz) trên cùng một SSID. Hệ điều hành thường tự động chọn AP và nhảy mạng liên tục, hoặc bị kẹt ở băng tần 2.4 GHz chậm chạp thay vì 5 GHz / 6 GHz tốc độ cao.
+
+**Cách WiWarp giải quyết triệt để:**
+* **Bóc tách Terse Output từ `nmcli` an toàn:** Trình điều khiển Wi-Fi viết bằng Rust thực hiện quét mạng chi tiết ở dạng Terse (`nmcli -t`), xử lý thông minh các ký tự đặc biệt được trốn thoát (escaped colon `\:`), đảm bảo độ tin cậy và không bao giờ crash.
+* **Nhận diện Băng tần và Wi-Fi 6/6E:** Tự động phân tích tần số hoạt động (Frequency) để xác định chính xác băng tần hoạt động:
+  * **2.4 GHz** (2400MHz - 2500MHz)
+  * **5 GHz** (4900MHz - 5900MHz)
+  * **6 GHz - Wi-Fi 6/6E** (5925MHz - 7125MHz) mang lại tốc độ cực cao và độ trễ siêu thấp.
+* **Liệt kê tường minh theo BSSID:** Liệt kê riêng biệt từng Access Point vật lý khả dụng với địa chỉ MAC (BSSID) cụ thể, băng tần, kênh, độ mạnh tín hiệu (%) và chuẩn bảo mật kể cả khi chúng có trùng tên SSID.
+* **Khóa cứng kết nối theo địa chỉ MAC:** Khi thực hiện kết nối, WiWarp gọi lệnh kết nối trực tiếp dựa trên **BSSID** thay vì SSID:
+  ```bash
+  nmcli dev wifi connect <BSSID> password <PASSWORD>
+  ```
+  Điều này ép buộc thiết bị kết nối vào chính xác cột sóng AP và băng tần mong muốn, loại bỏ hoàn toàn hiện tượng roaming nhầm hoặc kết nối vào AP ở xa có tốc độ kém.
 
 ---
 
-## 📋 Yêu Cầu Hệ Thống
+## ⚙️ CÁC TÍNH NĂNG BỔ TRỢ CAO CẤP
 
-*   **Hệ điều hành**: Fedora Linux (đã được cấu hình `nmcli` và `dnf`).
-*   **Công cụ**: Cần cài đặt sẵn Rust và Node.js trên máy để phát triển/biên dịch.
-*   **Quyền hệ thống**: Yêu cầu quyền quản trị (Sudo/Polkit) để cài đặt ứng dụng RPM và kích hoạt dịch vụ hệ thống.
+### 📊 Trình Chẩn Đoán & Đo Lường Tốc Độ Thời Gian Thực
+* **Đo tốc độ mạng thời gian thực**: Sử dụng cơ chế đọc trực tiếp `/proc/net/dev` của Linux để hiển thị tốc độ Upload/Download thực tế của card mạng theo chu kỳ 1 giây.
+* **Chẩn đoán Ping liên tục**: Thực hiện ping đồng thời tới **Cloudflare DNS (1.1.1.1)** và **Google DNS (8.8.8.8)** để giám sát độ trễ mạng trực quan.
+* **IP Geolocation**: Tự động phát hiện IP công cộng, nhà mạng cung cấp (ISP) và vị trí địa lý của bạn, phản ánh chính xác khi bạn Bật/Tắt dịch vụ WARP.
+
+### 📋 Console Logs & Toast Thông Báo Cao Cấp
+* **Nhật ký hệ thống mini**: Bảng điều khiển logs thu nhỏ tích hợp trực tiếp trên giao diện hiển thị các tiến trình chạy lệnh hệ thống giúp nhà phát triển và người dùng dễ dàng theo dõi.
+* **Hệ thống Toast hiện đại**: Thông báo nhỏ gọn ở góc màn hình xuất hiện mượt mà khi kết nối thành công hoặc phát sinh lỗi kèm biểu tượng tương thích.
 
 ---
 
-## 🚀 Hướng Dẫn Cài Đặt & Phát Triển
+## 🛠️ CÔNG NGHỆ SỬ DỤNG
+
+* **Frontend**: HTML5, JavaScript (ES6+), CSS3 (Custom Scrollbars, animations), Tailwind CSS CDN (với cấu hình Inter font cao cấp).
+* **Backend**: Rust, Tauri v2 (API giao tiếp IPC hiệu suất cao, an toàn).
+* **Hệ thống thực thi**: Lệnh hệ thống Linux (`nmcli`, `dnf`, `rpm`, `systemctl`, `pkexec`) được gọi bất đồng bộ từ Rust giúp giao diện UI không bao giờ bị đóng băng (non-blocking).
+
+---
+
+## 📋 YÊU CẦU HỆ THỐNG
+
+* **Hệ điều hành**: Fedora Linux (đã được cấu hình `nmcli` và `dnf`).
+* **Công cụ**: Cần cài đặt sẵn Rust và Node.js trên máy để phát triển/biên dịch.
+* **Quyền hệ thống**: Yêu cầu quyền quản trị (Sudo/Polkit) để cài đặt ứng dụng RPM và kích hoạt dịch vụ hệ thống.
+
+---
+
+## 🚀 HƯỚNG DẪN CÀI ĐẶT & PHÁT TRIỂN
 
 ### 1. Chuẩn bị môi trường
 Hãy đảm bảo bạn đã cài đặt đầy đủ các thư viện phát triển hệ thống trên Fedora:
@@ -117,7 +142,7 @@ env WEBKIT_DISABLE_COMPOSITING_MODE=1 ./src-tauri/target/release/bundle/appimage
 
 ---
 
-## 📁 Cấu Trúc Thư Mục Dự Án
+## 📁 CẤU TRÚC THƯ MỤC DỰ ÁN
 
 Dự án được phân rã thành các module nhỏ độc lập ở cả hai phía Frontend và Backend nhằm nâng cao tính dễ đọc, dễ bảo trì và tối ưu hiệu suất:
 
@@ -162,7 +187,7 @@ NetWarp-Manager/
 
 ---
 
-## 🏛️ Tài Liệu Kỹ Thuật Chi Tiết
+## 🏛️ TÀI LIỆU KỸ THUẬT CHI TIẾT
 
 Để tìm hiểu sâu hơn về cách ứng dụng hoạt động, bạn có thể tham khảo các tài liệu chuyên biệt sau:
 *   [**Tài liệu Kiến trúc Hệ thống (architecture.md)**](file:///home/exblackhole/Desktop/NetWarp-Manager/architecture.md): Giải thích chi tiết về luồng đi của dữ liệu, cơ chế giao tiếp IPC qua Tauri Bridge, cách hoạt động bất đồng bộ phi chặn (non-blocking thread) và bảo mật Polkit.
@@ -170,11 +195,11 @@ NetWarp-Manager/
 
 ---
 
-## 🔒 Giấy Phép & Bảo Mật
+## 🔒 GIẤY PHÉP & BẢO MẬT
 
 Dự án sử dụng cơ chế bảo mật cao cấp của Tauri v2:
-*   Mọi câu lệnh can thiệp hệ thống (`nmcli`, `dnf`, `rpm`, `systemctl`) đều được đóng gói an toàn phía Backend Rust. Giao diện Frontend hoàn toàn không thể trực tiếp chạy lệnh Shell tùy ý, tránh rủi ro bảo mật injection.
-*   Việc cài đặt dịch vụ hệ thống được phân quyền minh bạch thông qua cơ chế Polkit của Linux (`pkexec`), yêu cầu người dùng nhập mật khẩu xác thực đồ họa chuẩn của hệ điều hành Fedora.
+* Mọi câu lệnh can thiệp hệ thống (`nmcli`, `dnf`, `rpm`, `systemctl`) đều được đóng gói an toàn phía Backend Rust. Giao diện Frontend hoàn toàn không thể trực tiếp chạy lệnh Shell tùy ý, tránh rủi ro bảo mật injection.
+* Việc cài đặt dịch vụ hệ thống được phân quyền minh bạch thông qua cơ chế Polkit của Linux (`pkexec`), yêu cầu người dùng nhập mật khẩu xác thực đồ họa chuẩn của hệ điều hành Fedora.
 
 Dự án được phân phối dưới dạng phần mềm mã nguồn mở theo cơ chế cấp phép kép [**MIT License hoặc Apache License, Version 2.0**](file:///home/exblackhole/Desktop/NetWarp-Manager/LICENSE) (tùy bạn lựa chọn).
 
@@ -183,4 +208,3 @@ Dự án được phân phối dưới dạng phần mềm mã nguồn mở theo
 <p align="center">
   Được hoàn thiện với 💖 dành cho cộng đồng người dùng Fedora Linux.
 </p>
-

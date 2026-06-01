@@ -131,24 +131,50 @@ pub async fn get_wifi_list() -> Result<Vec<WifiNetwork>, String> {
         });
     }
 
-    // Sort: Active connection first, remaining networks sorted by signal strength descending
+    // Sort: Active connection first, remaining networks sorted by band priority then signal strength descending
     wifi_list.sort_by(|a, b| {
         if a.active && !b.active {
             std::cmp::Ordering::Less
         } else if !a.active && b.active {
             std::cmp::Ordering::Greater
         } else {
-            b.signal.cmp(&a.signal)
+            // Sort by frequency band priority (6 GHz > 5 GHz > 2.4 GHz > Unknown)
+            let band_priority = |band: &str| -> i32 {
+                if band.contains("6 GHz") {
+                    3
+                } else if band.contains("5 GHz") {
+                    2
+                } else if band.contains("2.4 GHz") {
+                    1
+                } else {
+                    0
+                }
+            };
+            let a_priority = band_priority(&a.band);
+            let b_priority = band_priority(&b.band);
+
+            if a_priority != b_priority {
+                b_priority.cmp(&a_priority) // Descending
+            } else {
+                b.signal.cmp(&a.signal) // Same band, sort by signal strength descending
+            }
         }
     });
 
     Ok(wifi_list)
 }
 
-/// Connects to a Wi-Fi network using BSSID (MAC Address) and an optional password.
+/// Connects to a Wi-Fi network using BSSID (MAC Address), SSID, and an optional password.
+/// Optionally locks the connection profile to this specific BSSID to prevent roaming.
 /// Uses the command: `nmcli dev wifi connect <bssid> password <password>`
+/// and `nmcli connection modify <uuid> 802-11-wireless.bssid <bssid>` for BSSID locking.
 #[tauri::command]
-pub async fn connect_wifi(bssid: String, password: Option<String>) -> Result<String, String> {
+pub async fn connect_wifi(
+    bssid: String,
+    _ssid: String,
+    password: Option<String>,
+    lock_bssid: bool,
+) -> Result<String, String> {
     let mut cmd = Command::new("nmcli");
     cmd.arg("dev").arg("wifi").arg("connect").arg(&bssid);
 
@@ -162,13 +188,93 @@ pub async fn connect_wifi(bssid: String, password: Option<String>) -> Result<Str
         .output()
         .map_err(|e| format!("Failed to invoke connection command: {}", e))?;
 
-    if output.status.success() {
-        let success_msg = String::from_utf8_lossy(&output.stdout).to_string();
-        Ok(format!("Connected successfully! Details: {}", success_msg))
-    } else {
+    if !output.status.success() {
         let err_msg = String::from_utf8_lossy(&output.stderr).to_string();
-        Err(format!("Wi-Fi connection error: {}", err_msg))
+        return Err(format!("Wi-Fi connection error: {}", err_msg));
     }
+
+    let success_msg = String::from_utf8_lossy(&output.stdout).to_string();
+
+    // Query active connections to find the UUID of the newly activated connection profile
+    let list_output = Command::new("nmcli")
+        .args(["-t", "-f", "ACTIVE,NAME,UUID,TYPE", "connection", "show"])
+        .output()
+        .map_err(|e| format!("Failed to query connections list: {}", e))?;
+
+    if list_output.status.success() {
+        let list_stdout = String::from_utf8_lossy(&list_output.stdout);
+        let mut active_uuid = None;
+
+        for line in list_stdout.lines() {
+            let trimmed = line.trim();
+            if trimmed.is_empty() {
+                continue;
+            }
+            let parts = split_terse_line(trimmed);
+            if parts.len() < 4 {
+                continue;
+            }
+            let active = parts.first().is_some_and(|s| s.trim() == "yes");
+            let uuid = parts.get(2).map(|s| s.trim().to_string());
+            let conn_type = parts.get(3).map(|s| s.trim());
+
+            if active && conn_type == Some("802-11-wireless") {
+                active_uuid = uuid;
+                break;
+            }
+        }
+
+        if let Some(uuid) = active_uuid {
+            let mut modify_cmd = Command::new("nmcli");
+            modify_cmd.arg("connection").arg("modify").arg(&uuid);
+
+            if lock_bssid {
+                modify_cmd.arg("802-11-wireless.bssid").arg(&bssid);
+            } else {
+                modify_cmd.arg("802-11-wireless.bssid").arg("");
+            }
+
+            let modify_output = modify_cmd
+                .output()
+                .map_err(|e| format!("Failed to update connection profile BSSID setting: {}", e))?;
+
+            if !modify_output.status.success() {
+                let modify_err = String::from_utf8_lossy(&modify_output.stderr).to_string();
+                return Ok(format!(
+                    "Connected successfully, but failed to update BSSID configuration: {}",
+                    modify_err
+                ));
+            }
+        }
+    }
+
+    Ok(format!("Connected successfully! Details: {}", success_msg))
+}
+
+/// Retrieves the locked BSSID for a specific connection profile (SSID) if configured.
+/// Returns an empty string if there is no lock or if the profile doesn't exist.
+#[tauri::command]
+pub async fn get_wifi_locked_bssid(ssid: String) -> Result<String, String> {
+    let output = Command::new("nmcli")
+        .args([
+            "-s",
+            "-g",
+            "802-11-wireless.bssid",
+            "connection",
+            "show",
+            &ssid,
+        ])
+        .output()
+        .map_err(|e| format!("Failed to read connection BSSID info: {}", e))?;
+
+    if !output.status.success() {
+        return Ok(String::new());
+    }
+
+    // NetworkManager returns escaped colons, e.g., "00\:11\:22\:33\:44\:55". Unescape it.
+    let raw_bssid = String::from_utf8_lossy(&output.stdout).trim().to_string();
+    let clean_bssid = raw_bssid.replace("\\:", ":");
+    Ok(clean_bssid)
 }
 
 /// Retrieves a list of saved Wi-Fi connections (SSIDs) on the system.

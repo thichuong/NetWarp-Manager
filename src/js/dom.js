@@ -28,6 +28,7 @@ export const el = {
   // Connection Password Modal
   passwordModal: null,
   wifiPassword: null,
+  wifiLockBssid: null,
   modalSsid: null,
   wifiForm: null,
   btnConnect: null,
@@ -89,6 +90,7 @@ export function initDOM() {
 
   el.passwordModal = document.getElementById("password-modal");
   el.wifiPassword = document.getElementById("wifi-password");
+  el.wifiLockBssid = document.getElementById("wifi-lock-bssid");
   el.modalSsid = document.getElementById("modal-ssid");
   el.wifiForm = document.getElementById("wifi-form");
   el.btnConnect = document.getElementById("btn-connect");

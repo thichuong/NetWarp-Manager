@@ -74,6 +74,16 @@ export function renderWifiList(networks, savedList = []) {
     const wifiSvg = getWifiSignalSvg(net.signal);
     const isSaved = savedList.includes(net.ssid);
     
+    // Create highly premium Cyberpunk styled band badges
+    let bandBadge = "";
+    if (net.band.includes("6 GHz")) {
+      bandBadge = '<span class="text-[9px] bg-fuchsia-500/10 text-fuchsia-400 px-1.5 py-0.5 rounded border border-fuchsia-500/20 font-bold ml-1.5 shadow-[0_0_8px_rgba(217,70,239,0.15)] font-mono animate-pulse">6 GHz</span>';
+    } else if (net.band.includes("5 GHz")) {
+      bandBadge = '<span class="text-[9px] bg-cyan-500/10 text-cyan-400 px-1.5 py-0.5 rounded border border-cyan-500/20 font-bold ml-1.5 shadow-[0_0_8px_rgba(6,182,212,0.15)] font-mono">5 GHz</span>';
+    } else if (net.band.includes("2.4 GHz")) {
+      bandBadge = '<span class="text-[9px] bg-amber-500/10 text-amber-400 px-1.5 py-0.5 rounded border border-amber-500/20 font-bold ml-1.5 font-mono">2.4G</span>';
+    }
+    
     if (net.active) {
       activeNet = net;
       
@@ -87,7 +97,7 @@ export function renderWifiList(networks, savedList = []) {
             ${wifiSvg}
           </div>
           <div>
-            <h4 class="text-sm font-bold text-emerald-300 truncate max-w-[200px] flex items-center">${net.ssid}${savedBadge}</h4>
+            <h4 class="text-sm font-bold text-emerald-300 truncate max-w-[200px] flex items-center">${net.ssid}${savedBadge}${bandBadge}</h4>
             <div class="text-[10px] text-emerald-500 font-semibold space-y-0.5 mt-0.5">
               <div>MAC: <span class="font-mono text-emerald-400/80">${net.bssid}</span> | Band: <span class="text-emerald-400/80">${net.band} (${net.frequency})</span></div>
               <div>Signal: ${net.signal}% | Channel: ${net.channel} | Security: ${net.security || "Open"}</div>
@@ -116,7 +126,7 @@ export function renderWifiList(networks, savedList = []) {
             ${wifiSvg}
           </div>
           <div>
-            <h4 class="text-sm font-semibold text-slate-200 group-hover:text-white transition-colors truncate max-w-[200px] flex items-center">${net.ssid}${savedBadge}</h4>
+            <h4 class="text-sm font-semibold text-slate-200 group-hover:text-white transition-colors truncate max-w-[200px] flex items-center">${net.ssid}${savedBadge}${bandBadge}</h4>
             <div class="text-[10px] text-slate-500 group-hover:text-slate-400 font-medium space-y-0.5 mt-0.5 transition-colors">
               <div>MAC: <span class="font-mono text-slate-400/80 group-hover:text-emerald-400/60">${net.bssid}</span> | Band: <span class="text-slate-400/80 group-hover:text-emerald-400/60">${net.band} (${net.frequency})</span></div>
               <div>Signal: ${net.signal}% | Channel: ${net.channel} | Security: ${net.security || "Open"}</div>
@@ -169,17 +179,23 @@ export function updateActiveWifiDisplay(activeNet) {
 
 // Submits the connection password and connects to a network
 export async function connectWifi() {
-  if (!el.wifiPassword || !el.btnConnect || !el.btnCancel) return;
+  if (!el.wifiPassword || !el.btnConnect || !el.btnCancel || !el.wifiLockBssid) return;
   const password = el.wifiPassword.value;
+  const lockBssid = el.wifiLockBssid.checked;
   el.btnConnect.classList.add("btn-loading");
   el.btnConnect.disabled = true;
   el.btnCancel.disabled = true;
 
-  logMessage(`Connecting to network "${state.selectedSsid}" (${state.selectedBssid})...`);
+  logMessage(`Connecting to network "${state.selectedSsid}" (${state.selectedBssid}) [Lock BSSID: ${lockBssid}]...`);
   showToast(`Initiating connection to ${state.selectedSsid}...`);
 
   try {
-    const res = await invoke("connect_wifi", { bssid: state.selectedBssid, password: password || null });
+    const res = await invoke("connect_wifi", {
+      bssid: state.selectedBssid,
+      ssid: state.selectedSsid,
+      password: password || null,
+      lockBssid: lockBssid
+    });
     showToast("Wi-Fi connected successfully!");
     logMessage(`Connected successfully to ${state.selectedSsid}.`);
     
