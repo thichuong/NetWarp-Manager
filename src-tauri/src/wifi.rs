@@ -400,3 +400,81 @@ pub async fn get_wifi_password(ssid: String) -> Result<String, String> {
     let password = String::from_utf8_lossy(&output.stdout).trim().to_string();
     Ok(password)
 }
+
+/// Retrieves the details of the currently active Wi-Fi connection.
+/// Uses a quick nmcli cached query without forcing a hardware scan.
+#[tauri::command]
+pub async fn get_active_wifi() -> Result<Option<WifiNetwork>, String> {
+    let output = Command::new("nmcli")
+        .args([
+            "-t",
+            "-f",
+            "ACTIVE,BSSID,SSID,CHAN,FREQ,SIGNAL,SECURITY",
+            "dev",
+            "wifi",
+            "list",
+        ])
+        .output()
+        .map_err(|e| format!("Failed to query active connection: {}", e))?;
+
+    if !output.status.success() {
+        let err_msg = String::from_utf8_lossy(&output.stderr).to_string();
+        return Err(format!("System error: {}", err_msg));
+    }
+
+    let stdout_str = String::from_utf8_lossy(&output.stdout);
+
+    for line in stdout_str.lines() {
+        let trimmed = line.trim();
+        if trimmed.is_empty() {
+            continue;
+        }
+
+        let parts = split_terse_line(trimmed);
+        if parts.len() < 7 {
+            continue;
+        }
+
+        let active = parts.first().is_some_and(|s| s.trim() == "yes");
+        if active {
+            let bssid = parts
+                .get(1)
+                .map_or_else(String::new, |s| s.trim().to_string());
+            let ssid = parts
+                .get(2)
+                .map_or_else(String::new, |s| s.trim().to_string());
+            let channel = parts
+                .get(3)
+                .map_or(0, |s| s.trim().parse::<i32>().unwrap_or(0));
+            let frequency = parts
+                .get(4)
+                .map_or_else(String::new, |s| s.trim().to_string());
+            let band = get_wifi_band(&frequency);
+            let signal = parts
+                .get(5)
+                .map_or(0, |s| s.trim().parse::<i32>().unwrap_or(0));
+            let security = parts
+                .get(6)
+                .map_or_else(String::new, |s| s.trim().to_string());
+
+            let display_ssid = if ssid.is_empty() {
+                "<Hidden Network>".to_string()
+            } else {
+                ssid
+            };
+
+            return Ok(Some(WifiNetwork {
+                bssid,
+                ssid: display_ssid,
+                channel,
+                frequency,
+                band,
+                signal,
+                security,
+                active,
+            }));
+        }
+    }
+
+    Ok(None)
+}

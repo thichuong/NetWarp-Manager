@@ -153,8 +153,27 @@ export function updateActiveWifiDisplay(activeNet) {
 
   if (activeNet) {
     el.activeWifiSSID.textContent = activeNet.ssid;
-    el.activeWifiNet.innerHTML = `Connected | Band: <span class="text-emerald-400 font-mono">${activeNet.band} (${activeNet.frequency})</span> | Sig: <span class="text-emerald-400 font-mono">${activeNet.signal}%</span>`;
+    el.activeWifiNet.innerHTML = `Connected | Band: <span class="text-emerald-400 font-mono">${activeNet.band} (${activeNet.frequency})</span>`;
     
+    // Update Glowing Signal Badge
+    if (el.activeWifiSignalBadge && el.activeWifiSignalText) {
+      el.activeWifiSignalBadge.classList.remove("hidden");
+      el.activeWifiSignalText.textContent = `${activeNet.signal}%`;
+
+      // Apply dynamic colors depending on signal level
+      let badgeClasses = "";
+      if (activeNet.signal >= 75) {
+        badgeClasses = "bg-emerald-500/10 text-emerald-400 border-emerald-500/20";
+      } else if (activeNet.signal >= 50) {
+        badgeClasses = "bg-cyan-500/10 text-cyan-400 border-cyan-500/20";
+      } else if (activeNet.signal >= 25) {
+        badgeClasses = "bg-orange-500/10 text-orange-400 border-orange-500/20";
+      } else {
+        badgeClasses = "bg-red-500/10 text-red-400 border-red-500/20 animate-pulse";
+      }
+      el.activeWifiSignalBadge.className = `text-[10px] font-mono font-bold px-2.5 py-1 rounded-lg border flex items-center gap-1 transition-all duration-300 ${badgeClasses}`;
+    }
+
     // Wave Wi-Fi Signal SVG color green
     el.wifiSignalIcon.className = "text-emerald-400 w-6 h-6 animate-pulse";
     el.wifiSignalIcon.innerHTML = getWifiSignalSvg(activeNet.signal);
@@ -167,6 +186,12 @@ export function updateActiveWifiDisplay(activeNet) {
   } else {
     el.activeWifiSSID.textContent = "No Connection";
     el.activeWifiNet.textContent = "Click to scan and connect to a Wi-Fi network";
+    
+    // Hide Signal Badge
+    if (el.activeWifiSignalBadge) {
+      el.activeWifiSignalBadge.classList.add("hidden");
+    }
+
     el.wifiSignalIcon.className = "text-slate-500 w-6 h-6";
     el.wifiSignalIcon.innerHTML = `<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 5.636a9 9 0 010 12.728m0 0l-2.829-2.829m2.829 2.829L21 21M15.536 8.464a5 5 0 010 7.072m0 0l-2.829-2.829m-4.243 2.829a4.978 4.978 0 01-1.414-3.536 5 5 0 011.414-3.536m0 0L5.636 5.636M1.414 1.414L3 3m0 0L21 21M8.464 15.536L5.636 18.364m0 0l-1.414-1.414m1.414 1.414L1 21"/></svg>`;
     
@@ -174,6 +199,21 @@ export function updateActiveWifiDisplay(activeNet) {
     if (activeWifiLabel) {
       activeWifiLabel.textContent = "No Active Connection";
     }
+  }
+}
+
+// Starts the dynamic, low-overhead background polling monitor for the active connection (1s interval)
+export function startActiveWifiMonitor() {
+  setInterval(updateActiveWifiSignal, 1000);
+}
+
+// Fetches the active connection details asynchronously and updates display
+async function updateActiveWifiSignal() {
+  try {
+    const activeNet = await invoke("get_active_wifi");
+    updateActiveWifiDisplay(activeNet);
+  } catch (err) {
+    // Suppress background errors to guarantee seamless UX
   }
 }
 

@@ -5,7 +5,8 @@ pub mod wifi;
 use net_utils::{get_network_io, ping_multiple, ping_target, trace_ip};
 use warp::{get_warp_mode, get_warp_status, install_warp, set_warp_mode, warp_toggle};
 use wifi::{
-    connect_wifi, get_saved_wifi_list, get_wifi_list, get_wifi_locked_bssid, get_wifi_password,
+    connect_wifi, get_active_wifi, get_saved_wifi_list, get_wifi_list, get_wifi_locked_bssid,
+    get_wifi_password,
 };
 
 /// Main entry point for the Tauri application backend.
@@ -16,6 +17,7 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .invoke_handler(tauri::generate_handler![
             get_wifi_list,
+            get_active_wifi,
             connect_wifi,
             get_saved_wifi_list,
             get_wifi_password,

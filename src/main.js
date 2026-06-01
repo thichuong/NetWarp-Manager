@@ -4,7 +4,7 @@
 
 import { loadComponents } from "./js/loader.js";
 import { initDOM, el } from "./js/dom.js";
-import { scanWifi, connectWifi } from "./js/wifi.js";
+import { scanWifi, connectWifi, startActiveWifiMonitor } from "./js/wifi.js";
 import { getInitialWarpStatus, pollWarpStatus, handleWarpToggle, handleModeChange, installWarp } from "./js/warp.js";
 import { startNetworkSpeedMonitor, updateNetworkDiagnostics } from "./js/diagnostics.js";
 import { closePasswordModal, openWifiListModal, closeWifiListModal } from "./js/ui.js";
@@ -22,6 +22,7 @@ window.addEventListener("DOMContentLoaded", async () => {
   
   // 3. Initiate first background scanning for available Wi-Fi
   scanWifi();
+  startActiveWifiMonitor();
   
   // 4. Retrieve Cloudflare status and switch modes
   getInitialWarpStatus();

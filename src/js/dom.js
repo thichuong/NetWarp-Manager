@@ -7,6 +7,8 @@ export const el = {
   wifiSignalIcon: null,
   activeWifiSSID: null,
   activeWifiNet: null,
+  activeWifiSignalBadge: null,
+  activeWifiSignalText: null,
   
   // Real-time Speed elements
   speedDownload: null,
@@ -70,6 +72,8 @@ export function initDOM() {
   el.wifiSignalIcon = document.getElementById("wifi-signal-icon");
   el.activeWifiSSID = document.getElementById("active-wifi-ssid");
   el.activeWifiNet = document.getElementById("active-wifi-net");
+  el.activeWifiSignalBadge = document.getElementById("active-wifi-signal-badge");
+  el.activeWifiSignalText = document.getElementById("active-wifi-signal-text");
   
   el.speedDownload = document.getElementById("speed-download");
   el.speedUpload = document.getElementById("speed-upload");

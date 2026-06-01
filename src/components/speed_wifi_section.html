@@ -17,7 +17,13 @@
       </div>
     </div>
     
-    <div class="flex items-center space-x-2 shrink-0">
+    <div class="flex items-center space-x-3 shrink-0">
+      <!-- Active Wi-Fi Signal Percentage Badge -->
+      <span id="active-wifi-signal-badge" class="hidden text-[10px] font-mono font-bold px-2.5 py-1 rounded-lg border flex items-center gap-1 transition-all duration-300">
+        <span class="w-1.5 h-1.5 rounded-full bg-current animate-pulse"></span>
+        <span id="active-wifi-signal-text">--%</span>
+      </span>
+
       <span class="text-[10px] bg-slate-900 group-hover:bg-emerald-500/10 text-slate-400 group-hover:text-emerald-300 px-3.5 py-1.5 rounded-xl border border-slate-800 group-hover:border-emerald-500/20 font-bold transition-all flex items-center gap-1.5 shadow-md">
         Change network
         <svg class="w-3 h-3 transform group-hover:translate-x-0.5 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
