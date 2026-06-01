@@ -39,9 +39,13 @@ window.addEventListener("DOMContentLoaded", async () => {
 
 // Map element event handlers to their respective controller methods
 function registerEvents() {
-  // Widget Wifi Click opens the Wi-Fi Networks Modal
-  if (el.wifiWidget) {
-    el.wifiWidget.addEventListener("click", openWifiListModal);
+  // Change wifi button opens the Wi-Fi Networks Modal
+  const btnChangeWifi = document.getElementById("btn-change-wifi");
+  if (btnChangeWifi) {
+    btnChangeWifi.addEventListener("click", (e) => {
+      e.stopPropagation();
+      openWifiListModal();
+    });
   }
 
   // Close Wi-Fi Networks Modal button

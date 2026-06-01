@@ -151,14 +151,22 @@ export function renderWifiList(networks, savedList = []) {
 export function updateActiveWifiDisplay(activeNet) {
   if (!el.activeWifiSSID || !el.activeWifiNet || !el.wifiSignalIcon) return;
 
+  // Initialize toggle action once
+  if (!window.wifiDetailsInitialized) {
+    window.wifiDetailsInitialized = true;
+    setupWifiDetailsToggle();
+  }
+
+  const panel = document.getElementById("wifi-details-panel");
+
   if (activeNet) {
     el.activeWifiSSID.textContent = activeNet.ssid;
-    el.activeWifiNet.innerHTML = `Connected | Band: <span class="text-emerald-400 font-mono">${activeNet.band} (${activeNet.frequency})</span>`;
+    el.activeWifiNet.innerHTML = `Connected | Band: <span class="text-emerald-400 font-mono">${activeNet.band} (${activeNet.frequency} - Channel ${activeNet.channel})</span>`;
     
     // Update Glowing Signal Badge
     if (el.activeWifiSignalBadge && el.activeWifiSignalText) {
       el.activeWifiSignalBadge.classList.remove("hidden");
-      el.activeWifiSignalText.textContent = `${activeNet.signal}%`;
+      el.activeWifiSignalText.textContent = `Signal Strength: ${activeNet.signal}%`;
 
       // Apply dynamic colors depending on signal level
       let badgeClasses = "";
@@ -171,7 +179,15 @@ export function updateActiveWifiDisplay(activeNet) {
       } else {
         badgeClasses = "bg-red-500/10 text-red-400 border-red-500/20 animate-pulse";
       }
-      el.activeWifiSignalBadge.className = `text-[10px] font-mono font-bold px-2.5 py-1 rounded-lg border flex items-center gap-1 transition-all duration-300 ${badgeClasses}`;
+      el.activeWifiSignalBadge.className = `text-xs font-mono font-bold px-2 py-0.5 rounded-lg border flex items-center gap-1 transition-all duration-300 ${badgeClasses}`;
+    }
+
+    // Update Glowing Connection Speed Badge
+    const speedBadge = document.getElementById("active-wifi-speed-badge");
+    const speedText = document.getElementById("active-wifi-speed-text");
+    if (speedBadge && speedText) {
+      speedBadge.classList.remove("hidden");
+      speedText.textContent = activeNet.rate || "-- Mbit/s";
     }
 
     // Wave Wi-Fi Signal SVG color green
@@ -183,13 +199,38 @@ export function updateActiveWifiDisplay(activeNet) {
     if (activeWifiLabel) {
       activeWifiLabel.innerHTML = `Connected to: <strong class="text-emerald-400">${activeNet.ssid}</strong>`;
     }
+
+    // Update detailed parameters in the accordion panel
+    if (panel) {
+      panel.classList.remove("hidden");
+    }
+    
+    const setElemText = (id, text) => {
+      const elem = document.getElementById(id);
+      if (elem) elem.textContent = text;
+    };
+
+    setElemText("det-wifi-security", activeNet.security || "WPA2-PSK");
+    setElemText("det-wifi-bssid", activeNet.bssid);
+    setElemText("det-wifi-mac", activeNet.mac || "--");
+    setElemText("det-wifi-device", activeNet.device || "--");
+
+    setElemText("det-ipv4-addr", activeNet.ip_address || "--");
+    setElemText("det-ipv4-gw", activeNet.gateway || "--");
+    setElemText("det-ipv4-dns1", activeNet.dns_primary || "--");
+    setElemText("det-ipv4-dns2", activeNet.dns_secondary || "--");
+
   } else {
     el.activeWifiSSID.textContent = "No Connection";
     el.activeWifiNet.textContent = "Click to scan and connect to a Wi-Fi network";
     
-    // Hide Signal Badge
+    // Hide Signal & Speed Badges
     if (el.activeWifiSignalBadge) {
       el.activeWifiSignalBadge.classList.add("hidden");
+    }
+    const speedBadge = document.getElementById("active-wifi-speed-badge");
+    if (speedBadge) {
+      speedBadge.classList.add("hidden");
     }
 
     el.wifiSignalIcon.className = "text-slate-500 w-6 h-6";
@@ -199,7 +240,50 @@ export function updateActiveWifiDisplay(activeNet) {
     if (activeWifiLabel) {
       activeWifiLabel.textContent = "No Active Connection";
     }
+
+    // Hide detailed parameters since there is no active connection
+    if (panel) {
+      panel.classList.add("hidden");
+    }
   }
+}
+
+// Setup smooth toggle collapse/expand for details panel
+function setupWifiDetailsToggle() {
+  const header = document.getElementById("wifi-widget-header");
+  const panel = document.getElementById("wifi-details-panel");
+  const chevron = document.getElementById("wifi-toggle-chevron");
+
+  if (!header || !panel || !chevron) return;
+
+  // Retrieve previous expansion state, default to expanded ("true")
+  let isExpanded = localStorage.getItem("wifi-details-expanded") !== "false";
+
+  const applyToggleState = () => {
+    if (isExpanded) {
+      panel.classList.remove("max-h-0", "opacity-0", "mt-0", "pt-0", "border-t-0", "overflow-hidden");
+      panel.classList.add("max-h-[500px]", "opacity-100", "mt-4", "pt-4");
+      chevron.classList.add("rotate-180");
+    } else {
+      panel.classList.remove("max-h-[500px]", "opacity-100", "mt-4", "pt-4");
+      panel.classList.add("max-h-0", "opacity-0", "mt-0", "pt-0", "border-t-0", "overflow-hidden");
+      chevron.classList.remove("rotate-180");
+    }
+  };
+
+  // Run initial state setup
+  applyToggleState();
+
+  // Click on the header (except Change network button) toggles details
+  header.addEventListener("click", (e) => {
+    const changeBtn = document.getElementById("btn-change-wifi");
+    if (changeBtn && changeBtn.contains(e.target)) {
+      return;
+    }
+    isExpanded = !isExpanded;
+    localStorage.setItem("wifi-details-expanded", isExpanded ? "true" : "false");
+    applyToggleState();
+  });
 }
 
 // Starts the dynamic, low-overhead background polling monitor for the active connection (1s interval)

@@ -11,6 +11,14 @@ pub struct WifiNetwork {
     signal: i32,
     security: String,
     active: bool,
+    // Detailed active connection parameters
+    rate: Option<String>,
+    device: Option<String>,
+    mac: Option<String>,
+    ip_address: Option<String>,
+    gateway: Option<String>,
+    dns_primary: Option<String>,
+    dns_secondary: Option<String>,
 }
 
 /// Splits a line from the nmcli terse output (-t).
@@ -128,6 +136,13 @@ pub async fn get_wifi_list() -> Result<Vec<WifiNetwork>, String> {
             signal,
             security,
             active,
+            rate: None,
+            device: None,
+            mac: None,
+            ip_address: None,
+            gateway: None,
+            dns_primary: None,
+            dns_secondary: None,
         });
     }
 
@@ -401,6 +416,130 @@ pub async fn get_wifi_password(ssid: String) -> Result<String, String> {
     Ok(password)
 }
 
+/// Structure holding details about the active network interface.
+#[derive(Debug, Default)]
+struct ActiveDeviceDetails {
+    device: Option<String>,
+    mac: Option<String>,
+    ip_address: Option<String>,
+    gateway: Option<String>,
+    dns_primary: Option<String>,
+    dns_secondary: Option<String>,
+    realtime_rate: Option<String>,
+}
+
+/// Retrieves additional network interface configuration details for a connected Wi-Fi device
+fn get_active_device_details() -> ActiveDeviceDetails {
+    let mut details = ActiveDeviceDetails::default();
+
+    // 1. Find active Wi-Fi device interface name
+    let dev_output = match Command::new("nmcli")
+        .args(["-t", "-f", "DEVICE,TYPE,STATE", "device"])
+        .output()
+    {
+        Ok(out) => out,
+        Err(_) => return details,
+    };
+
+    if !dev_output.status.success() {
+        return details;
+    }
+
+    let dev_stdout = String::from_utf8_lossy(&dev_output.stdout);
+    let mut active_interface = None;
+
+    for line in dev_stdout.lines() {
+        let trimmed = line.trim();
+        if trimmed.is_empty() {
+            continue;
+        }
+        let parts = split_terse_line(trimmed);
+        if parts.len() < 3 {
+            continue;
+        }
+        let device = parts.first().map(|s| s.trim().to_string());
+        let dev_type = parts.get(1).map(|s| s.trim());
+        let state = parts.get(2).map(|s| s.trim());
+
+        if dev_type == Some("wifi") && state == Some("connected") {
+            active_interface = device;
+            break;
+        }
+    }
+
+    let interface = match active_interface {
+        Some(iface) => iface,
+        None => return details,
+    };
+
+    details.device = Some(interface.clone());
+
+    // 2. Query detailed information for this active device interface
+    let show_output = match Command::new("nmcli")
+        .args(["device", "show", &interface])
+        .output()
+    {
+        Ok(out) => out,
+        Err(_) => return details,
+    };
+
+    if show_output.status.success() {
+        let show_stdout = String::from_utf8_lossy(&show_output.stdout);
+
+        for line in show_stdout.lines() {
+            let trimmed = line.trim();
+            let parts: Vec<&str> = trimmed.splitn(2, ':').collect();
+            if parts.len() < 2 {
+                continue;
+            }
+            let key = parts.first().map(|s| s.trim()).unwrap_or("");
+            let val = parts.get(1).map(|s| s.trim()).unwrap_or("");
+
+            if val == "--" || val.is_empty() {
+                continue;
+            }
+
+            match key {
+                "GENERAL.HWADDR" => details.mac = Some(val.to_string()),
+                "IP4.ADDRESS[1]" => {
+                    let ip = val.split('/').next().unwrap_or(val).trim().to_string();
+                    details.ip_address = Some(ip);
+                }
+                "IP4.GATEWAY" => details.gateway = Some(val.to_string()),
+                "IP4.DNS[1]" => details.dns_primary = Some(val.to_string()),
+                "IP4.DNS[2]" => details.dns_secondary = Some(val.to_string()),
+                _ => {}
+            }
+        }
+    }
+
+    // 3. Query real-time link bitrate via iw command
+    if let Ok(iw_output) = Command::new("iw")
+        .args(["dev", &interface, "link"])
+        .output()
+    {
+        if iw_output.status.success() {
+            let iw_stdout = String::from_utf8_lossy(&iw_output.stdout);
+            for line in iw_stdout.lines() {
+                let trimmed = line.trim();
+                if trimmed.starts_with("tx bitrate:") {
+                    if let Some(part) = trimmed.strip_prefix("tx bitrate:") {
+                        let words: Vec<&str> = part.split_whitespace().collect();
+                        if words.len() >= 2 {
+                            let speed = words.first().unwrap_or(&"");
+                            let unit = words.get(1).unwrap_or(&"");
+                            details.realtime_rate = Some(format!("{} {}", speed, unit));
+                        }
+                    }
+                    break;
+                }
+            }
+        }
+    }
+
+    details
+}
+
 /// Retrieves the details of the currently active Wi-Fi connection.
 /// Uses a quick nmcli cached query without forcing a hardware scan.
 #[tauri::command]
@@ -409,7 +548,7 @@ pub async fn get_active_wifi() -> Result<Option<WifiNetwork>, String> {
         .args([
             "-t",
             "-f",
-            "ACTIVE,BSSID,SSID,CHAN,FREQ,SIGNAL,SECURITY",
+            "ACTIVE,BSSID,SSID,CHAN,FREQ,SIGNAL,SECURITY,RATE",
             "dev",
             "wifi",
             "list",
@@ -431,7 +570,7 @@ pub async fn get_active_wifi() -> Result<Option<WifiNetwork>, String> {
         }
 
         let parts = split_terse_line(trimmed);
-        if parts.len() < 7 {
+        if parts.len() < 8 {
             continue;
         }
 
@@ -456,12 +595,18 @@ pub async fn get_active_wifi() -> Result<Option<WifiNetwork>, String> {
             let security = parts
                 .get(6)
                 .map_or_else(String::new, |s| s.trim().to_string());
+            let rate = parts
+                .get(7)
+                .map_or_else(String::new, |s| s.trim().to_string());
 
             let display_ssid = if ssid.is_empty() {
                 "<Hidden Network>".to_string()
             } else {
                 ssid
             };
+
+            let details = get_active_device_details();
+            let rate_val = details.realtime_rate.unwrap_or(rate);
 
             return Ok(Some(WifiNetwork {
                 bssid,
@@ -472,6 +617,13 @@ pub async fn get_active_wifi() -> Result<Option<WifiNetwork>, String> {
                 signal,
                 security,
                 active,
+                rate: Some(rate_val),
+                device: details.device,
+                mac: details.mac,
+                ip_address: details.ip_address,
+                gateway: details.gateway,
+                dns_primary: details.dns_primary,
+                dns_secondary: details.dns_secondary,
             }));
         }
     }
