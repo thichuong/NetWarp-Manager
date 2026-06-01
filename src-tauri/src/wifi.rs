@@ -170,3 +170,74 @@ pub async fn connect_wifi(bssid: String, password: Option<String>) -> Result<Str
         Err(format!("Wi-Fi connection error: {}", err_msg))
     }
 }
+
+/// Retrieves a list of saved Wi-Fi connections (SSIDs) on the system.
+/// Uses the command: `nmcli -g NAME,TYPE connection show` and filters for `802-11-wireless`.
+#[tauri::command]
+pub async fn get_saved_wifi_list() -> Result<Vec<String>, String> {
+    let output = Command::new("nmcli")
+        .args(["-g", "NAME,TYPE", "connection", "show"])
+        .output()
+        .map_err(|e| format!("Failed to execute nmcli connection command: {}", e))?;
+
+    if !output.status.success() {
+        let err_msg = String::from_utf8_lossy(&output.stderr).to_string();
+        return Err(format!("System error: {}", err_msg));
+    }
+
+    let stdout_str = String::from_utf8_lossy(&output.stdout);
+    let mut saved_list: Vec<String> = Vec::new();
+
+    for line in stdout_str.lines() {
+        let trimmed = line.trim();
+        if trimmed.is_empty() {
+            continue;
+        }
+
+        // Parse line formatted as "NAME:TYPE"
+        let parts = split_terse_line(trimmed);
+        if parts.len() < 2 {
+            continue;
+        }
+
+        let name = match parts.first() {
+            Some(n) => n.trim().to_string(),
+            None => continue,
+        };
+        let conn_type = match parts.get(1) {
+            Some(t) => t.trim(),
+            None => continue,
+        };
+
+        if conn_type == "802-11-wireless" {
+            saved_list.push(name);
+        }
+    }
+
+    Ok(saved_list)
+}
+
+/// Retrieves the saved WPA/WEP password for a specific Wi-Fi connection.
+/// Uses the command: `nmcli -s -g 802-11-wireless-security.psk connection show <ssid>`
+#[tauri::command]
+pub async fn get_wifi_password(ssid: String) -> Result<String, String> {
+    let output = Command::new("nmcli")
+        .args([
+            "-s",
+            "-g",
+            "802-11-wireless-security.psk",
+            "connection",
+            "show",
+            &ssid,
+        ])
+        .output()
+        .map_err(|e| format!("Failed to execute nmcli command for password: {}", e))?;
+
+    if !output.status.success() {
+        // Return empty string if password cannot be loaded or is not set yet.
+        return Ok(String::new());
+    }
+
+    let password = String::from_utf8_lossy(&output.stdout).trim().to_string();
+    Ok(password)
+}

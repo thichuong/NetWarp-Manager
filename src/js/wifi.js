@@ -22,8 +22,14 @@ export async function scanWifi() {
   
   try {
     const list = await invoke("get_wifi_list");
+    let savedList = [];
+    try {
+      savedList = await invoke("get_saved_wifi_list");
+    } catch (e) {
+      logMessage(`Failed to fetch saved connections: ${e}`);
+    }
     if (el.wifiCount) el.wifiCount.textContent = list.length;
-    renderWifiList(list);
+    renderWifiList(list, savedList);
     logMessage(`Wi-Fi scanning completed. Found ${list.length} networks.`);
   } catch (err) {
     showToast(`Wi-Fi scan failed: ${err}`, true);
@@ -47,7 +53,7 @@ export async function scanWifi() {
 }
 
 // Renders the list of Wi-Fi networks in the available Wi-Fi Modal
-export function renderWifiList(networks) {
+export function renderWifiList(networks, savedList = []) {
   if (!el.wifiContainer) return;
   
   if (networks.length === 0) {
@@ -66,9 +72,12 @@ export function renderWifiList(networks) {
   networks.forEach((net) => {
     const item = document.createElement("div");
     const wifiSvg = getWifiSignalSvg(net.signal);
+    const isSaved = savedList.includes(net.ssid);
     
     if (net.active) {
       activeNet = net;
+      
+      const savedBadge = isSaved ? '<span class="text-[9px] bg-emerald-500/10 text-emerald-400 px-1.5 py-0.5 rounded border border-emerald-500/20 font-bold ml-1.5">Saved</span>' : '';
       
       // Beautiful card design for active/connected network
       item.className = "flex items-center justify-between p-3.5 bg-emerald-950/20 hover:bg-emerald-900/20 border border-emerald-500/40 hover:border-emerald-400/60 rounded-2xl cursor-pointer transition-all duration-200 group active:scale-[0.99] shadow-[0_0_15px_rgba(16,185,129,0.15)]";
@@ -78,7 +87,7 @@ export function renderWifiList(networks) {
             ${wifiSvg}
           </div>
           <div>
-            <h4 class="text-sm font-bold text-emerald-300 truncate max-w-[200px]">${net.ssid}</h4>
+            <h4 class="text-sm font-bold text-emerald-300 truncate max-w-[200px] flex items-center">${net.ssid}${savedBadge}</h4>
             <div class="text-[10px] text-emerald-500 font-semibold space-y-0.5 mt-0.5">
               <div>MAC: <span class="font-mono text-emerald-400/80">${net.bssid}</span> | Band: <span class="text-emerald-400/80">${net.band} (${net.frequency})</span></div>
               <div>Signal: ${net.signal}% | Channel: ${net.channel} | Security: ${net.security || "Open"}</div>
@@ -94,10 +103,12 @@ export function renderWifiList(networks) {
       `;
       
       item.addEventListener("click", () => {
-        showToast(`You are already connected to "${net.ssid}".`);
+        openPasswordModal(net.bssid, net.ssid, net.band, net.frequency, isSaved);
       });
     } else {
       // Sleek available networks card
+      const savedBadge = isSaved ? '<span class="text-[9px] bg-slate-800/80 text-emerald-400 px-1.5 py-0.5 rounded border border-slate-700/60 font-bold ml-1.5 group-hover:border-emerald-500/20 transition-all">Saved</span>' : '';
+      
       item.className = "flex items-center justify-between p-3.5 bg-slate-950/40 hover:bg-slate-800/40 border border-slate-800/40 hover:border-slate-700/60 rounded-2xl cursor-pointer transition-all duration-200 group active:scale-[0.99]";
       item.innerHTML = `
         <div class="flex items-center space-x-3.5">
@@ -105,7 +116,7 @@ export function renderWifiList(networks) {
             ${wifiSvg}
           </div>
           <div>
-            <h4 class="text-sm font-semibold text-slate-200 group-hover:text-white transition-colors truncate max-w-[200px]">${net.ssid}</h4>
+            <h4 class="text-sm font-semibold text-slate-200 group-hover:text-white transition-colors truncate max-w-[200px] flex items-center">${net.ssid}${savedBadge}</h4>
             <div class="text-[10px] text-slate-500 group-hover:text-slate-400 font-medium space-y-0.5 mt-0.5 transition-colors">
               <div>MAC: <span class="font-mono text-slate-400/80 group-hover:text-emerald-400/60">${net.bssid}</span> | Band: <span class="text-slate-400/80 group-hover:text-emerald-400/60">${net.band} (${net.frequency})</span></div>
               <div>Signal: ${net.signal}% | Channel: ${net.channel} | Security: ${net.security || "Open"}</div>
@@ -117,7 +128,7 @@ export function renderWifiList(networks) {
         </div>
       `;
       
-      item.addEventListener("click", () => openPasswordModal(net.bssid, net.ssid, net.band, net.frequency));
+      item.addEventListener("click", () => openPasswordModal(net.bssid, net.ssid, net.band, net.frequency, isSaved));
     }
     
     el.wifiContainer.appendChild(item);

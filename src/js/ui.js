@@ -47,12 +47,36 @@ export function showToast(message, isError = false) {
 }
 
 // Opens the sliding password entry dialog modal
-export function openPasswordModal(bssid, ssid, band, frequency) {
+export async function openPasswordModal(bssid, ssid, band, frequency, isSaved = false) {
   if (!el.passwordModal || !el.modalSsid || !el.wifiPassword) return;
   state.selectedBssid = bssid;
   state.selectedSsid = ssid;
-  el.modalSsid.innerHTML = `${ssid} <span class="text-[10px] text-emerald-400 block mt-1 font-mono">BSSID: ${bssid} | Band: ${band} (${frequency})</span>`;
+  
+  const savedLabel = isSaved ? ' <span class="inline-flex items-center ml-2 px-1.5 py-0.5 rounded text-[9px] font-bold bg-emerald-500/10 text-emerald-300 border border-emerald-500/20 font-mono animate-pulse">SAVED</span>' : '';
+  el.modalSsid.innerHTML = `${ssid}${savedLabel} <span class="text-[10px] text-emerald-400 block mt-1 font-mono">BSSID: ${bssid} | Band: ${band} (${frequency})</span>`;
+  
+  // Reset password field values and type back to default password
   el.wifiPassword.value = "";
+  el.wifiPassword.type = "password";
+  if (el.svgEyeIcon) {
+    el.svgEyeIcon.innerHTML = `
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l18 18" />
+    `;
+  }
+
+  // If the profile is saved, fetch the stored password and autofill
+  if (isSaved) {
+    try {
+      const { invoke } = window.__TAURI__.core;
+      const savedPwd = await invoke("get_wifi_password", { ssid });
+      if (savedPwd) {
+        el.wifiPassword.value = savedPwd;
+        logMessage(`Autofilled saved password for "${ssid}".`);
+      }
+    } catch (err) {
+      logMessage(`Failed to read saved password for "${ssid}": ${err}`);
+    }
+  }
   
   // Reveal password modal with transition
   el.passwordModal.classList.remove("opacity-0", "pointer-events-none");

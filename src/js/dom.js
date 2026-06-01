@@ -32,6 +32,8 @@ export const el = {
   wifiForm: null,
   btnConnect: null,
   btnCancel: null,
+  btnTogglePassword: null,
+  svgEyeIcon: null,
 
   // Cloudflare WARP
   ledDot: null,
@@ -91,6 +93,8 @@ export function initDOM() {
   el.wifiForm = document.getElementById("wifi-form");
   el.btnConnect = document.getElementById("btn-connect");
   el.btnCancel = document.getElementById("btn-cancel");
+  el.btnTogglePassword = document.getElementById("btn-toggle-password");
+  el.svgEyeIcon = document.getElementById("svg-eye-icon");
 
   el.ledDot = document.getElementById("led-dot");
   el.ledPing = document.getElementById("led-ping");
