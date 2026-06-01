@@ -2,6 +2,7 @@
 // Orchestrates state, dom references, UI, Wi-Fi, and Cloudflare WARP services
 // All comments in English as per user rules
 
+import { loadComponents } from "./js/loader.js";
 import { initDOM, el } from "./js/dom.js";
 import { scanWifi, connectWifi } from "./js/wifi.js";
 import { getInitialWarpStatus, pollWarpStatus, handleWarpToggle, handleModeChange, installWarp } from "./js/warp.js";
@@ -9,7 +10,10 @@ import { startNetworkSpeedMonitor, updateNetworkDiagnostics } from "./js/diagnos
 import { closePasswordModal, openWifiListModal, closeWifiListModal } from "./js/ui.js";
 
 // DOMContentLoaded triggers global boot sequence
-window.addEventListener("DOMContentLoaded", () => {
+window.addEventListener("DOMContentLoaded", async () => {
+  // 0. Load HTML templates dynamically before mapping DOM bindings
+  await loadComponents();
+
   // 1. Map all HTML DOM Element bindings
   initDOM();
 
