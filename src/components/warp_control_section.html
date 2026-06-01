@@ -2,19 +2,19 @@
 <section class="w-full h-full bg-slate-900/20 border border-slate-900 backdrop-blur-2xl rounded-[32px] p-6.5 shadow-2xl flex flex-col justify-between overflow-hidden">
   
   <div class="flex flex-col items-center justify-center flex-grow text-center w-full py-1">
-    <!-- Glow Shield Circle -->
+    <!-- Solid Orange Shield Circle -->
     <div class="relative mb-3 group select-none">
-      <div class="absolute -inset-0.5 bg-gradient-to-tr from-orange-500 to-amber-500 rounded-full blur opacity-20 group-hover:opacity-35 transition duration-500"></div>
+      <div class="absolute -inset-0.5 bg-orange-500/10 rounded-full blur opacity-25 group-hover:opacity-35 transition duration-500"></div>
       <div class="relative bg-slate-950 border border-slate-900 p-4 rounded-full shadow-inner flex items-center justify-center">
-        <svg class="w-11 h-11 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <svg class="w-11 h-11 text-orange-500 group-hover:text-orange-400 transition-colors duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
         </svg>
       </div>
       
-      <!-- Led dynamic ping dot -->
+      <!-- Led dynamic status dot -->
       <span class="absolute top-0 right-0 flex h-3.5 w-3.5">
-        <span id="led-ping" class="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-        <span id="led-dot" class="relative inline-flex rounded-full h-3.5 w-3.5 bg-red-500 shadow-[0_0_10px_rgba(239,68,68,0.7)] transition-all duration-300"></span>
+        <span id="led-ping" class="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-25"></span>
+        <span id="led-dot" class="relative inline-flex rounded-full h-3.5 w-3.5 bg-red-500 transition-all duration-300"></span>
       </span>
     </div>
 
@@ -24,7 +24,7 @@
     
     <!-- Operating Mode Status Badge -->
     <div id="warp-mode-badge-container" class="mt-2 hidden">
-      <span id="warp-mode-badge" class="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-orange-500/10 text-orange-400 border border-orange-500/20">
+      <span id="warp-mode-badge" class="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-slate-900 text-slate-300 border border-slate-800">
         Mode: DoH DNS Only
       </span>
     </div>
@@ -34,7 +34,7 @@
       <label class="relative inline-flex items-center justify-center gap-4 cursor-pointer select-none">
         <input type="checkbox" id="warp-toggle" class="sr-only peer" disabled>
         <span class="text-xs text-slate-400 peer-checked:text-emerald-400 font-bold uppercase tracking-widest transition-colors duration-300">Connect Client</span>
-        <div class="w-11 h-6 bg-slate-900 rounded-full transition-all duration-300 peer-checked:bg-emerald-500 peer-checked:shadow-[0_0_12px_rgba(16,185,129,0.5)] relative after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-slate-500 after:rounded-full after:h-5 after:w-5 after:transition-all duration-300 peer-checked:after:translate-x-5 peer-checked:after:bg-white shadow-md"></div>
+        <div class="w-11 h-6 bg-slate-900 rounded-full transition-all duration-300 peer-checked:bg-emerald-600 relative after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-slate-500 after:rounded-full after:h-5 after:w-5 after:transition-all duration-300 peer-checked:after:translate-x-5 peer-checked:after:bg-white shadow-md"></div>
       </label>
     </div>
 
@@ -61,7 +61,7 @@
 
   <!-- Bottom bar logs & Install RPM button -->
   <div class="space-y-2 mt-2 shrink-0">
-    <button id="btn-install" class="w-full bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 active:scale-98 text-white font-bold py-2 px-3 rounded-2xl shadow-lg shadow-orange-500/10 transition duration-200 flex items-center justify-center space-x-1.5 text-[13px] select-none">
+    <button id="btn-install" class="w-full bg-slate-900 border border-slate-800 hover:bg-slate-800 active:scale-98 text-slate-200 font-bold py-2.5 px-3 rounded-2xl transition duration-200 flex items-center justify-center space-x-1.5 text-[13px] select-none shadow-sm">
       <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
       </svg>

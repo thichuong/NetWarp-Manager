@@ -65,8 +65,8 @@ export function updateWarpUI(status) {
   if (!el.ledDot || !el.ledPing || !el.warpStatusText || !el.warpToggle || !el.btnInstall) return;
 
   if (status === "Connected") {
-    el.ledDot.className = "relative inline-flex rounded-full h-4 w-4 bg-emerald-500 shadow-[0_0_12px_rgba(16,185,129,0.7)] transition-all duration-300";
-    el.ledPing.className = "animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75";
+    el.ledDot.className = "relative inline-flex rounded-full h-4 w-4 bg-emerald-500 transition-all duration-300";
+    el.ledPing.className = "animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-500 opacity-20";
     el.warpStatusText.textContent = "Connected";
     el.warpStatusText.className = "text-xs font-bold mt-1 text-emerald-400 uppercase tracking-widest";
     if (el.warpNetworkText) {
@@ -78,8 +78,8 @@ export function updateWarpUI(status) {
       el.warpToggle.checked = true;
     }
   } else if (status === "Connecting") {
-    el.ledDot.className = "relative inline-flex rounded-full h-4 w-4 bg-amber-500 shadow-[0_0_12px_rgba(245,158,11,0.7)] transition-all duration-300";
-    el.ledPing.className = "animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75";
+    el.ledDot.className = "relative inline-flex rounded-full h-4 w-4 bg-amber-500 transition-all duration-300";
+    el.ledPing.className = "animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-500 opacity-20";
     el.warpStatusText.textContent = "Connecting...";
     el.warpStatusText.className = "text-xs font-bold mt-1 text-amber-400 uppercase tracking-widest";
     if (el.warpNetworkText) {
@@ -101,8 +101,8 @@ export function updateWarpUI(status) {
     el.btnInstall.classList.add("animate-pulse");
   } else {
     // Disconnected state
-    el.ledDot.className = "relative inline-flex rounded-full h-4 w-4 bg-red-500 shadow-[0_0_12px_rgba(239,68,68,0.7)] transition-all duration-300";
-    el.ledPing.className = "animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75";
+    el.ledDot.className = "relative inline-flex rounded-full h-4 w-4 bg-red-500 transition-all duration-300";
+    el.ledPing.className = "animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-25";
     el.warpStatusText.textContent = "Disconnected";
     el.warpStatusText.className = "text-xs font-bold mt-1 text-red-400 uppercase tracking-widest";
     if (el.warpNetworkText) {
@@ -186,10 +186,10 @@ export async function handleModeChange(mode) {
     el.warpStatusText.className = "text-xs font-bold mt-1 text-amber-400 uppercase tracking-widest";
   }
   if (el.ledDot) {
-    el.ledDot.className = "relative inline-flex rounded-full h-4 w-4 bg-amber-500 shadow-[0_0_12px_rgba(245,158,11,0.7)] transition-all duration-300";
+    el.ledDot.className = "relative inline-flex rounded-full h-4 w-4 bg-amber-500 transition-all duration-300";
   }
   if (el.ledPing) {
-    el.ledPing.className = "animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75";
+    el.ledPing.className = "animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-500 opacity-20";
   }
   if (el.traceWarpBadge) {
     el.traceWarpBadge.textContent = "CONNECTING";
@@ -224,13 +224,14 @@ export function disableModeButtons(disabled) {
 
 // Updates UI state of WARP mode selection buttons
 export function updateWarpModeUI(mode) {
-  const activeClass = "bg-gradient-to-r from-orange-500 to-amber-500 text-white border-transparent shadow-[0_0_15px_rgba(249,115,22,0.4)] scale-[1.02]";
   const inactiveClass = "text-slate-400 hover:text-slate-200 border-transparent hover:bg-slate-900/40";
+  const activeDoh = "bg-orange-500 text-white border-transparent shadow-sm scale-[1.01]";
+  const activeDual = "bg-emerald-600 text-white border-transparent shadow-sm scale-[1.01]";
 
   [
-    { btn: el.btnModeDoh, key: "doh" },
-    { btn: el.btnModeWarpDoh, key: "warp+doh" }
-  ].forEach(({ btn, key }) => {
+    { btn: el.btnModeDoh, key: "doh", activeClass: activeDoh },
+    { btn: el.btnModeWarpDoh, key: "warp+doh", activeClass: activeDual }
+  ].forEach(({ btn, key, activeClass }) => {
     if (!btn) return;
     if (key === mode) {
       btn.className = `py-2 px-1 rounded-xl text-[9px] font-bold tracking-wide transition-all duration-200 focus:outline-none flex flex-col items-center justify-center gap-1.5 border ${activeClass}`;
@@ -247,7 +248,7 @@ export function updateWarpModeUI(mode) {
         </svg>
         <span>Mode: DoH DNS Only</span>
       `;
-      el.warpModeBadge.className = "inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider bg-orange-500/10 text-orange-400 border border-orange-500/20 shadow-[0_0_10px_rgba(249,115,22,0.1)]";
+      el.warpModeBadge.className = "inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider bg-orange-500/10 text-orange-400 border border-orange-500/20";
       el.warpModeBadgeContainer.classList.remove("hidden");
     } else if (mode === "warp+doh") {
       el.warpModeBadge.innerHTML = `
@@ -256,7 +257,7 @@ export function updateWarpModeUI(mode) {
         </svg>
         <span>Mode: WARP + DoH (Max)</span>
       `;
-      el.warpModeBadge.className = "inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 shadow-[0_0_10px_rgba(16,185,129,0.1)]";
+      el.warpModeBadge.className = "inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider bg-emerald-500/10 text-emerald-400 border border-emerald-500/20";
       el.warpModeBadgeContainer.classList.remove("hidden");
     } else {
       el.warpModeBadge.innerHTML = `
@@ -265,7 +266,7 @@ export function updateWarpModeUI(mode) {
         </svg>
         <span>Mode: ${mode.toUpperCase()}</span>
       `;
-      el.warpModeBadge.className = "inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider bg-slate-500/10 text-slate-400 border border-slate-500/20 shadow-none";
+      el.warpModeBadge.className = "inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider bg-slate-900 text-slate-300 border border-slate-800";
       el.warpModeBadgeContainer.classList.remove("hidden");
     }
   }
