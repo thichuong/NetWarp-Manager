@@ -1,0 +1,38 @@
+# Node / Frontend dependencies & build outputs
+node_modules/
+dist/
+dist-ssr/
+
+# Rust / Tauri build artifacts & generated schemas
+src-tauri/target/
+src-tauri/gen/schemas/
+**/*.rs.bk
+
+# Environment variables & secrets
+.env
+.env.*
+!.env.example
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# System & OS Files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDEs & Editor configurations
+.vscode/*
+!.vscode/extensions.json
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
