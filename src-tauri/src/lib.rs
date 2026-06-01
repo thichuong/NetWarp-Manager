@@ -288,11 +288,13 @@ async fn get_warp_mode() -> Result<String, String> {
     for line in stdout_str.lines() {
         let trimmed = line.trim();
         if trimmed.contains("Mode:") {
-            if trimmed.contains("DnsOverHttps") {
-                return Ok("doh".to_string());
-            } else if trimmed.contains("WarpWithDnsOverHttps") || trimmed.contains("WarpAndDnsOverHttps") {
+            let lower = trimmed.to_lowercase();
+            // Kiểm tra các chế độ phức hợp chứa cả Warp và DoH trước
+            if lower.contains("warp") && (lower.contains("doh") || lower.contains("dnsoverhttps") || lower.contains("dns-over-https")) {
                 return Ok("warp+doh".to_string());
-            } else if trimmed.contains("Warp") {
+            } else if lower.contains("doh") || lower.contains("dnsoverhttps") || lower.contains("dns-over-https") {
+                return Ok("doh".to_string());
+            } else if lower.contains("warp") {
                 return Ok("warp".to_string());
             } else {
                 if let Some(idx) = trimmed.find("Mode:") {
