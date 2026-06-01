@@ -50,9 +50,9 @@ fn get_wifi_band(freq_str: &str) -> String {
         .and_then(|s| s.parse::<i32>().ok());
 
     match freq_num {
-        Some(f) if f >= 2400 && f <= 2500 => "2.4 GHz".to_string(),
-        Some(f) if f >= 4900 && f <= 5900 => "5 GHz".to_string(),
-        Some(f) if f >= 5925 && f <= 7125 => "6 GHz".to_string(),
+        Some(f) if (2400..=2500).contains(&f) => "2.4 GHz".to_string(),
+        Some(f) if (4900..=5900).contains(&f) => "5 GHz".to_string(),
+        Some(f) if (5925..=7125).contains(&f) => "6 GHz".to_string(),
         _ => "Không rõ".to_string(),
     }
 }
@@ -86,14 +86,14 @@ async fn get_wifi_list() -> Result<Vec<WifiNetwork>, String> {
             continue;
         }
 
-        let active = parts[0].trim() == "yes";
-        let bssid = parts[1].trim().to_string();
-        let ssid = parts[2].trim().to_string();
-        let channel = parts[3].trim().parse::<i32>().unwrap_or(0);
-        let frequency = parts[4].trim().to_string();
+        let active = parts.first().is_some_and(|s| s.trim() == "yes");
+        let bssid = parts.get(1).map_or_else(String::new, |s| s.trim().to_string());
+        let ssid = parts.get(2).map_or_else(String::new, |s| s.trim().to_string());
+        let channel = parts.get(3).map_or(0, |s| s.trim().parse::<i32>().unwrap_or(0));
+        let frequency = parts.get(4).map_or_else(String::new, |s| s.trim().to_string());
         let band = get_wifi_band(&frequency);
-        let signal = parts[5].trim().parse::<i32>().unwrap_or(0);
-        let security = parts[6].trim().to_string();
+        let signal = parts.get(5).map_or(0, |s| s.trim().parse::<i32>().unwrap_or(0));
+        let security = parts.get(6).map_or_else(String::new, |s| s.trim().to_string());
 
         // Bỏ qua các mạng không có SSID (trừ khi là mạng ẩn nhưng nmcli thường để SSID trống)
         let display_ssid = if ssid.is_empty() {
@@ -298,8 +298,10 @@ async fn get_warp_mode() -> Result<String, String> {
                 return Ok("warp".to_string());
             } else {
                 if let Some(idx) = trimmed.find("Mode:") {
-                    let mode_part = trimmed[idx + 5..].trim().to_string();
-                    return Ok(mode_part.to_lowercase());
+                    if let Some(mode_str) = trimmed.get(idx + 5..) {
+                        let mode_part = mode_str.trim().to_string();
+                        return Ok(mode_part.to_lowercase());
+                    }
                 }
             }
         }
@@ -327,7 +329,7 @@ async fn set_warp_mode(mode: String) -> Result<String, String> {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    tauri::Builder::default()
+    if let Err(e) = tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .invoke_handler(tauri::generate_handler![
             get_wifi_list,
@@ -339,5 +341,7 @@ pub fn run() {
             set_warp_mode
         ])
         .run(tauri::generate_context!())
-        .expect("error while running tauri application");
+    {
+        eprintln!("error while running tauri application: {}", e);
+    }
 }

@@ -24,7 +24,10 @@ window.addEventListener("DOMContentLoaded", () => {
   // Quét Wi-Fi lần đầu
   scanWifi();
   
-  // Bắt đầu chu kỳ thăm dò (polling) trạng thái Cloudflare WARP định kỳ mỗi 3 giây
+  // Lấy trạng thái và chế độ WARP ban đầu
+  getInitialStatus();
+  
+  // Bắt đầu chu kỳ thăm dò (polling) trạng thái Cloudflare WARP định kỳ mỗi 5 giây
   pollWarpStatus();
 });
 
@@ -319,10 +322,37 @@ async function connectWifi() {
 }
 
 // 3. THĂM DÒ (POLLING) TRẠNG THÁI CLOUDFLARE WARP
-async function pollWarpStatus() {
+let isFetchingWarpStatus = false;
+
+// Đồng bộ chế độ WARP hiện tại từ backend
+async function syncWarpMode() {
+  try {
+    const mode = await invoke("get_warp_mode");
+    currentWarpMode = mode;
+    updateWarpModeUI(mode);
+    disableModeButtons(false);
+  } catch (err) {
+    // Bỏ qua lỗi lấy mode âm thầm
+  }
+}
+
+// Lấy trạng thái và chế độ hoạt động ban đầu
+async function getInitialStatus() {
   await getWarpStatus();
-  // Lặp lại mỗi 3 giây
-  setInterval(getWarpStatus, 3000);
+  await syncWarpMode();
+}
+
+async function pollWarpStatus() {
+  if (isFetchingWarpStatus) return;
+  isFetchingWarpStatus = true;
+
+  try {
+    await getWarpStatus();
+  } finally {
+    isFetchingWarpStatus = false;
+    // Lên lịch chạy lần tiếp theo sau 5 giây kể từ khi lần trước hoàn tất
+    setTimeout(pollWarpStatus, 5000);
+  }
 }
 
 // Lấy trạng thái của WARP và đồng bộ hóa giao diện người dùng
@@ -331,19 +361,11 @@ async function getWarpStatus() {
     const status = await invoke("get_warp_status");
     updateWarpUI(status);
     
-    // Nếu WARP đã được cài đặt, lấy thêm chế độ hoạt động hiện tại
-    if (status !== "Not Installed" && !isSettingMode) {
-      try {
-        const mode = await invoke("get_warp_mode");
-        currentWarpMode = mode;
-        updateWarpModeUI(mode);
-        disableModeButtons(false);
-      } catch (err) {
-        // Bỏ qua lỗi lấy mode âm thầm
-      }
-    } else if (status === "Not Installed") {
+    if (status === "Not Installed") {
       disableModeButtons(true);
       if (warpModeBadgeContainer) warpModeBadgeContainer.classList.add("hidden");
+    } else {
+      disableModeButtons(false);
     }
   } catch (err) {
     // Không log liên tục lỗi định kỳ để tránh làm ngập log panel
@@ -444,7 +466,8 @@ async function installWarp() {
     showToast("Cài đặt Cloudflare WARP thành công!");
     logMessage(`Cài đặt hoàn tất: ${result}`);
     // Cập nhật lại UI lập tức
-    getWarpStatus();
+    await getWarpStatus();
+    await syncWarpMode();
   } catch (err) {
     showToast(`Cài đặt WARP thất bại: ${err}`, true);
     logMessage(`LỖI cài đặt WARP: ${err}`);
@@ -475,7 +498,7 @@ async function handleModeChange(mode) {
     showToast(`Lỗi chuyển chế độ: ${err}`, true);
     logMessage(`Lỗi chuyển chế độ: ${err}`);
     // Load lại chế độ thực tế để đồng bộ lại
-    getWarpStatus();
+    await syncWarpMode();
   } finally {
     isSettingMode = false;
     disableModeButtons(false);

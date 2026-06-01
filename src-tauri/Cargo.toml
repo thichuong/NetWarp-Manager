@@ -24,3 +24,26 @@ serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 glob = "0.3"
 
+[lints.rust]
+unsafe_code = "deny"
+
+[lints.clippy]
+# Cấm sử dụng unwrap() để tránh gây crash ngầm
+unwrap_used = "deny"
+# Cấm sử dụng expect() để tránh crash
+expect_used = "deny"
+# Cấm sử dụng panic!
+panic = "deny"
+# Cảnh báo các lệnh cắt chuỗi / chỉ mục mảng không an toàn
+indexing_slicing = "warn"
+# Thúc đẩy các tiêu chuẩn hiệu năng tốt của Clippy
+perf = { level = "deny", priority = -1 }
+# Khuyến nghị viết mã chuẩn chỉ, dễ đọc
+style = { level = "warn", priority = -1 }
+
+[profile.release]
+opt-level = "z" # Tối ưu dung lượng file thực thi
+lto = true # Kích hoạt Link-Time Optimization
+codegen-units = 1 # Biên dịch code trong đơn vị phát sinh mã duy nhất giúp tối ưu tối đa
+panic = "abort" # Huỷ bỏ luồng unwind khi xảy ra lỗi nghiêm trọng
+strip = true # Loại bỏ thông tin debug để thu nhỏ dung lượng

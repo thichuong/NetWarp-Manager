@@ -81,10 +81,37 @@ npm run tauri dev
 ```
 
 ### 4. Biên dịch đóng gói ứng dụng (Build Production)
-Để tạo ra gói cài đặt chính thức cho Linux:
+Để tạo ra gói cài đặt chính thức cho Linux (`.deb`, `.rpm`, `.AppImage`):
 ```bash
 npm run tauri build
 ```
+
+> [!NOTE]  
+> Trên các bản phân phối Linux hiện đại (như Fedora 40+, Ubuntu 22.04+, Debian 12+), công cụ `strip` tích hợp trong `linuxdeploy` có thể bị lỗi khi xử lý định dạng phân đoạn `.relr.dyn` mới của hệ thống (lỗi `failed to run linuxdeploy`). 
+> Dự án đã được tự động cấu hình tích hợp sẵn biến môi trường `NO_STRIP=1` vào script `tauri` trong `package.json` để bỏ qua tiến trình này và hoàn tất biên dịch thành công.
+
+### 5. Khởi chạy ứng dụng sau khi Build
+
+Sau khi build thành công, bạn có thể khởi chạy ứng dụng bằng một trong hai cách dưới đây:
+
+#### Cách A: Chạy trực tiếp File thực thi (Binary)
+Chạy trực tiếp file đã biên dịch bằng lệnh:
+```bash
+env WEBKIT_DISABLE_COMPOSITING_MODE=1 ./src-tauri/target/release/tauri-app
+```
+
+#### Cách B: Chạy gói AppImage di động
+Cấp quyền thực thi và khởi chạy gói AppImage đã đóng gói:
+```bash
+chmod +x ./src-tauri/target/release/bundle/appimage/wiwarp_0.1.0_amd64.AppImage
+env WEBKIT_DISABLE_COMPOSITING_MODE=1 ./src-tauri/target/release/bundle/appimage/wiwarp_0.1.0_amd64.AppImage
+```
+
+> [!TIP]  
+> Biến `env WEBKIT_DISABLE_COMPOSITING_MODE=1` là bắt buộc trên nhiều cấu hình đồ họa Linux (đặc biệt là Wayland) để tránh lỗi giao thức đồ họa/crash hiển thị của WebKit. Nếu ứng dụng vẫn gặp lỗi hiển thị, bạn có thể thử thêm biến `WEBKIT_DISABLE_DMABUF_RENDERER=1`:
+> ```bash
+> env WEBKIT_DISABLE_COMPOSITING_MODE=1 WEBKIT_DISABLE_DMABUF_RENDERER=1 ./src-tauri/target/release/tauri-app
+> ```
 
 ---
 
