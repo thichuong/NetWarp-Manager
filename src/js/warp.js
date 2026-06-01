@@ -143,24 +143,34 @@ export async function handleWarpToggle() {
   }
 }
 
-// Executes warp installation via PKEXEC on Fedora
+// Executes warp installation via interactive terminal wizard
 export async function installWarp() {
   if (!el.btnInstall) return;
   el.btnInstall.classList.add("btn-loading");
   el.btnInstall.disabled = true;
   
-  logMessage("Starting Cloudflare WARP installer script...");
-  logMessage("Step 1: Refreshing DNF download links for WARP...");
-  showToast("Downloading Cloudflare WARP RPM package...");
+  logMessage("Opening interactive terminal installer for Cloudflare WARP...");
+  showToast("Opening Terminal installer...");
 
   try {
     const result = await invoke("install_warp");
-    showToast("Cloudflare WARP installed successfully!");
-    logMessage(`Install output: ${result}`);
-    await getWarpStatus();
-    await syncWarpMode();
+    showToast("Terminal installer opened! Follow the steps in the terminal.", false);
+    logMessage(`Terminal execution: ${result}`);
+    
+    // Periodically sync WARP status to automatically update GUI once setup completes
+    let syncCount = 0;
+    const intervalId = setInterval(async () => {
+      syncCount++;
+      await getWarpStatus();
+      await syncWarpMode();
+      
+      // Stop polling after 5 minutes
+      if (syncCount > 60) {
+        clearInterval(intervalId);
+      }
+    }, 5000);
   } catch (err) {
-    showToast(`Installation script failed: ${err}`, true);
+    showToast(`Failed to launch terminal installer: ${err}`, true);
     logMessage(`Installation error: ${err}`);
   } finally {
     el.btnInstall.classList.remove("btn-loading");
