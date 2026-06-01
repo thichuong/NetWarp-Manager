@@ -245,6 +245,59 @@ pub async fn connect_wifi(
                     modify_err
                 ));
             }
+
+            // Fix for the first-time connection roaming bug:
+            // If the active BSSID is different from the target BSSID, and we want to lock the BSSID,
+            // we trigger an immediate reconnection with the modified locked profile.
+            if lock_bssid {
+                let mut current_active_bssid = None;
+                let active_bssid_output = Command::new("nmcli")
+                    .args(["-t", "-f", "ACTIVE,BSSID", "device", "wifi", "list"])
+                    .output();
+
+                if let Ok(bssid_out) = active_bssid_output {
+                    if bssid_out.status.success() {
+                        let bssid_stdout = String::from_utf8_lossy(&bssid_out.stdout);
+                        for line in bssid_stdout.lines() {
+                            let trimmed = line.trim();
+                            if trimmed.is_empty() {
+                                continue;
+                            }
+                            let parts = split_terse_line(trimmed);
+                            if parts.len() < 2 {
+                                continue;
+                            }
+                            let active = parts.first().is_some_and(|s| s.trim() == "yes");
+                            let raw_mac = parts.get(1).map(|s| s.trim().to_string());
+                            if active {
+                                current_active_bssid = raw_mac.map(|m| m.replace("\\:", ":"));
+                                break;
+                            }
+                        }
+                    }
+                }
+
+                if let Some(ref active_mac) = current_active_bssid {
+                    if active_mac.trim().to_lowercase() != bssid.trim().to_lowercase() {
+                        // Reconnection needed because we associated to a different BSSID (e.g. 2.4GHz) initially.
+                        let up_output = Command::new("nmcli")
+                            .args(["connection", "up", &uuid])
+                            .output()
+                            .map_err(|e| {
+                                format!("Failed to force correct BSSID connection: {}", e)
+                            })?;
+
+                        if !up_output.status.success() {
+                            let up_err = String::from_utf8_lossy(&up_output.stderr).to_string();
+                            // We return Ok since the first association succeeded, but warn that lock failed.
+                            return Ok(format!(
+                                "Connected successfully, but failed to force association with target BSSID: {}",
+                                up_err
+                            ));
+                        }
+                    }
+                }
+            }
         }
     }
 
