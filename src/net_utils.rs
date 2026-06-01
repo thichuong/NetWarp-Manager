@@ -6,21 +6,21 @@ use std::time::Instant;
 /// Struct containing total received and transmitted bytes of the system.
 #[derive(serde::Serialize)]
 pub struct NetworkIO {
-    rx_bytes: u64,
-    tx_bytes: u64,
+    pub rx_bytes: u64,
+    pub tx_bytes: u64,
 }
 
 /// Struct containing ping results for a specific target.
 #[derive(serde::Serialize)]
 pub struct PingResult {
-    target: String,
-    latency: Option<f64>,
-    status: String,
+    pub target: String,
+    pub latency: Option<f64>,
+    pub status: String,
 }
 
 /// Executes a ping request to the specified target with 4 packets.
 /// Uses the system command: `ping -c 4 <target>`
-#[tauri::command]
+#[allow(dead_code)]
 pub async fn ping_target(target: Option<String>) -> Result<String, String> {
     let host = target.unwrap_or_else(|| "1.1.1.1".to_string());
     let clean_host = host.trim();
@@ -52,7 +52,6 @@ pub async fn ping_target(target: Option<String>) -> Result<String, String> {
 /// Uses the system command: `curl -s --retry 3 --retry-delay 1 --connect-timeout 3 http://ip-api.com/json/`
 /// This bypasses frontend CORS restrictions while providing accurate geo details.
 /// Added retry parameters to gracefully handle temporary network dropouts during WARP mode switching.
-#[tauri::command]
 pub async fn trace_ip() -> Result<String, String> {
     let output = Command::new("curl")
         .args([
@@ -79,7 +78,6 @@ pub async fn trace_ip() -> Result<String, String> {
 
 /// Fetches the accumulated download (rx) and upload (tx) bytes across active interfaces.
 /// Reads directly from `/proc/net/dev` on Linux systems.
-#[tauri::command]
 pub async fn get_network_io() -> Result<NetworkIO, String> {
     let file =
         File::open("/proc/net/dev").map_err(|e| format!("Failed to open /proc/net/dev: {}", e))?;
@@ -126,12 +124,11 @@ pub async fn get_network_io() -> Result<NetworkIO, String> {
 
 /// Executes parallel quick pings (1 packet, 1s timeout) to a list of target hosts.
 /// Returns their respective RTT latency in milliseconds and online status.
-#[tauri::command]
 pub async fn ping_multiple(targets: Vec<String>) -> Result<Vec<PingResult>, String> {
     let mut handles = vec![];
 
     for target in targets {
-        let handle = tauri::async_runtime::spawn(async move {
+        let handle = tokio::spawn(async move {
             let start = Instant::now();
             let output = Command::new("ping")
                 .args(["-c", "1", "-W", "1", &target])

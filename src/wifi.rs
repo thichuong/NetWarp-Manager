@@ -3,22 +3,22 @@ use std::process::Command;
 /// Structure representing a Wi-Fi network returned to the frontend with detailed information.
 #[derive(serde::Serialize, serde::Deserialize, Clone, Debug)]
 pub struct WifiNetwork {
-    bssid: String,
-    ssid: String,
-    channel: i32,
-    frequency: String,
-    band: String,
-    signal: i32,
-    security: String,
-    active: bool,
+    pub bssid: String,
+    pub ssid: String,
+    pub channel: i32,
+    pub frequency: String,
+    pub band: String,
+    pub signal: i32,
+    pub security: String,
+    pub active: bool,
     // Detailed active connection parameters
-    rate: Option<String>,
-    device: Option<String>,
-    mac: Option<String>,
-    ip_address: Option<String>,
-    gateway: Option<String>,
-    dns_primary: Option<String>,
-    dns_secondary: Option<String>,
+    pub rate: Option<String>,
+    pub device: Option<String>,
+    pub mac: Option<String>,
+    pub ip_address: Option<String>,
+    pub gateway: Option<String>,
+    pub dns_primary: Option<String>,
+    pub dns_secondary: Option<String>,
 }
 
 /// Splits a line from the nmcli terse output (-t).
@@ -65,7 +65,6 @@ fn get_wifi_band(freq_str: &str) -> String {
 
 /// Retrieves a list of available Wi-Fi networks in range.
 /// Uses the command: `nmcli -t -f ACTIVE,BSSID,SSID,CHAN,FREQ,SIGNAL,SECURITY dev wifi list`
-#[tauri::command]
 pub async fn get_wifi_list() -> Result<Vec<WifiNetwork>, String> {
     let output = Command::new("nmcli")
         .args([
@@ -183,7 +182,6 @@ pub async fn get_wifi_list() -> Result<Vec<WifiNetwork>, String> {
 /// Optionally locks the connection profile to this specific BSSID to prevent roaming.
 /// Uses the command: `nmcli dev wifi connect <bssid> password <password>`
 /// and `nmcli connection modify <uuid> 802-11-wireless.bssid <bssid>` for BSSID locking.
-#[tauri::command]
 pub async fn connect_wifi(
     bssid: String,
     _ssid: String,
@@ -321,7 +319,6 @@ pub async fn connect_wifi(
 
 /// Retrieves the locked BSSID for a specific connection profile (SSID) if configured.
 /// Returns an empty string if there is no lock or if the profile doesn't exist.
-#[tauri::command]
 pub async fn get_wifi_locked_bssid(ssid: String) -> Result<String, String> {
     let output = Command::new("nmcli")
         .args([
@@ -347,7 +344,7 @@ pub async fn get_wifi_locked_bssid(ssid: String) -> Result<String, String> {
 
 /// Retrieves a list of saved Wi-Fi connections (SSIDs) on the system.
 /// Uses the command: `nmcli -g NAME,TYPE connection show` and filters for `802-11-wireless`.
-#[tauri::command]
+#[allow(dead_code)]
 pub async fn get_saved_wifi_list() -> Result<Vec<String>, String> {
     let output = Command::new("nmcli")
         .args(["-g", "NAME,TYPE", "connection", "show"])
@@ -393,7 +390,6 @@ pub async fn get_saved_wifi_list() -> Result<Vec<String>, String> {
 
 /// Retrieves the saved WPA/WEP password for a specific Wi-Fi connection.
 /// Uses the command: `nmcli -s -g 802-11-wireless-security.psk connection show <ssid>`
-#[tauri::command]
 pub async fn get_wifi_password(ssid: String) -> Result<String, String> {
     let output = Command::new("nmcli")
         .args([
@@ -542,7 +538,6 @@ fn get_active_device_details() -> ActiveDeviceDetails {
 
 /// Retrieves the details of the currently active Wi-Fi connection.
 /// Uses a quick nmcli cached query without forcing a hardware scan.
-#[tauri::command]
 pub async fn get_active_wifi() -> Result<Option<WifiNetwork>, String> {
     let output = Command::new("nmcli")
         .args([

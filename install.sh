@@ -19,14 +19,14 @@ if [ "$EUID" -ne 0 ]; then
   exit 1
 fi
 
-# Locate the AppImage
+# Locate the compiled Slint binary
 PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-APPIMAGE_SRC="$PROJECT_DIR/src-tauri/target/release/bundle/appimage/wiwarp_0.1.0_amd64.AppImage"
-ICON_SRC="$PROJECT_DIR/src-tauri/icons/icon.svg"
+BINARY_SRC="$PROJECT_DIR/target/release/netwarp-manager"
+ICON_SRC="$PROJECT_DIR/tauri-backup/src-tauri/icons/icon.svg"
 
-if [ ! -f "$APPIMAGE_SRC" ]; then
-  echo -e "${RED}Error: AppImage not found at $APPIMAGE_SRC${NC}"
-  echo -e "Please ensure you have built the application using 'npm run tauri build' first."
+if [ ! -f "$BINARY_SRC" ]; then
+  echo -e "${RED}Error: NetWarp Slint binary not found at $BINARY_SRC${NC}"
+  echo -e "Please ensure you have built the application using 'cargo build --release' first."
   exit 1
 fi
 
@@ -34,10 +34,10 @@ fi
 echo -e "${BLUE}Creating directory /opt/wiwarp...${NC}"
 mkdir -p /opt/wiwarp
 
-# 2. Copy AppImage and make it executable
-echo -e "${BLUE}Copying AppImage to /opt/wiwarp/wiwarp.AppImage...${NC}"
-cp "$APPIMAGE_SRC" /opt/wiwarp/wiwarp.AppImage
-chmod +x /opt/wiwarp/wiwarp.AppImage
+# 2. Copy binary and make it executable
+echo -e "${BLUE}Copying Slint binary to /opt/wiwarp/netwarp-manager...${NC}"
+cp "$BINARY_SRC" /opt/wiwarp/netwarp-manager
+chmod +x /opt/wiwarp/netwarp-manager
 
 # 3. Copy application icon
 if [ -f "$ICON_SRC" ]; then
@@ -51,9 +51,8 @@ fi
 echo -e "${BLUE}Creating terminal command '/usr/local/bin/wiwarp'...${NC}"
 cat << 'EOF' > /usr/local/bin/wiwarp
 #!/bin/bash
-# Terminal wrapper for WiWarp (NetWarp Manager)
-export WEBKIT_DISABLE_COMPOSITING_MODE=1
-exec /opt/wiwarp/wiwarp.AppImage "$@"
+# Terminal wrapper for WiWarp (NetWarp Manager - Slint Engine)
+exec /opt/wiwarp/netwarp-manager "$@"
 EOF
 
 chmod +x /usr/local/bin/wiwarp
@@ -63,8 +62,8 @@ echo -e "${BLUE}Creating application launcher shortcut...${NC}"
 cat << EOF > /usr/share/applications/wiwarp.desktop
 [Desktop Entry]
 Name=WiWarp
-Comment=Manage Wi-Fi and Cloudflare WARP connections seamlessly
-Exec=env WEBKIT_DISABLE_COMPOSITING_MODE=1 /opt/wiwarp/wiwarp.AppImage
+Comment=Manage Wi-Fi and Cloudflare WARP connections seamlessly (Slint Native UI)
+Exec=/opt/wiwarp/netwarp-manager
 Icon=/opt/wiwarp/icon.svg
 Terminal=false
 Type=Application
@@ -73,8 +72,9 @@ Keywords=wifi;warp;cloudflare;network;vpn;
 StartupNotify=true
 EOF
 
-echo -e "${GREEN}${BOLD}✔ WiWarp has been successfully installed!${NC}"
+echo -e "${GREEN}${BOLD}✔ WiWarp Slint Native has been successfully installed!${NC}"
 echo -e "--------------------------------------------------"
 echo -e "1. You can now launch it from the application menu (search for ${BOLD}WiWarp${NC})."
 echo -e "2. Or run it directly from the terminal using the command: ${BOLD}wiwarp${NC}"
 echo -e "--------------------------------------------------"
+

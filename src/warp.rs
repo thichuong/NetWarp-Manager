@@ -33,7 +33,6 @@ fn find_terminal() -> Option<(String, Vec<String>)> {
 
 /// Creates an interactive terminal bash script to guide the user through installing Cloudflare WARP,
 /// then opens it in an available terminal emulator on Fedora/Linux.
-#[tauri::command]
 pub async fn install_warp() -> Result<String, String> {
     println!("[WARP Installer] Starting Cloudflare WARP interactive installer process...");
 
@@ -242,7 +241,6 @@ read -r
 /// Enables or disables Cloudflare WARP.
 /// If connect is true -> runs `warp-cli connect`
 /// If connect is false -> runs `warp-cli disconnect`
-#[tauri::command]
 pub async fn warp_toggle(connect: bool) -> Result<String, String> {
     let action = if connect { "connect" } else { "disconnect" };
     let output = Command::new("warp-cli")
@@ -261,7 +259,6 @@ pub async fn warp_toggle(connect: bool) -> Result<String, String> {
 
 /// Retrieves the connection status of Cloudflare WARP.
 /// Runs `warp-cli status` and parses the output.
-#[tauri::command]
 pub async fn get_warp_status() -> Result<String, String> {
     let output_result = Command::new("warp-cli").arg("status").output();
 
@@ -298,7 +295,6 @@ pub async fn get_warp_status() -> Result<String, String> {
 
 /// Retrieves the current operating mode of WARP.
 /// Runs `warp-cli settings list` and parses the "Mode:" line.
-#[tauri::command]
 pub async fn get_warp_mode() -> Result<String, String> {
     let output = Command::new("warp-cli")
         .args(["settings", "list"])
@@ -344,7 +340,6 @@ pub async fn get_warp_mode() -> Result<String, String> {
 
 /// Configures a new operating mode for WARP.
 /// Runs `warp-cli mode <mode>`
-#[tauri::command]
 pub async fn set_warp_mode(mode: String) -> Result<String, String> {
     let output = Command::new("warp-cli")
         .args(["mode", &mode])
