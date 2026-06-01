@@ -535,6 +535,22 @@ async function handleModeChange(mode) {
   logMessage(`Switching WARP mode to: ${mode.toUpperCase()}...`);
   showToast(`Switching to ${mode.toUpperCase()} mode...`);
 
+  // Show visual cue that connection is updating
+  if (warpStatusText) {
+    warpStatusText.textContent = "Connecting...";
+    warpStatusText.className = "text-xs font-semibold mt-1 text-amber-400 uppercase tracking-widest";
+  }
+  if (ledDot) {
+    ledDot.className = "relative inline-flex rounded-full h-4 w-4 bg-amber-500 shadow-[0_0_12px_rgba(245,158,11,0.7)] transition-all duration-300";
+  }
+  if (ledPing) {
+    ledPing.className = "animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75";
+  }
+  if (traceWarpBadge) {
+    traceWarpBadge.textContent = "CONNECTING";
+    traceWarpBadge.className = "bg-amber-500/10 text-amber-400 border border-amber-500/20 px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-wider transition-all duration-300";
+  }
+
   try {
     const res = await invoke("set_warp_mode", { mode });
     showToast(`Mode switched to ${mode.toUpperCase()}!`);
@@ -547,8 +563,11 @@ async function handleModeChange(mode) {
   } finally {
     isSettingMode = false;
     disableModeButtons(false);
-    // Instantly trigger network diagnostics update to display new routing latency
-    updateNetworkDiagnostics();
+    // Delay triggering network diagnostics to let the WARP adapter complete routing tables assignment
+    setTimeout(() => {
+      updateNetworkDiagnostics();
+      getWarpStatus();
+    }, 1500);
   }
 }
 
@@ -770,12 +789,19 @@ async function runQuickPings() {
   try {
     const results = await invoke("ping_multiple", { targets: ["1.1.1.1", "8.8.8.8"] });
     
+    // Check if system is currently switching modes or connecting
+    const statusText = warpStatusText ? warpStatusText.textContent.toLowerCase() : "";
+    const isConnecting = isSettingMode || statusText.includes("connecting") || statusText.includes("updating");
+
     results.forEach(res => {
       if (res.target === "1.1.1.1") {
         if (pingCloudflare) {
           if (res.latency !== null) {
             pingCloudflare.textContent = `${res.latency.toFixed(1)} ms`;
             pingCloudflare.className = "text-xs font-black text-teal-400 font-mono";
+          } else if (isConnecting) {
+            pingCloudflare.textContent = "Connecting...";
+            pingCloudflare.className = "text-xs font-bold text-amber-400 font-mono";
           } else {
             pingCloudflare.textContent = "Offline";
             pingCloudflare.className = "text-xs font-black text-red-500 font-mono";
@@ -786,6 +812,9 @@ async function runQuickPings() {
           if (res.latency !== null) {
             pingGoogle.textContent = `${res.latency.toFixed(1)} ms`;
             pingGoogle.className = "text-xs font-black text-blue-400 font-mono";
+          } else if (isConnecting) {
+            pingGoogle.textContent = "Connecting...";
+            pingGoogle.className = "text-xs font-bold text-amber-400 font-mono";
           } else {
             pingGoogle.textContent = "Offline";
             pingGoogle.className = "text-xs font-black text-red-500 font-mono";
@@ -795,13 +824,16 @@ async function runQuickPings() {
     });
   } catch (e) {
     console.error("Failed to run quick pings:", e);
+    const statusText = warpStatusText ? warpStatusText.textContent.toLowerCase() : "";
+    const isConnecting = isSettingMode || statusText.includes("connecting") || statusText.includes("updating");
+    
     if (pingCloudflare) {
-      pingCloudflare.textContent = "Offline";
-      pingCloudflare.className = "text-xs font-black text-red-500 font-mono";
+      pingCloudflare.textContent = isConnecting ? "Connecting..." : "Offline";
+      pingCloudflare.className = isConnecting ? "text-xs font-bold text-amber-400 font-mono" : "text-xs font-black text-red-500 font-mono";
     }
     if (pingGoogle) {
-      pingGoogle.textContent = "Offline";
-      pingGoogle.className = "text-xs font-black text-red-500 font-mono";
+      pingGoogle.textContent = isConnecting ? "Connecting..." : "Offline";
+      pingGoogle.className = isConnecting ? "text-xs font-bold text-amber-400 font-mono" : "text-xs font-black text-red-500 font-mono";
     }
   }
 }
@@ -842,14 +874,31 @@ async function runIPTracing() {
     }
   } catch (e) {
     console.error("IP trace error:", e);
-    if (traceIpAddress) traceIpAddress.textContent = "Offline/Fail";
-    if (traceIsp) traceIsp.textContent = "Connection offline";
-    if (traceLocation) traceLocation.textContent = "Unknown location";
-    if (traceCoords) traceCoords.textContent = "N/A";
     
-    if (traceWarpBadge) {
-      traceWarpBadge.textContent = "OFFLINE";
-      traceWarpBadge.className = "bg-slate-800 text-slate-500 border border-slate-700 px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-wider";
+    // Check if system is currently switching modes or connecting
+    const statusText = warpStatusText ? warpStatusText.textContent.toLowerCase() : "";
+    const isConnecting = isSettingMode || statusText.includes("connecting") || statusText.includes("updating");
+    
+    if (isConnecting) {
+      if (traceIpAddress) traceIpAddress.textContent = "Connecting...";
+      if (traceIsp) traceIsp.textContent = "Updating routing...";
+      if (traceLocation) traceLocation.textContent = "Locating...";
+      if (traceCoords) traceCoords.textContent = "Lat --, Lon --";
+      
+      if (traceWarpBadge) {
+        traceWarpBadge.textContent = "CONNECTING";
+        traceWarpBadge.className = "bg-amber-500/10 text-amber-400 border border-amber-500/20 px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-wider transition-all duration-300";
+      }
+    } else {
+      if (traceIpAddress) traceIpAddress.textContent = "Offline/Fail";
+      if (traceIsp) traceIsp.textContent = "Connection offline";
+      if (traceLocation) traceLocation.textContent = "Unknown location";
+      if (traceCoords) traceCoords.textContent = "N/A";
+      
+      if (traceWarpBadge) {
+        traceWarpBadge.textContent = "OFFLINE";
+        traceWarpBadge.className = "bg-slate-800 text-slate-500 border border-slate-700 px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-wider";
+      }
     }
   }
 }

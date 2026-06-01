@@ -49,12 +49,22 @@ pub async fn ping_target(target: Option<String>) -> Result<String, String> {
 }
 
 /// Traces the current public IP info using a geo-location JSON API.
-/// Uses the system command: `curl -s http://ip-api.com/json/`
+/// Uses the system command: `curl -s --retry 3 --retry-delay 1 --connect-timeout 3 http://ip-api.com/json/`
 /// This bypasses frontend CORS restrictions while providing accurate geo details.
+/// Added retry parameters to gracefully handle temporary network dropouts during WARP mode switching.
 #[tauri::command]
 pub async fn trace_ip() -> Result<String, String> {
     let output = Command::new("curl")
-        .args(["-s", "http://ip-api.com/json/"])
+        .args([
+            "-s",
+            "--retry",
+            "3",
+            "--retry-delay",
+            "1",
+            "--connect-timeout",
+            "3",
+            "http://ip-api.com/json/",
+        ])
         .output()
         .map_err(|e| format!("Failed to execute curl command: {}", e))?;
 
