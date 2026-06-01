@@ -22,7 +22,7 @@ fi
 # Locate the AppImage
 PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 APPIMAGE_SRC="$PROJECT_DIR/src-tauri/target/release/bundle/appimage/wiwarp_0.1.0_amd64.AppImage"
-ICON_SRC="$PROJECT_DIR/src-tauri/icons/icon.png"
+ICON_SRC="$PROJECT_DIR/src-tauri/icons/icon.svg"
 
 if [ ! -f "$APPIMAGE_SRC" ]; then
   echo -e "${RED}Error: AppImage not found at $APPIMAGE_SRC${NC}"
@@ -42,7 +42,7 @@ chmod +x /opt/wiwarp/wiwarp.AppImage
 # 3. Copy application icon
 if [ -f "$ICON_SRC" ]; then
   echo -e "${BLUE}Copying application icon...${NC}"
-  cp "$ICON_SRC" /opt/wiwarp/icon.png
+  cp "$ICON_SRC" /opt/wiwarp/icon.svg
 else
   echo -e "${RED}Warning: Icon not found at $ICON_SRC. Skipping icon installation.${NC}"
 fi
@@ -65,7 +65,7 @@ cat << EOF > /usr/share/applications/wiwarp.desktop
 Name=WiWarp
 Comment=Manage Wi-Fi and Cloudflare WARP connections seamlessly
 Exec=env WEBKIT_DISABLE_COMPOSITING_MODE=1 /opt/wiwarp/wiwarp.AppImage
-Icon=/opt/wiwarp/icon.png
+Icon=/opt/wiwarp/icon.svg
 Terminal=false
 Type=Application
 Categories=Network;Utility;System;

@@ -36,3 +36,24 @@ desktop.ini
 *.njsproj
 *.sln
 *.sw?
+
+# Rust / Cargo additional ignores
+**/target/
+Cargo.bak
+**/*.rs.bk
+
+# Tauri local dev files
+src-tauri/.tauri
+
+# Linter and compiler caches
+.cache/
+.parcel-cache/
+.eslintcache
+.stylelintcache
+
+# Local backup & temporary files
+*.bak
+*.tmp
+*.temp
+*~
+
