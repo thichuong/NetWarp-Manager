@@ -24,11 +24,13 @@
 *   **Ưu tiên mạng hiện tại**: Tự động đưa Wi-Fi đang kết nối lên đầu danh sách với huy hiệu (Badge) **"Đã kết nối"** và hiệu ứng LED xanh dịu mắt.
 
 ### 🛡️ 2. Tích Hợp Sâu Cloudflare WARP (1.1.1.1)
-*   **Cài đặt 1-Click tự động**:
-    1.  Tải gói cài đặt `cloudflare-warp` RPM chính thức bằng `dnf download`.
-    2.  Sử dụng cơ chế `glob` để quét và định vị chính xác tệp `.rpm` cục bộ.
-    3.  Thực hiện cài đặt thông qua `pkexec rpm -ivh --nodeps` (hộp thoại đồ họa Polkit tự động hiện lên yêu cầu xác thực bảo mật).
-    4.  Kích hoạt và khởi động dịch vụ hệ thống `warp-svc` tức thì qua `systemctl`.
+*   **Trình Cài Đặt Terminal Tương Tác**:
+    1.  Tự động phát hiện các ứng dụng Terminal Emulator (như GNOME Terminal, Konsole, Ptyxis, v.v.) hiện có trên máy người dùng và mở một cửa sổ dòng lệnh thực tế.
+    2.  Chạy một kịch bản tương tác (Interactive Bash Script) bằng Tiếng Việt hướng dẫn người dùng cài đặt từng bước an toàn qua `sudo`.
+    3.  **Tự động phát hiện thông minh:** Nếu phát hiện Cloudflare WARP đã được cài đặt sẵn, script sẽ đề xuất nhấn **ENTER** để bỏ qua cài đặt gói, tránh lỗi xung đột hệ thống.
+    4.  **Vượt qua Dependency cứng nhắc:** Tải gói RPM bằng `dnf download` và cài đặt bằng lệnh nâng cấp `sudo rpm -Uvh --nodeps` giúp bỏ qua lỗi thiếu thư viện đồ họa lỗi thời `webkit2gtk3` trên Fedora mới.
+    5.  **Tự động dọn dẹp toàn diện (Self-cleaning Trap):** Sử dụng các bẫy tín hiệu `trap` để tự động xóa sạch toàn bộ tệp RPM tạm (~220MB) và **tự xóa chính tệp script** `.sh` tạm khi kết thúc thành công hoặc khi người dùng bấm `Ctrl+C` hủy bỏ giữa chừng.
+    6.  Kích hoạt dịch vụ hệ thống `warp-svc` và hướng dẫn đăng ký client mới (`warp-cli registration new` - xử lý đồng ý TOS trực quan trong TTY thật).
 *   **Bật/Tắt dễ dàng**: Công tắc Toggle Switch phong cách iOS hiện đại để bật/tắt kết nối WARP chỉ với một chạm.
 *   **Thăm dò trạng thái liên tục (Polling)**: Đồng bộ hóa giao diện người dùng theo thời gian thực (mỗi 3 giây) với các trạng thái: *Đang kết nối...*, *Đã kết nối*, *Đã ngắt kết nối*, hoặc *Chưa cài đặt*.
 *   **Hệ thống đèn LED Cyberpunk**: Đèn LED chỉ báo trạng thái kết nối màu Đỏ/Vàng/Xanh/Xám có hiệu ứng nhấp nháy (LED Pulse) cực kỳ bắt mắt.
