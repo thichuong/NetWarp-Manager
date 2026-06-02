@@ -42,6 +42,7 @@ export struct IPGeolocatorInfo {
 
 export component AppWindow inherits Window {
     title: "WiWarp - Wi-Fi & Cloudflare WARP Manager";
+    icon: @image-url("../assets/logo.svg");
     width: 1600px;
     height: 900px;
     background: #020617;
@@ -163,22 +164,10 @@ export component AppWindow inherits Window {
                     alignment: start;
                     
                     // Logo Emblem (WiWarp Shield)
-                    Rectangle {
+                    Image {
+                        source: @image-url("../assets/logo.svg");
                         width: 42px;
                         height: 42px;
-                        background: #020617;
-                        border-radius: 12px;
-                        border-width: 1px;
-                        border-color: #10b981;
-                        
-                        Text {
-                            text: "W";
-                            font-size: 20px;
-                            font-weight: 900;
-                            color: #10b981;
-                            horizontal-alignment: center;
-                            vertical-alignment: center;
-                        }
                     }
 
                     VerticalLayout {

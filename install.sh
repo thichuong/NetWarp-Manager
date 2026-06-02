@@ -22,7 +22,7 @@ fi
 # Locate the compiled Slint binary
 PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 BINARY_SRC="$PROJECT_DIR/target/release/netwarp-manager"
-ICON_SRC="$PROJECT_DIR/tauri-backup/src-tauri/icons/icon.svg"
+ICON_SRC="$PROJECT_DIR/assets/logo.svg"
 
 if [ ! -f "$BINARY_SRC" ]; then
   echo -e "${RED}Error: NetWarp Slint binary not found at $BINARY_SRC${NC}"
