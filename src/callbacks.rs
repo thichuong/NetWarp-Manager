@@ -206,7 +206,7 @@ pub fn register_callbacks(ui: &AppWindow) {
                             // Trigger immediate active connection refresh
                             let ui_refresh_weak = ui.as_weak();
                             tokio::spawn(async move {
-                                if let Ok(Some(active)) = wifi::get_active_wifi().await {
+                                if let Ok(Some(active)) = wifi::get_active_wifi(true).await {
                                     let slint_active = WifiNetwork {
                                         bssid: active.bssid.into(),
                                         ssid: active.ssid.into(),

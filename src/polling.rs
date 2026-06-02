@@ -153,44 +153,119 @@ pub fn start_polling_loops(ui: &AppWindow) {
         }
     });
 
-    // Loop 3: Wi-Fi active interface, Cloudflare WARP Daemon status and Mode (1 second interval)
+    // Loop 3: Wi-Fi active interface, Cloudflare WARP Daemon status and Mode (3 second interval)
     let ui_status_weak = ui_weak.clone();
     tokio::spawn(async move {
         let mut last_warp_state = String::new();
-        let mut last_warp_mode = String::new();
         let mut last_wifi_ssid = String::new();
+        let mut cached_wifi_details: Option<WifiNetwork> = None;
         let mut geo_cooldown_counter = 0;
+
+        // Fetch initial WARP Mode on application launch
+        let initial_warp_mode = warp::get_warp_mode().await.unwrap_or_else(|_| "DoH".to_string());
+        let mut last_warp_mode = initial_warp_mode.clone();
+        let ui_init_mode = ui_status_weak.clone();
+        let warp_mode_init_clone = initial_warp_mode.clone();
+        let _ = ui_init_mode.upgrade_in_event_loop(move |ui| {
+            ui.set_warp_mode_badge(format!("Mode: {}", warp_mode_init_clone).into());
+            ui.set_warp_mode_doh_active(!warp_mode_init_clone.to_lowercase().contains("warp"));
+        });
 
         loop {
             let mut current_wifi_ssid = String::new();
+            let mut active_wifi_to_set = None;
+            let mut should_update_wifi_ui = false;
 
-            // Polling active Wi-Fi connection
-            if let Ok(active_opt) = wifi::get_active_wifi().await {
-                if let Some(ref active) = active_opt {
+            // Polling active Wi-Fi connection (optimized)
+            match wifi::get_active_wifi(false).await {
+                Ok(Some(active)) => {
                     current_wifi_ssid = active.ssid.clone();
+                    
+                    if active.ssid == last_wifi_ssid && cached_wifi_details.is_some() {
+                        // Apply cached static details (MAC, IP, Gateway, DNS) from Slint cache to save CPU process forks
+                        if let Some(ref cache) = cached_wifi_details {
+                            let slint_active = WifiNetwork {
+                                bssid: active.bssid.into(),
+                                ssid: active.ssid.into(),
+                                channel: active.channel,
+                                frequency: active.frequency.into(),
+                                band: active.band.into(),
+                                signal: active.signal,
+                                security: active.security.into(),
+                                active: active.active,
+                                rate: active.rate.unwrap_or_default().into(),
+                                device: cache.device.clone(),
+                                mac: cache.mac.clone(),
+                                ip_address: cache.ip_address.clone(),
+                                gateway: cache.gateway.clone(),
+                                dns_primary: cache.dns_primary.clone(),
+                                dns_secondary: cache.dns_secondary.clone(),
+                            };
+                            active_wifi_to_set = Some(slint_active);
+                            should_update_wifi_ui = true;
+                        }
+                    } else {
+                        // SSID changed or cache is empty, fetch full details with CLI forks
+                        if let Ok(Some(active_full)) = wifi::get_active_wifi(true).await {
+                            let slint_active = WifiNetwork {
+                                bssid: active_full.bssid.into(),
+                                ssid: active_full.ssid.clone().into(),
+                                channel: active_full.channel,
+                                frequency: active_full.frequency.into(),
+                                band: active_full.band.into(),
+                                signal: active_full.signal,
+                                security: active_full.security.into(),
+                                active: active_full.active,
+                                rate: active_full.rate.unwrap_or_default().into(),
+                                device: active_full.device.unwrap_or_default().into(),
+                                mac: active_full.mac.unwrap_or_default().into(),
+                                ip_address: active_full.ip_address.unwrap_or_default().into(),
+                                gateway: active_full.gateway.unwrap_or_default().into(),
+                                dns_primary: active_full.dns_primary.unwrap_or_default().into(),
+                                dns_secondary: active_full.dns_secondary.unwrap_or_default().into(),
+                            };
+                            cached_wifi_details = Some(slint_active.clone());
+                            last_wifi_ssid = active_full.ssid.clone();
+                            active_wifi_to_set = Some(slint_active);
+                            should_update_wifi_ui = true;
+                        } else {
+                            // Fallback if full info query failed
+                            let slint_active = WifiNetwork {
+                                bssid: active.bssid.into(),
+                                ssid: active.ssid.into(),
+                                channel: active.channel,
+                                frequency: active.frequency.into(),
+                                band: active.band.into(),
+                                signal: active.signal,
+                                security: active.security.into(),
+                                active: active.active,
+                                rate: active.rate.unwrap_or_default().into(),
+                                device: "--".into(),
+                                mac: "--".into(),
+                                ip_address: "--".into(),
+                                gateway: "--".into(),
+                                dns_primary: "--".into(),
+                                dns_secondary: "--".into(),
+                            };
+                            active_wifi_to_set = Some(slint_active);
+                            should_update_wifi_ui = true;
+                        }
+                    }
                 }
+                Ok(None) => {
+                    cached_wifi_details = None;
+                    last_wifi_ssid = String::new();
+                    should_update_wifi_ui = true; // Set to "Not Connected"
+                }
+                Err(_) => {}
+            }
 
+            if should_update_wifi_ui {
                 let ui_wifi_weak = ui_status_weak.clone();
+                let active_opt = active_wifi_to_set.clone();
                 let _ = ui_wifi_weak.upgrade_in_event_loop(move |ui| {
                     if let Some(active) = active_opt {
-                        let slint_active = WifiNetwork {
-                            bssid: active.bssid.into(),
-                            ssid: active.ssid.into(),
-                            channel: active.channel,
-                            frequency: active.frequency.into(),
-                            band: active.band.into(),
-                            signal: active.signal,
-                            security: active.security.into(),
-                            active: active.active,
-                            rate: active.rate.unwrap_or_default().into(),
-                            device: active.device.unwrap_or_default().into(),
-                            mac: active.mac.unwrap_or_default().into(),
-                            ip_address: active.ip_address.unwrap_or_default().into(),
-                            gateway: active.gateway.unwrap_or_default().into(),
-                            dns_primary: active.dns_primary.unwrap_or_default().into(),
-                            dns_secondary: active.dns_secondary.unwrap_or_default().into(),
-                        };
-                        ui.set_active_wifi(slint_active);
+                        ui.set_active_wifi(active);
                     } else {
                         ui.set_active_wifi(WifiNetwork {
                             ssid: "Not Connected".into(),
@@ -217,19 +292,20 @@ pub fn start_polling_loops(ui: &AppWindow) {
             let warp_status = warp::get_warp_status()
                 .await
                 .unwrap_or_else(|_| "Disconnected".to_string());
-            let warp_mode = warp::get_warp_mode()
-                .await
-                .unwrap_or_else(|_| "DoH".to_string());
 
-            let ui_warp_inner = ui_status_weak.clone();
+            let mut warp_mode = last_warp_mode.clone();
 
             // Detect if connection state, warp mode, or wifi SSID changed to trigger immediate Geo IP refresh
+            // 3-second cycle: geo_cooldown_counter >= 10 matches 30 seconds interval
             let state_changed = warp_status != last_warp_state
-                || warp_mode != last_warp_mode
                 || current_wifi_ssid != last_wifi_ssid
-                || geo_cooldown_counter >= 30; // Periodic check every 30 seconds
+                || geo_cooldown_counter >= 10;
 
             if state_changed {
+                // Refresh WARP mode on state change or periodically to stay perfectly in sync
+                if let Ok(current_mode) = warp::get_warp_mode().await {
+                    warp_mode = current_mode;
+                }
                 last_warp_state = warp_status.clone();
                 last_warp_mode = warp_mode.clone();
                 last_wifi_ssid = current_wifi_ssid.clone();
@@ -238,17 +314,21 @@ pub fn start_polling_loops(ui: &AppWindow) {
                 geo_cooldown_counter += 1;
             }
 
+            let ui_warp_inner = ui_status_weak.clone();
+            let warp_status_clone = warp_status.clone();
+            let warp_mode_clone = warp_mode.clone();
             let ui_geo_trigger = ui_warp_inner.clone();
-            let _ = ui_warp_inner.upgrade_in_event_loop(move |ui| {
-                ui.set_warp_status_text(warp_status.clone().into());
 
-                if warp_status.to_lowercase().contains("connected") {
+            let _ = ui_warp_inner.upgrade_in_event_loop(move |ui| {
+                ui.set_warp_status_text(warp_status_clone.clone().into());
+
+                if warp_status_clone.to_lowercase().contains("connected") {
                     ui.set_warp_status_color("#10b981".into()); // Green
                     ui.set_warp_network_text(
                         "Your network traffic is encrypted & protected.".into(),
                     );
                     ui.set_warp_toggle_state(true);
-                } else if warp_status.to_lowercase().contains("connecting") {
+                } else if warp_status_clone.to_lowercase().contains("connecting") {
                     ui.set_warp_status_color("#f59e0b".into()); // Orange pulse
                     ui.set_warp_network_text("Establishing secure Cloudflare tunnel...".into());
                     ui.set_warp_toggle_state(true);
@@ -260,8 +340,8 @@ pub fn start_polling_loops(ui: &AppWindow) {
                     ui.set_warp_toggle_state(false);
                 }
 
-                ui.set_warp_mode_badge(format!("Mode: {}", warp_mode).into());
-                ui.set_warp_mode_doh_active(!warp_mode.to_lowercase().contains("warp"));
+                ui.set_warp_mode_badge(format!("Mode: {}", warp_mode_clone).into());
+                ui.set_warp_mode_doh_active(!warp_mode_clone.to_lowercase().contains("warp"));
 
                 // Immediate trigger Geolocation curl fetch if state toggled
                 if state_changed {
@@ -269,11 +349,11 @@ pub fn start_polling_loops(ui: &AppWindow) {
                 }
             });
 
-            tokio::time::sleep(std::time::Duration::from_millis(1000)).await;
+            tokio::time::sleep(std::time::Duration::from_millis(3000)).await;
         }
     });
 
-    // Loop 4: Ping Diagnostics Latencies (1 second interval)
+    // Loop 4: Ping Diagnostics Latencies (5 second interval)
     let ui_ping_weak = ui_weak.clone();
     tokio::spawn(async move {
         loop {
@@ -296,7 +376,7 @@ pub fn start_polling_loops(ui: &AppWindow) {
                     }
                 });
             }
-            tokio::time::sleep(std::time::Duration::from_millis(1000)).await;
+            tokio::time::sleep(std::time::Duration::from_millis(5000)).await;
         }
     });
 

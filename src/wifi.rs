@@ -535,7 +535,7 @@ fn get_active_device_details() -> ActiveDeviceDetails {
 
 /// Retrieves the details of the currently active Wi-Fi connection.
 /// Uses a quick nmcli cached query without forcing a hardware scan.
-pub async fn get_active_wifi() -> Result<Option<WifiNetwork>, String> {
+pub async fn get_active_wifi(full_details: bool) -> Result<Option<WifiNetwork>, String> {
     let output = Command::new("nmcli")
         .args([
             "-t",
@@ -597,8 +597,28 @@ pub async fn get_active_wifi() -> Result<Option<WifiNetwork>, String> {
                 ssid
             };
 
-            let details = get_active_device_details();
-            let rate_val = details.realtime_rate.unwrap_or(rate);
+            let (rate_val, device, mac, ip_address, gateway, dns_primary, dns_secondary) = if full_details {
+                let details = get_active_device_details();
+                (
+                    details.realtime_rate.unwrap_or(rate),
+                    details.device,
+                    details.mac,
+                    details.ip_address,
+                    details.gateway,
+                    details.dns_primary,
+                    details.dns_secondary,
+                )
+            } else {
+                (
+                    rate,
+                    None,
+                    None,
+                    None,
+                    None,
+                    None,
+                    None,
+                )
+            };
 
             return Ok(Some(WifiNetwork {
                 bssid,
@@ -610,12 +630,12 @@ pub async fn get_active_wifi() -> Result<Option<WifiNetwork>, String> {
                 security,
                 active,
                 rate: Some(rate_val),
-                device: details.device,
-                mac: details.mac,
-                ip_address: details.ip_address,
-                gateway: details.gateway,
-                dns_primary: details.dns_primary,
-                dns_secondary: details.dns_secondary,
+                device,
+                mac,
+                ip_address,
+                gateway,
+                dns_primary,
+                dns_secondary,
             }));
         }
     }
