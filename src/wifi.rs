@@ -185,18 +185,46 @@ pub async fn get_wifi_list() -> Result<Vec<WifiNetwork>, AppError> {
 /// and `nmcli connection modify <uuid> 802-11-wireless.bssid <bssid>` for BSSID locking.
 pub async fn connect_wifi(
     bssid: String,
-    _ssid: String,
+    ssid: String,
     password: Option<String>,
     lock_bssid: bool,
 ) -> Result<String, AppError> {
+    // Check if a connection profile for this SSID already exists
+    let profile_exists = Command::new("nmcli")
+        .args(["connection", "show", &ssid])
+        .output()
+        .map(|o| o.status.success())
+        .unwrap_or(false);
+
+    let use_password = if profile_exists {
+        // Fetch the saved password for comparison
+        let saved_pwd = get_wifi_password(ssid.clone()).await.unwrap_or_default();
+        let input_pwd = password.as_deref().unwrap_or("").trim();
+
+        if input_pwd != saved_pwd.trim() {
+            // User entered a new password. To avoid the "key-mgmt: property is missing" bug
+            // when connecting to an existing profile with a new password, we delete the existing
+            // profile and let nmcli create a clean new one with the new password.
+            let _ = Command::new("nmcli")
+                .args(["connection", "delete", &ssid])
+                .output();
+            true
+        } else {
+            false // Password matches the saved one, connect without password arg to avoid the bug
+        }
+    } else {
+        true // New network, use the provided password if any
+    };
+
     let mut cmd = Command::new("nmcli");
     cmd.arg("dev").arg("wifi").arg("connect").arg(&bssid);
 
-    if let Some(ref pwd) = password
-        && !pwd.trim().is_empty()
-    {
-        cmd.arg("password").arg(pwd);
-    }
+    if use_password
+        && let Some(ref pwd) = password
+            && !pwd.trim().is_empty()
+        {
+            cmd.arg("password").arg(pwd);
+        }
 
     let output = cmd.output().map_err(|e| {
         AppError::WifiConnect(format!("Failed to invoke connection command: {}", e))
