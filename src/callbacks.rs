@@ -3,7 +3,7 @@ use slint::ComponentHandle;
 use std::rc::Rc;
 
 /// Registers all user interaction callbacks from Slint UI to Rust backend logic.
-// Developer Warning: Refer to architecture.md Section 6 for full Slint-Rust 
+// Developer Warning: Refer to architecture.md Section 6 for full Slint-Rust
 // synchronization rules before modifying callbacks here!
 pub fn register_callbacks(ui: &AppWindow) {
     let ui_weak = ui.as_weak();
@@ -16,7 +16,6 @@ pub fn register_callbacks(ui: &AppWindow) {
             ui.set_show_password_modal(false);
         }
     });
-
 
     // Callback 3: Trigger Wi-Fi network change list
     let ui_change_weak = ui_weak.clone();

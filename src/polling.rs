@@ -4,7 +4,7 @@ use std::rc::Rc;
 use std::time::Instant;
 
 /// Starts all background polling loop engines for network status, speeds, pings, and animations.
-// Developer Warning: Refer to architecture.md Section 6 for full Slint-Rust 
+// Developer Warning: Refer to architecture.md Section 6 for full Slint-Rust
 // synchronization rules before modifying state polling loops here!
 pub fn start_polling_loops(ui: &AppWindow) {
     let ui_weak = ui.as_weak();
@@ -331,6 +331,7 @@ pub fn start_polling_loops(ui: &AppWindow) {
             let ui_warp_inner = ui_status_weak.clone();
             let warp_status_clone = warp_status.clone();
             let ui_geo_trigger = ui_warp_inner.clone();
+            let ui_mode_trigger = ui_warp_inner.clone();
 
             let _ = ui_warp_inner.upgrade_in_event_loop(move |ui| {
                 ui.set_warp_status_text(warp_status_clone.clone().into());
@@ -353,9 +354,21 @@ pub fn start_polling_loops(ui: &AppWindow) {
                     ui.set_warp_toggle_state(false);
                 }
 
-                // Immediate trigger Geolocation curl fetch if state toggled
+                // Immediate trigger Geolocation curl fetch and WARP mode refresh if state toggled
                 if state_changed {
                     tokio::spawn(helpers::refresh_geoip(ui_geo_trigger));
+
+                    // Asynchronously fetch current operating mode and update UI badge to stay in sync
+                    tokio::spawn(async move {
+                        if let Ok(warp_mode) = warp::get_warp_mode().await {
+                            let _ = ui_mode_trigger.upgrade_in_event_loop(move |ui| {
+                                ui.set_warp_mode_badge(format!("Mode: {}", warp_mode).into());
+                                ui.set_warp_mode_doh_active(
+                                    !warp_mode.to_lowercase().contains("warp"),
+                                );
+                            });
+                        }
+                    });
                 }
             });
 

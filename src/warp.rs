@@ -184,6 +184,13 @@ else
 fi
 echo ""
 
+# Automatically connect and set operating mode to DoH after registration
+echo -e "${YELLOW}${BOLD}Tự động kết nối WARP và cấu hình chế độ DoH...${NC}"
+warp-cli connect
+warp-cli mode doh
+echo ""
+
+
 echo -e "${CYAN}============================================================${NC}"
 echo -e "${GREEN}${BOLD}               HOÀN THÀNH QUÁ TRÌNH CÀI ĐẶT!                  ${NC}"
 echo -e "${CYAN}============================================================${NC}"
