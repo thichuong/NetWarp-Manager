@@ -1,6 +1,9 @@
 // Header Panel component for WiWarp
 
 export component HeaderPanel inherits Rectangle {
+    in-out property <bool> is_fullscreen: false;
+    callback toggle_fullscreen_clicked();
+
     height: 70px;
     background: rgba(15, 23, 42, 0.45);
     border-radius: 20px;
@@ -98,6 +101,51 @@ export component HeaderPanel inherits Rectangle {
                         font-weight: 900;
                         color: #10b981;
                         vertical-alignment: center;
+                    }
+                }
+            }
+
+            VerticalLayout {
+                alignment: center;
+                Rectangle {
+                    width: 1px;
+                    height: 30px;
+                    background: #1e293b;
+                }
+            }
+
+            // Fullscreen Toggle Button
+            VerticalLayout {
+                alignment: center;
+                Rectangle {
+                    background: root.is_fullscreen ? rgba(59, 130, 246, 0.15) : rgba(30, 41, 59, 0.6);
+                    border-radius: 8px;
+                    border-width: 1px;
+                    border-color: root.is_fullscreen ? #3b82f6 : #334155;
+                    height: 32px;
+                    
+                    HorizontalLayout {
+                        padding-left: 12px;
+                        padding-right: 12px;
+                        spacing: 6px;
+                        alignment: center;
+                        
+                        Text {
+                            text: root.is_fullscreen ? "🗖" : "🖥️";
+                            font-size: 11px;
+                            vertical-alignment: center;
+                        }
+                        Text {
+                            text: root.is_fullscreen ? "WINDOWED" : "FULLSCREEN";
+                            font-size: 9.5px;
+                            font-weight: 900;
+                            color: root.is_fullscreen ? #3b82f6 : #cbd5e1;
+                            vertical-alignment: center;
+                        }
+                    }
+                    
+                    TouchArea {
+                        clicked => { root.toggle_fullscreen_clicked(); }
                     }
                 }
             }

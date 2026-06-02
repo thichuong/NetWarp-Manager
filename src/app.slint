@@ -15,11 +15,18 @@ import { WifiScanModal, PasswordModal } from "ui/modals.slint";
 export component AppWindow inherits Window {
     title: "WiWarp - Wi-Fi & Cloudflare WARP Manager";
     icon: @image-url("../assets/logo.svg");
-    width: 1600px;
-    height: 900px;
+    preferred-width: 1600px;
+    preferred-height: 900px;
+    min-width: 1280px;
+    min-height: 720px;
     background: #020617;
     default-font-family: "Outfit";
     default-font-size: 14px;
+
+    in-out property <bool> is_fullscreen: false;
+    callback toggle_fullscreen_clicked();
+
+    forward-focus: main_focus;
 
     // --- State Properties linked to Rust backend ---
     in-out property <WifiNetwork> active_wifi: {
@@ -91,81 +98,92 @@ export component AppWindow inherits Window {
     // Password input bindings
     in-out property <string> pwd_input_val: "";
 
-    // --- Layout ---
-    // Background glow decoration orbs
-    Rectangle {
-        x: -100px;
-        y: -100px;
-        width: 600px;
-        height: 600px;
-        border-radius: 300px;
-        background: rgba(16, 185, 129, 0.03); // emerald-500 low opacity
-    }
-
-    Rectangle {
-        x: 1100px;
-        y: 400px;
-        width: 600px;
-        height: 600px;
-        border-radius: 300px;
-        background: rgba(245, 158, 11, 0.02); // orange-500 low opacity
-    }
-
-    // Main App Container
-    VerticalLayout {
-        padding: 24px;
-        spacing: 16px;
-
-        // 1. Header Area
-        HeaderPanel {}
-
-        // 2. Main Workstation (Split 8/12 - 4/12 Grid simulation using HorizontalLayout)
-        HorizontalLayout {
-            spacing: 24px;
-            
-            // COLUMN 1: Network Diagnoser & Speedometer (8/12) -> Width roughly 1010px
-            VerticalLayout {
-                width: 1010px;
-                spacing: 16px;
-                
-                // Widget 1: Active Wifi connection detailed card (Accordion)
-                ActiveWifiPanel {
-                    active_wifi: root.active_wifi;
-                    change_network_clicked => { root.change_network_clicked(); }
-                }
-
-                // Widget 2: Realtime Speed cards & Cyber Sparkline Chart
-                SpeedMonitorPanel {
-                    speed_stats: root.speed_stats;
-                    download_history: root.download_history;
-                    upload_history: root.upload_history;
-                }
-
-                // Widget 3: Ping Diagnostics & Public IP Geolocator
-                DiagnosticsPanel {
-                    ping1: root.ping1;
-                    ping2: root.ping2;
-                    geo_info: root.geo_info;
-                }
-            }
-
-            // COLUMN 2: Cloudflare WARP Controller & mini logs (4/12) -> Width roughly 480px
-            WarpControlPanel {
-                width: 480px;
-                pulse_led: root.pulse_led;
-                warp_status_text: root.warp_status_text;
-                warp_status_color: root.warp_status_color;
-                warp_network_text: root.warp_network_text;
-                warp_mode_badge: root.warp_mode_badge;
-                warp_toggle_state: root.warp_toggle_state;
-                warp_mode_doh_active: root.warp_mode_doh_active;
-                console_logs: root.console_logs;
-                
-                warp_toggle_clicked(state) => { root.warp_toggle_clicked(state); }
-                warp_mode_clicked(mode) => { root.warp_mode_clicked(mode); }
-                install_rpm_clicked => { root.install_rpm_clicked(); }
+    main_focus := FocusScope {
+        KeyBinding {
+            keys: @keys(F11);
+            activated => {
+                root.toggle_fullscreen_clicked();
             }
         }
+
+        // --- Layout ---
+        // Background glow decoration orbs
+        Rectangle {
+            x: -100px;
+            y: -100px;
+            width: 600px;
+            height: 600px;
+            border-radius: 300px;
+            background: rgba(16, 185, 129, 0.03); // emerald-500 low opacity
+        }
+
+        Rectangle {
+            x: 1100px;
+            y: 400px;
+            width: 600px;
+            height: 600px;
+            border-radius: 300px;
+            background: rgba(245, 158, 11, 0.02); // orange-500 low opacity
+        }
+
+        // Main App Container
+        VerticalLayout {
+            padding: 24px;
+            spacing: 16px;
+
+            // 1. Header Area
+            HeaderPanel {
+                is_fullscreen: root.is_fullscreen;
+                toggle_fullscreen_clicked => { root.toggle_fullscreen_clicked(); }
+            }
+
+            // 2. Main Workstation (Split 8/12 - 4/12 Grid simulation using HorizontalLayout)
+            HorizontalLayout {
+                spacing: 24px;
+                
+                // COLUMN 1: Network Diagnoser & Speedometer (8/12)
+                VerticalLayout {
+                    horizontal-stretch: 2;
+                    spacing: 16px;
+                    
+                    // Widget 1: Active Wifi connection detailed card (Accordion)
+                    ActiveWifiPanel {
+                        active_wifi: root.active_wifi;
+                        change_network_clicked => { root.change_network_clicked(); }
+                    }
+
+                    // Widget 2: Realtime Speed cards & Cyber Sparkline Chart
+                    SpeedMonitorPanel {
+                        speed_stats: root.speed_stats;
+                        download_history: root.download_history;
+                        upload_history: root.upload_history;
+                    }
+
+                    // Widget 3: Ping Diagnostics & Public IP Geolocator
+                    DiagnosticsPanel {
+                        ping1: root.ping1;
+                        ping2: root.ping2;
+                        geo_info: root.geo_info;
+                    }
+                }
+
+                // COLUMN 2: Cloudflare WARP Controller & mini logs (4/12)
+                WarpControlPanel {
+                    horizontal-stretch: 1;
+                    pulse_led: root.pulse_led;
+                    warp_status_text: root.warp_status_text;
+                    warp_status_color: root.warp_status_color;
+                    warp_network_text: root.warp_network_text;
+                    warp_mode_badge: root.warp_mode_badge;
+                    warp_toggle_state: root.warp_toggle_state;
+                    warp_mode_doh_active: root.warp_mode_doh_active;
+                    console_logs: root.console_logs;
+                    
+                    warp_toggle_clicked(state) => { root.warp_toggle_clicked(state); }
+                    warp_mode_clicked(mode) => { root.warp_mode_clicked(mode); }
+                    install_rpm_clicked => { root.install_rpm_clicked(); }
+                }
+            }
 
         // 3. Footer Container
         Rectangle {
@@ -217,4 +235,5 @@ export component AppWindow inherits Window {
             root.connect_wifi_clicked(bssid, ssid, pwd, lock);
         }
     }
+}
 }

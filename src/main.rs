@@ -89,6 +89,24 @@ async fn main() -> Result<(), slint::PlatformError> {
         }
     });
 
+    // Toggle fullscreen mode
+    let ui_fs_weak = ui_weak.clone();
+    ui.on_toggle_fullscreen_clicked(move || {
+        if let Some(ui) = ui_fs_weak.upgrade() {
+            let is_fullscreen = ui.window().is_fullscreen();
+            let next_fullscreen = !is_fullscreen;
+            ui.window().set_fullscreen(next_fullscreen);
+            ui.set_is_fullscreen(next_fullscreen);
+            append_log(
+                &ui,
+                &format!(
+                    "[System] Fullscreen toggled {}",
+                    if next_fullscreen { "ON" } else { "OFF" }
+                ),
+            );
+        }
+    });
+
     // Trigger Wi-Fi network change list
     let ui_change_weak = ui_weak.clone();
     ui.on_change_network_clicked(move || {
