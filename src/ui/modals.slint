@@ -20,6 +20,8 @@ export component WifiScanModal inherits Rectangle {
 
     background: Theme.interior-bg.transparentize(15%); // overlay dark backdrop blur
     
+    TouchArea {} // Consume all pointer events to prevent clicking components underneath the modal
+
     Rectangle {
         width: 480px;
         height: 520px;
@@ -235,6 +237,8 @@ export component PasswordModal inherits Rectangle {
 
     background: Theme.interior-bg.transparentize(15%); // dark overlay
     
+    TouchArea {} // Consume all pointer events to prevent clicking components underneath the modal
+
     Rectangle {
         width: 400px;
         height: 280px;
