@@ -1,6 +1,7 @@
 // Cloudflare WARP Controller & System Logs component
 
 import { ScrollView } from "std-widgets.slint";
+import { Theme } from "theme.slint";
 
 export component WarpControlPanel inherits Rectangle {
     in-out property <bool> pulse_led;
@@ -16,9 +17,9 @@ export component WarpControlPanel inherits Rectangle {
     callback warp_mode_clicked(string);
     callback install_rpm_clicked();
 
-    background: rgba(15, 23, 42, 0.4);
+    background: Theme.card-bg;
     border-width: 1px;
-    border-color: #1e293b;
+    border-color: Theme.border;
     border-radius: 24px;
     
     VerticalLayout {
@@ -43,7 +44,7 @@ export component WarpControlPanel inherits Rectangle {
                     border-radius: root.pulse_led ? 62px : 55px;
                     background: transparent;
                     border-width: 1.5px;
-                    border-color: root.warp_status_text == "Connected" ? rgba(16, 185, 129, 0.1) : rgba(244, 63, 94, 0.1);
+                    border-color: root.warp_status_text == "Connected" ? Theme.success.transparentize(90%) : Theme.danger.transparentize(90%);
                     animate width, height, border-radius { duration: 800ms; easing: ease-in-out; }
                 }
 
@@ -52,9 +53,9 @@ export component WarpControlPanel inherits Rectangle {
                     width: 84px;
                     height: 84px;
                     border-radius: 42px;
-                    background: #020617;
+                    background: Theme.interior-bg;
                     border-width: 1px;
-                    border-color: root.warp_status_text == "Connected" ? #10b981 : #f43f5e;
+                    border-color: root.warp_status_text == "Connected" ? Theme.success : Theme.danger;
                     
                     Text {
                         text: "🛡️";
@@ -70,9 +71,9 @@ export component WarpControlPanel inherits Rectangle {
                         width: 12px;
                         height: 12px;
                         border-radius: 6px;
-                        background: root.warp_status_text == "Connected" ? #10b981 : (root.warp_status_text == "Connecting..." ? #f59e0b : #f43f5e);
+                        background: root.warp_status_text == "Connected" ? Theme.success : (root.warp_status_text == "Connecting..." ? Theme.warning : Theme.danger);
                         border-width: 2px;
-                        border-color: #020617;
+                        border-color: Theme.interior-bg;
                     }
                 }
             }
@@ -91,14 +92,14 @@ export component WarpControlPanel inherits Rectangle {
                     text: root.warp_status_text;
                     font-size: 13px;
                     font-weight: 900;
-                    color: root.warp_status_text == "Connected" ? #10b981 : (root.warp_status_text == "Connecting..." ? #f59e0b : #f43f5e);
+                    color: root.warp_status_text == "Connected" ? Theme.success : (root.warp_status_text == "Connecting..." ? Theme.warning : Theme.danger);
                     font-family: "JetBrains Mono";
                     horizontal-alignment: center;
                     letter-spacing: 1.5px;
                 }
                 Text {
                     text: root.warp_network_text;
-                    font-size: 11px;
+                    font-size: 12px;
                     color: #64748b;
                     horizontal-alignment: center;
                     wrap: word-wrap;
@@ -109,9 +110,9 @@ export component WarpControlPanel inherits Rectangle {
                 if (root.warp_status_text == "Connected") : HorizontalLayout {
                     alignment: center;
                     Rectangle {
-                        background: rgba(30, 41, 59, 0.6);
+                        background: Theme.card-bg.transparentize(15%);
                         border-width: 1px;
-                        border-color: #334155;
+                        border-color: Theme.border;
                         border-radius: 12px;
                         height: 22px;
                         
@@ -120,7 +121,7 @@ export component WarpControlPanel inherits Rectangle {
                             padding-right: 12px;
                             Text {
                                 text: root.warp_mode_badge;
-                                font-size: 9px;
+                                font-size: 12px;
                                 font-weight: 800;
                                 color: #cbd5e1;
                                 vertical-alignment: center;
@@ -129,13 +130,12 @@ export component WarpControlPanel inherits Rectangle {
                     }
                 }
             }
-
-            // iOS styled Toggle connected switch
+                      // iOS styled Toggle connected switch
             Rectangle {
                 height: 48px;
-                background: rgba(2, 6, 23, 0.4);
+                background: Theme.interior-bg.transparentize(30%);
                 border-width: 1px;
-                border-color: #1e293b;
+                border-color: Theme.border;
                 border-radius: 14px;
                 
                 HorizontalLayout {
@@ -144,19 +144,19 @@ export component WarpControlPanel inherits Rectangle {
                     alignment: space-between;
                     Text {
                         text: root.warp_toggle_state ? "CONNECT CLIENT ACTIVATED" : "CONNECT CLIENT DEACTIVATED";
-                        font-size: 10px;
+                        font-size: 12px;
                         font-weight: 800;
-                        color: root.warp_toggle_state ? #10b981 : #64748b;
+                        color: root.warp_toggle_state ? Theme.success : Theme.text-muted;
                         letter-spacing: 0.5px;
                         vertical-alignment: center;
                     }
-
+ 
                     // Interactive switch toggle pill
                     Rectangle {
                         width: 44px;
                         height: 24px;
                         border-radius: 12px;
-                        background: root.warp_toggle_state ? #10b981 : #1e293b;
+                        background: root.warp_toggle_state ? Theme.accent : Theme.base-bg;
                         y: 11px;
                         
                         // Inner toggle circular knob
@@ -188,7 +188,7 @@ export component WarpControlPanel inherits Rectangle {
                 
                 Text {
                     text: "OPERATION TUNNEL MODE";
-                    font-size: 8.5px;
+                    font-size: 12px;
                     font-weight: 800;
                     color: #475569;
                     letter-spacing: 1.2px;
@@ -198,21 +198,20 @@ export component WarpControlPanel inherits Rectangle {
                 HorizontalLayout {
                     spacing: 8px;
                     alignment: center;
-
                     // Tab 1: DNS Only
                     Rectangle {
                         width: 140px;
                         height: 38px;
-                        background: root.warp_mode_doh_active ? rgba(16, 185, 129, 0.1) : rgba(30, 41, 59, 0.3);
+                        background: root.warp_mode_doh_active ? Theme.accent-bg-trans : Theme.card-bg-opaque.transparentize(60%);
                         border-width: 1px;
-                        border-color: root.warp_mode_doh_active ? #10b981 : #1e293b;
+                        border-color: root.warp_mode_doh_active ? Theme.accent : Theme.border;
                         border-radius: 10px;
                         
                         Text {
                             text: "DoH DNS Only";
-                            font-size: 10.5px;
+                            font-size: 12px;
                             font-weight: 800;
-                            color: root.warp_mode_doh_active ? #10b981 : #64748b;
+                            color: root.warp_mode_doh_active ? Theme.accent : Theme.text-muted;
                             horizontal-alignment: center;
                             vertical-alignment: center;
                         }
@@ -224,21 +223,21 @@ export component WarpControlPanel inherits Rectangle {
                             }
                         }
                     }
-
+ 
                     // Tab 2: WARP+DoH Dual
                     Rectangle {
                         width: 140px;
                         height: 38px;
-                        background: !root.warp_mode_doh_active ? rgba(16, 185, 129, 0.1) : rgba(30, 41, 59, 0.3);
+                        background: !root.warp_mode_doh_active ? Theme.accent-bg-trans : Theme.card-bg-opaque.transparentize(60%);
                         border-width: 1px;
-                        border-color: !root.warp_mode_doh_active ? #10b981 : #1e293b;
+                        border-color: !root.warp_mode_doh_active ? Theme.accent : Theme.border;
                         border-radius: 10px;
                         
                         Text {
                             text: "WARP+DoH Dual";
-                            font-size: 10.5px;
+                            font-size: 12px;
                             font-weight: 800;
-                            color: !root.warp_mode_doh_active ? #10b981 : #64748b;
+                            color: !root.warp_mode_doh_active ? Theme.accent : Theme.text-muted;
                             horizontal-alignment: center;
                             vertical-alignment: center;
                         }
@@ -262,9 +261,9 @@ export component WarpControlPanel inherits Rectangle {
             // Action: Install daemon button
             Rectangle {
                 height: 40px;
-                background: #1e293b;
+                background: Theme.card-bg-opaque;
                 border-width: 1px;
-                border-color: #334155;
+                border-color: Theme.border;
                 border-radius: 12px;
                 
                 HorizontalLayout {
@@ -273,7 +272,7 @@ export component WarpControlPanel inherits Rectangle {
                     Text { text: "📥"; font-size: 12px; vertical-alignment: center; }
                     Text {
                         text: "Install Daemon RPM via Polkit";
-                        font-size: 11.5px;
+                        font-size: 12px;
                         font-weight: 800;
                         color: #cbd5e1;
                         vertical-alignment: center;
@@ -290,16 +289,16 @@ export component WarpControlPanel inherits Rectangle {
                 spacing: 6px;
                 Text {
                     text: "SYSTEM DIAGNOSTIC CONSOLE LOGS";
-                    font-size: 8.5px;
+                    font-size: 12px;
                     font-weight: 800;
                     color: #475569;
                     letter-spacing: 1px;
                 }
                 Rectangle {
                     height: 160px;
-                    background: #020617;
+                    background: Theme.interior-bg;
                     border-width: 1px;
-                    border-color: #1e293b;
+                    border-color: Theme.border;
                     border-radius: 12px;
                     
                     ScrollView {
@@ -309,7 +308,7 @@ export component WarpControlPanel inherits Rectangle {
                             alignment: start;
                             for entry in root.console_logs: Text {
                                 text: entry;
-                                font-size: 9.5px;
+                                font-size: 12px;
                                 font-family: "JetBrains Mono";
                                 wrap: word-wrap;
                             }

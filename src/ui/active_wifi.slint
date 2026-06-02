@@ -1,15 +1,16 @@
 // Collapsible Active Wifi Connection details component
 
 import { WifiNetwork } from "structs.slint";
+import { Theme } from "theme.slint";
 
 export component ActiveWifiPanel inherits Rectangle {
     in-out property <WifiNetwork> active_wifi;
 
     callback change_network_clicked();
 
-    background: rgba(15, 23, 42, 0.4);
+    background: Theme.card-bg;
     border-width: 1px;
-    border-color: #1e293b;
+    border-color: Theme.border;
     border-radius: 24px;
     
     VerticalLayout {
@@ -32,10 +33,10 @@ export component ActiveWifiPanel inherits Rectangle {
                         Rectangle {
                             width: 44px;
                             height: 44px;
-                            background: root.active_wifi.active ? rgba(16, 185, 129, 0.1) : rgba(148, 163, 184, 0.05);
+                            background: root.active_wifi.active ? Theme.accent-bg-trans : rgba(148, 163, 184, 0.05);
                             border-radius: 12px;
                             border-width: 1px;
-                            border-color: root.active_wifi.active ? rgba(16, 185, 129, 0.2) : rgba(148, 163, 184, 0.15);
+                            border-color: root.active_wifi.active ? Theme.accent-border-trans : rgba(148, 163, 184, 0.15);
                             
                             VerticalLayout {
                                 alignment: center;
@@ -51,7 +52,7 @@ export component ActiveWifiPanel inherits Rectangle {
                                             width: 4px;
                                             height: 7px;
                                             border-radius: 1px;
-                                            background: (root.active_wifi.active && root.active_wifi.signal >= 0) ? #10b981 : rgba(148, 163, 184, 0.3);
+                                            background: (root.active_wifi.active && root.active_wifi.signal >= 0) ? Theme.success : rgba(148, 163, 184, 0.3);
                                         }
                                     }
                                     // Bar 2
@@ -61,7 +62,7 @@ export component ActiveWifiPanel inherits Rectangle {
                                             width: 4px;
                                             height: 12px;
                                             border-radius: 1px;
-                                            background: (root.active_wifi.active && root.active_wifi.signal >= 25) ? #10b981 : rgba(148, 163, 184, 0.3);
+                                            background: (root.active_wifi.active && root.active_wifi.signal >= 25) ? Theme.success : rgba(148, 163, 184, 0.3);
                                         }
                                     }
                                     // Bar 3
@@ -71,7 +72,7 @@ export component ActiveWifiPanel inherits Rectangle {
                                             width: 4px;
                                             height: 17px;
                                             border-radius: 1px;
-                                            background: (root.active_wifi.active && root.active_wifi.signal >= 50) ? #10b981 : rgba(148, 163, 184, 0.3);
+                                            background: (root.active_wifi.active && root.active_wifi.signal >= 50) ? Theme.success : rgba(148, 163, 184, 0.3);
                                         }
                                     }
                                     // Bar 4
@@ -81,7 +82,7 @@ export component ActiveWifiPanel inherits Rectangle {
                                             width: 4px;
                                             height: 22px;
                                             border-radius: 1px;
-                                            background: (root.active_wifi.active && root.active_wifi.signal >= 75) ? #10b981 : rgba(148, 163, 184, 0.3);
+                                            background: (root.active_wifi.active && root.active_wifi.signal >= 75) ? Theme.success : rgba(148, 163, 184, 0.3);
                                         }
                                     }
                                 }
@@ -93,7 +94,7 @@ export component ActiveWifiPanel inherits Rectangle {
                         alignment: center;
                         Text {
                             text: "Active Wi-Fi Connection";
-                            font-size: 10px;
+                            font-size: 12px;
                             font-weight: 800;
                             color: #64748b;
                             letter-spacing: 1px;
@@ -109,9 +110,9 @@ export component ActiveWifiPanel inherits Rectangle {
                             }
                             // Signal Strength Badge
                             if (root.active_wifi.active) : Rectangle {
-                                background: rgba(16, 185, 129, 0.1);
+                                background: Theme.success-bg-trans;
                                 border-width: 1px;
-                                border-color: rgba(16, 185, 129, 0.2);
+                                border-color: Theme.success-border-trans;
                                 border-radius: 8px;
                                 height: 22px;
                                 y: 2px;
@@ -125,13 +126,13 @@ export component ActiveWifiPanel inherits Rectangle {
                                         width: 6px;
                                         height: 6px;
                                         border-radius: 3px;
-                                        background: #10b981;
+                                        background: Theme.success;
                                     }
                                     Text {
                                         text: "Signal: " + root.active_wifi.signal + "%";
-                                        font-size: 10px;
+                                        font-size: 12px;
                                         font-weight: 800;
-                                        color: #10b981;
+                                        color: Theme.success;
                                         font-family: "JetBrains Mono";
                                         vertical-alignment: center;
                                     }
@@ -139,9 +140,9 @@ export component ActiveWifiPanel inherits Rectangle {
                             }
                             // Realtime rate link badge
                             if (root.active_wifi.active) : Rectangle {
-                                background: rgba(59, 130, 246, 0.1);
+                                background: Theme.accent-bg-trans;
                                 border-width: 1px;
-                                border-color: rgba(59, 130, 246, 0.2);
+                                border-color: Theme.accent-border-trans;
                                 border-radius: 8px;
                                 height: 22px;
                                 y: 2px;
@@ -155,13 +156,13 @@ export component ActiveWifiPanel inherits Rectangle {
                                         width: 6px;
                                         height: 6px;
                                         border-radius: 3px;
-                                        background: #3b82f6;
+                                        background: Theme.accent;
                                     }
                                     Text {
                                         text: "Link Speed: " + root.active_wifi.rate;
-                                        font-size: 10px;
+                                        font-size: 12px;
                                         font-weight: 800;
-                                        color: #3b82f6;
+                                        color: Theme.accent;
                                         font-family: "JetBrains Mono";
                                         vertical-alignment: center;
                                     }
@@ -181,10 +182,10 @@ export component ActiveWifiPanel inherits Rectangle {
                     
                     // Change network action button
                     Rectangle {
-                        background: rgba(30, 41, 59, 0.6);
+                        background: Theme.card-bg.transparentize(15%);
                         border-radius: 8px;
                         border-width: 1px;
-                        border-color: #334155;
+                        border-color: Theme.border;
                         height: 32px;
                         
                         HorizontalLayout {
@@ -193,9 +194,9 @@ export component ActiveWifiPanel inherits Rectangle {
                             alignment: center;
                             Text {
                                 text: "Change Network ➔";
-                                font-size: 10px;
+                                font-size: 12px;
                                 font-weight: 900;
-                                color: #3b82f6;
+                                color: Theme.accent;
                                 vertical-alignment: center;
                             }
                         }
@@ -219,32 +220,32 @@ export component ActiveWifiPanel inherits Rectangle {
                 
                 Text {
                     text: "🟢 Wi-Fi Hardware parameters";
-                    font-size: 10.5px;
+                    font-size: 12px;
                     font-weight: 900;
-                    color: #10b981;
+                    color: Theme.success;
                     letter-spacing: 0.5px;
                 }
 
                 HorizontalLayout {
-                    Text { text: "Security Type:"; color: #64748b; font-size: 11px; }
-                    Text { text: root.active_wifi.security; color: #e2e8f0; font-size: 11px; horizontal-alignment: right; font-family: "JetBrains Mono"; }
+                    Text { text: "Security Type:"; color: #64748b; font-size: 12px; }
+                    Text { text: root.active_wifi.security; color: #cbd5e1; font-size: 12px; horizontal-alignment: right; font-family: "JetBrains Mono"; }
                 }
-                Rectangle { height: 1px; background: rgba(30, 41, 59, 0.4); }
+                Rectangle { height: 1px; background: Theme.border-trans; }
                 HorizontalLayout {
-                    Text { text: "BSSID (Access Point MAC):"; color: #64748b; font-size: 11px; }
-                    Text { text: root.active_wifi.bssid; color: #cbd5e1; font-size: 11px; horizontal-alignment: right; font-family: "JetBrains Mono"; }
+                    Text { text: "BSSID (Access Point MAC):"; color: #64748b; font-size: 12px; }
+                    Text { text: root.active_wifi.bssid; color: #cbd5e1; font-size: 12px; horizontal-alignment: right; font-family: "JetBrains Mono"; }
                 }
-                Rectangle { height: 1px; background: rgba(30, 41, 59, 0.4); }
+                Rectangle { height: 1px; background: Theme.border-trans; }
                 HorizontalLayout {
-                    Text { text: "Wireless device Interface:"; color: #64748b; font-size: 11px; }
-                    Text { text: root.active_wifi.device; color: #cbd5e1; font-size: 11px; horizontal-alignment: right; font-family: "JetBrains Mono"; }
+                    Text { text: "Wireless device Interface:"; color: #64748b; font-size: 12px; }
+                    Text { text: root.active_wifi.device; color: #cbd5e1; font-size: 12px; horizontal-alignment: right; font-family: "JetBrains Mono"; }
                 }
             }
 
             // Middle divider line
             Rectangle {
                 width: 1px;
-                background: rgba(30, 41, 59, 0.6);
+                background: Theme.divider;
             }
 
             // Right Side parameters (IPv4/DNS configurations)
@@ -253,25 +254,25 @@ export component ActiveWifiPanel inherits Rectangle {
                 
                 Text {
                     text: "🔵 IPv4 Protocol configurations";
-                    font-size: 10.5px;
+                    font-size: 12px;
                     font-weight: 900;
-                    color: #3b82f6;
+                    color: Theme.accent;
                     letter-spacing: 0.5px;
                 }
 
                 HorizontalLayout {
-                    Text { text: "IP Address assigned:"; color: #64748b; font-size: 11px; }
-                    Text { text: root.active_wifi.ip_address; color: #f1f5f9; font-size: 11px; font-weight: 800; horizontal-alignment: right; font-family: "JetBrains Mono"; }
+                    Text { text: "IP Address assigned:"; color: #64748b; font-size: 12px; }
+                    Text { text: root.active_wifi.ip_address; color: Theme.text-primary; font-size: 12px; font-weight: 800; horizontal-alignment: right; font-family: "JetBrains Mono"; }
                 }
-                Rectangle { height: 1px; background: rgba(30, 41, 59, 0.4); }
+                Rectangle { height: 1px; background: Theme.border-trans; }
                 HorizontalLayout {
-                    Text { text: "Default Gateway router:"; color: #64748b; font-size: 11px; }
-                    Text { text: root.active_wifi.gateway; color: #cbd5e1; font-size: 11px; horizontal-alignment: right; font-family: "JetBrains Mono"; }
+                    Text { text: "Default Gateway router:"; color: #64748b; font-size: 12px; }
+                    Text { text: root.active_wifi.gateway; color: #cbd5e1; font-size: 12px; horizontal-alignment: right; font-family: "JetBrains Mono"; }
                 }
-                Rectangle { height: 1px; background: rgba(30, 41, 59, 0.4); }
+                Rectangle { height: 1px; background: Theme.border-trans; }
                 HorizontalLayout {
-                    Text { text: "Primary Nameserver DNS:"; color: #64748b; font-size: 11px; }
-                    Text { text: root.active_wifi.dns_primary; color: #cbd5e1; font-size: 11px; horizontal-alignment: right; font-family: "JetBrains Mono"; }
+                    Text { text: "Primary Nameserver DNS:"; color: #64748b; font-size: 12px; }
+                    Text { text: root.active_wifi.dns_primary; color: #cbd5e1; font-size: 12px; horizontal-alignment: right; font-family: "JetBrains Mono"; }
                 }
             }
         }

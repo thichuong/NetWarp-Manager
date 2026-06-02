@@ -2,7 +2,8 @@ import { Button, LineEdit, ScrollView } from "std-widgets.slint";
 
 // Import and Re-export shared data structures for Rust compiler compatibility
 import { WifiNetwork, PingResult, NetworkSpeed, IPGeolocatorInfo } from "ui/structs.slint";
-export { WifiNetwork, PingResult, NetworkSpeed, IPGeolocatorInfo }
+import { Theme } from "ui/theme.slint";
+export { WifiNetwork, PingResult, NetworkSpeed, IPGeolocatorInfo, Theme }
 
 // Import modular UI components
 import { HeaderPanel } from "ui/header.slint";
@@ -19,7 +20,7 @@ export component AppWindow inherits Window {
     preferred-height: 900px;
     min-width: 1280px;
     min-height: 720px;
-    background: #020617;
+    background: Theme.base-bg;
     default-font-family: "Outfit";
     default-font-size: 14px;
 
@@ -114,7 +115,7 @@ export component AppWindow inherits Window {
             width: 600px;
             height: 600px;
             border-radius: 300px;
-            background: rgba(16, 185, 129, 0.03); // emerald-500 low opacity
+            background: Theme.accent.transparentize(98%); // Breeze Blue low opacity glow
         }
 
         Rectangle {
@@ -123,7 +124,7 @@ export component AppWindow inherits Window {
             width: 600px;
             height: 600px;
             border-radius: 300px;
-            background: rgba(245, 158, 11, 0.02); // orange-500 low opacity
+            background: Theme.text-primary.transparentize(99%); // neutral white low opacity glow
         }
 
         // Main App Container
@@ -197,16 +198,16 @@ export component AppWindow inherits Window {
                 
                 Text {
                     text: "WiWarp System Control Panel v0.2.0 (Slint Core Engine Edition)";
-                    font-size: 10px;
+                    font-size: 12px;
                     font-weight: 700;
-                    color: #475569;
+                    color: Theme.text-muted;
                     vertical-alignment: center;
                 }
                 Text {
                     text: "© 2026 WiWarp. Under MIT License. Made for Fedora Workstation.";
-                    font-size: 10px;
+                    font-size: 12px;
                     font-weight: 700;
-                    color: #475569;
+                    color: Theme.text-muted;
                     vertical-alignment: center;
                 }
             }

@@ -1,6 +1,7 @@
 // Speed Monitor and Sparkline Chart Component
 
 import { NetworkSpeed } from "structs.slint";
+import { Theme } from "theme.slint";
 
 export component SpeedMonitorPanel inherits VerticalLayout {
     in-out property <NetworkSpeed> speed_stats;
@@ -16,9 +17,9 @@ export component SpeedMonitorPanel inherits VerticalLayout {
         // Download card
         Rectangle {
             height: 68px;
-            background: rgba(15, 23, 42, 0.5);
+            background: Theme.card-bg;
             border-width: 1px;
-            border-color: #1e293b;
+            border-color: Theme.border;
             border-radius: 16px;
             
             HorizontalLayout {
@@ -30,23 +31,23 @@ export component SpeedMonitorPanel inherits VerticalLayout {
                     alignment: center;
                     HorizontalLayout {
                         spacing: 6px;
-                        Rectangle { width: 6px; height: 6px; border-radius: 3px; background: #10b981; y: 4px; }
-                        Text { text: "Download Speed"; font-size: 10px; font-weight: 800; color: #64748b; letter-spacing: 0.5px; }
+                        Rectangle { width: 6px; height: 6px; border-radius: 3px; background: Theme.success; y: 4px; }
+                        Text { text: "Download Speed"; font-size: 12px; font-weight: 800; color: #64748b; letter-spacing: 0.5px; }
                     }
-                    Text { text: root.speed_stats.download_speed; font-size: 20px; font-weight: 900; color: #10b981; font-family: "JetBrains Mono"; }
+                    Text { text: root.speed_stats.download_speed; font-size: 20px; font-weight: 900; color: Theme.success; font-family: "JetBrains Mono"; }
                 }
                 
                 // Small indicator badge
-                Text { text: "▼"; font-size: 22px; color: rgba(16, 185, 129, 0.2); vertical-alignment: center; }
+                Text { text: "▼"; font-size: 22px; color: Theme.success-bg-trans; vertical-alignment: center; }
             }
         }
 
         // Upload card
         Rectangle {
             height: 68px;
-            background: rgba(15, 23, 42, 0.5);
+            background: Theme.card-bg;
             border-width: 1px;
-            border-color: #1e293b;
+            border-color: Theme.border;
             border-radius: 16px;
             
             HorizontalLayout {
@@ -58,14 +59,14 @@ export component SpeedMonitorPanel inherits VerticalLayout {
                     alignment: center;
                     HorizontalLayout {
                         spacing: 6px;
-                        Rectangle { width: 6px; height: 6px; border-radius: 3px; background: #f59e0b; y: 4px; }
-                        Text { text: "Upload Speed"; font-size: 10px; font-weight: 800; color: #64748b; letter-spacing: 0.5px; }
+                        Rectangle { width: 6px; height: 6px; border-radius: 3px; background: Theme.warning; y: 4px; }
+                        Text { text: "Upload Speed"; font-size: 12px; font-weight: 800; color: #64748b; letter-spacing: 0.5px; }
                     }
-                    Text { text: root.speed_stats.upload_speed; font-size: 20px; font-weight: 900; color: #f59e0b; font-family: "JetBrains Mono"; }
+                    Text { text: root.speed_stats.upload_speed; font-size: 20px; font-weight: 900; color: Theme.warning; font-family: "JetBrains Mono"; }
                 }
                 
                 // Small indicator badge
-                Text { text: "▲"; font-size: 22px; color: rgba(245, 158, 11, 0.2); vertical-alignment: center; }
+                Text { text: "▲"; font-size: 22px; color: Theme.warning-bg-trans; vertical-alignment: center; }
             }
         }
     }
@@ -73,9 +74,9 @@ export component SpeedMonitorPanel inherits VerticalLayout {
     // Cyber Waveform Sparkline Chart
     Rectangle {
         height: 250px;
-        background: #020617;
+        background: Theme.interior-bg;
         border-width: 1px;
-        border-color: #1e293b;
+        border-color: Theme.border;
         border-radius: 20px;
         clip: true;
         
@@ -85,7 +86,7 @@ export component SpeedMonitorPanel inherits VerticalLayout {
             alignment: space-between;
             for i in [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]: Rectangle {
                 width: 1px;
-                background: rgba(51, 65, 85, 0.05);
+                background: Theme.text-primary.transparentize(97%);
             }
         }
 
@@ -95,7 +96,7 @@ export component SpeedMonitorPanel inherits VerticalLayout {
             alignment: space-between;
             for i in [1, 2, 3, 4]: Rectangle {
                 height: 1px;
-                background: rgba(51, 65, 85, 0.05);
+                background: Theme.text-primary.transparentize(97%);
             }
         }
 
@@ -116,7 +117,7 @@ export component SpeedMonitorPanel inherits VerticalLayout {
                     width: 12px;
                     height: Math.min(220px, Math.max(4px, download_pt * 0.003px));
                     border-radius: 3px;
-                    background: @linear-gradient(180deg, #10b981 0%, rgba(16, 185, 129, 0.2) 100%);
+                    background: @linear-gradient(180deg, Theme.accent 0%, Theme.accent-bg-trans 100%);
                     
                     animate height { duration: 250ms; easing: ease-out; }
                 }
@@ -128,7 +129,7 @@ export component SpeedMonitorPanel inherits VerticalLayout {
             x: 20px;
             y: 15px;
             text: "NETWORK WAVEFORM MONITOR (KB/S)";
-            font-size: 8.5px;
+            font-size: 12px;
             font-weight: 800;
             color: rgba(148, 163, 184, 0.35);
             letter-spacing: 1px;
@@ -140,44 +141,44 @@ export component SpeedMonitorPanel inherits VerticalLayout {
         spacing: 16px;
         Rectangle {
             height: 38px;
-            background: rgba(15, 23, 42, 0.2);
+            background: Theme.card-bg.transparentize(30%);
             border-width: 1px;
-            border-color: #1e293b;
+            border-color: Theme.border;
             border-radius: 10px;
             HorizontalLayout {
                 padding-left: 12px;
                 padding-right: 12px;
                 alignment: center;
-                Text { text: "Peak Download: "; font-size: 10.5px; color: #64748b; vertical-alignment: center; }
-                Text { text: root.speed_stats.peak_download; font-size: 10.5px; font-weight: 800; color: #10b981; font-family: "JetBrains Mono"; vertical-alignment: center; }
+                Text { text: "Peak Download: "; font-size: 12px; color: #64748b; vertical-alignment: center; }
+                Text { text: root.speed_stats.peak_download; font-size: 12px; font-weight: 800; color: Theme.success; font-family: "JetBrains Mono"; vertical-alignment: center; }
             }
         }
         Rectangle {
             height: 38px;
-            background: rgba(15, 23, 42, 0.2);
+            background: Theme.card-bg.transparentize(30%);
             border-width: 1px;
-            border-color: #1e293b;
+            border-color: Theme.border;
             border-radius: 10px;
             HorizontalLayout {
                 padding-left: 12px;
                 padding-right: 12px;
                 alignment: center;
-                Text { text: "Peak Upload: "; font-size: 10.5px; color: #64748b; vertical-alignment: center; }
-                Text { text: root.speed_stats.peak_upload; font-size: 10.5px; font-weight: 800; color: #f59e0b; font-family: "JetBrains Mono"; vertical-alignment: center; }
+                Text { text: "Peak Upload: "; font-size: 12px; color: #64748b; vertical-alignment: center; }
+                Text { text: root.speed_stats.peak_upload; font-size: 12px; font-weight: 800; color: Theme.warning; font-family: "JetBrains Mono"; vertical-alignment: center; }
             }
         }
         Rectangle {
             height: 38px;
-            background: rgba(15, 23, 42, 0.2);
+            background: Theme.card-bg.transparentize(30%);
             border-width: 1px;
-            border-color: #1e293b;
+            border-color: Theme.border;
             border-radius: 10px;
             HorizontalLayout {
                 padding-left: 12px;
                 padding-right: 12px;
                 alignment: center;
-                Text { text: "Total Data consumption: "; font-size: 10.5px; color: #64748b; vertical-alignment: center; }
-                Text { text: root.speed_stats.total_usage; font-size: 10.5px; font-weight: 800; color: #cbd5e1; font-family: "JetBrains Mono"; vertical-alignment: center; }
+                Text { text: "Total Data consumption: "; font-size: 12px; color: #64748b; vertical-alignment: center; }
+                Text { text: root.speed_stats.total_usage; font-size: 12px; font-weight: 800; color: Theme.text-primary; font-family: "JetBrains Mono"; vertical-alignment: center; }
             }
         }
     }

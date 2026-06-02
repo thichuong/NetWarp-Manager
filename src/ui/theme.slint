@@ -1,0 +1,41 @@
+// Fedora Breeze Dark Theme Palette for NetWarp-Manager UI
+// Defined as a Slint global singleton for centralized, scalable color management.
+
+export global Theme {
+    // Core Backgrounds
+    in-out property <color> base-bg: #232629;                 // Core window base background
+    in-out property <color> card-bg: rgba(49, 54, 59, 0.7);    // Semitranslucent panel/card background
+    in-out property <color> card-bg-opaque: #31363b;          // Standard opaque card background
+    in-out property <color> interior-bg: #1b1e20;             // Deep charcoal background for inputs, charts, consoles
+
+    // Interactive & Focus Accents
+    in-out property <color> accent: #3daee9;                  // Breeze Blue primary accent color
+    in-out property <color> accent-hover: #1d99f3;            // Lighter Breeze Blue for hover states
+    in-out property <color> accent-bg-trans: rgba(61, 174, 233, 0.15); // Translucent blue overlay
+    in-out property <color> accent-border-trans: rgba(61, 174, 233, 0.25); // Transparent focus borders
+
+    // Borders & Separators
+    in-out property <color> border: #4d5052;                  // Sleek dark gray solid borders
+    in-out property <color> border-trans: rgba(77, 80, 82, 0.3); // Soft separator line color
+    in-out property <color> divider: rgba(77, 80, 82, 0.4);   // Darker separator lines
+
+    // Text Values
+    in-out property <color> text-primary: #eff0f1;            // Standard light gray text
+    in-out property <color> text-muted: #8f9396;               // Inactive / Muted gray text
+    in-out property <color> text-dark: #232629;                // High-contrast dark text for bright buttons
+
+    // Status Values
+    // Online / Success
+    in-out property <color> success: #2ecc71;                 // Breeze Green success status
+    in-out property <color> success-bg-trans: rgba(46, 204, 113, 0.15); // Translucent success badge
+    in-out property <color> success-border-trans: rgba(46, 204, 113, 0.25); // Translucent success border
+
+    // Connecting / Pending / Warning
+    in-out property <color> warning: #f39c12;                 // Breeze Orange warning/connecting status
+    in-out property <color> warning-bg-trans: rgba(243, 156, 18, 0.2); // Translucent warning badge
+
+    // Offline / Error
+    in-out property <color> danger: #e74c3c;                  // Breeze Red danger/offline status
+    in-out property <color> danger-bg-trans: rgba(231, 76, 60, 0.15); // Translucent danger badge
+    in-out property <color> danger-border-trans: rgba(231, 76, 60, 0.25); // Translucent danger border
+}

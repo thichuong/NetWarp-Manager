@@ -2,6 +2,7 @@
 
 import { ScrollView, LineEdit } from "std-widgets.slint";
 import { WifiNetwork } from "structs.slint";
+import { Theme } from "theme.slint";
 
 export component WifiScanModal inherits Rectangle {
     in-out property <bool> is_scanning;
@@ -11,14 +12,14 @@ export component WifiScanModal inherits Rectangle {
     callback wifi_selected(string, string);
     callback scan_range_clicked();
 
-    background: rgba(2, 6, 23, 0.85); // overlay dark backdrop blur
+    background: Theme.interior-bg.transparentize(15%); // overlay dark backdrop blur
     
     Rectangle {
         width: 480px;
         height: 520px;
-        background: rgba(15, 23, 42, 0.95);
+        background: Theme.card-bg-opaque.transparentize(5%);
         border-width: 1px;
-        border-color: #1e293b;
+        border-color: Theme.border;
         border-radius: 28px;
         
         VerticalLayout {
@@ -34,14 +35,14 @@ export component WifiScanModal inherits Rectangle {
                     Rectangle {
                         width: 36px;
                         height: 36px;
-                        background: rgba(16, 185, 129, 0.1);
+                        background: Theme.accent-bg-trans;
                         border-radius: 10px;
                         Text { text: "📶"; font-size: 16px; horizontal-alignment: center; vertical-alignment: center; }
                     }
                     VerticalLayout {
                         alignment: center;
                         Text { text: "Available Wi-Fi Networks"; font-size: 14px; font-weight: 800; color: #f8fafc; }
-                        Text { text: "Select a wireless network below"; font-size: 10px; color: #64748b; }
+                        Text { text: "Select a wireless network below"; font-size: 12px; color: #64748b; }
                     }
                 }
 
@@ -49,9 +50,9 @@ export component WifiScanModal inherits Rectangle {
                 Rectangle {
                     width: 28px;
                     height: 28px;
-                    background: rgba(30, 41, 59, 0.6);
+                    background: Theme.card-bg-opaque.transparentize(40%);
                     border-radius: 6px;
-                    Text { text: "✖"; font-size: 10px; color: #94a3b8; horizontal-alignment: center; vertical-alignment: center; }
+                    Text { text: "✖"; font-size: 12px; color: #94a3b8; horizontal-alignment: center; vertical-alignment: center; }
                     TouchArea {
                         clicked => { root.close_modals(); }
                     }
@@ -61,9 +62,9 @@ export component WifiScanModal inherits Rectangle {
             // Dynamic radar scan pulse banner when isScanning is true
             if (root.is_scanning) : Rectangle {
                 height: 50px;
-                background: rgba(16, 185, 129, 0.05);
+                background: Theme.accent.transparentize(95%);
                 border-width: 1px;
-                border-color: rgba(16, 185, 129, 0.1);
+                border-color: Theme.accent-bg-trans;
                 border-radius: 12px;
                 
                 HorizontalLayout {
@@ -72,9 +73,9 @@ export component WifiScanModal inherits Rectangle {
                     Text { text: "🔄"; font-size: 14px; vertical-alignment: center; }
                     Text {
                         text: "SCANNING FREQUENCIES IN RANGE...";
-                        font-size: 10px;
+                        font-size: 12px;
                         font-weight: 900;
-                        color: #10b981;
+                        color: Theme.accent;
                         vertical-alignment: center;
                     }
                 }
@@ -82,9 +83,9 @@ export component WifiScanModal inherits Rectangle {
 
             // Scrollable Wifi Network cards list
             Rectangle {
-                background: #020617;
+                background: Theme.interior-bg;
                 border-width: 1px;
-                border-color: #1e293b;
+                border-color: Theme.border;
                 border-radius: 16px;
                 vertical-stretch: 1; // expand to fill height
                 
@@ -103,9 +104,9 @@ export component WifiScanModal inherits Rectangle {
                         
                         for net in root.wifi_list: Rectangle {
                             height: 56px;
-                            background: net.active ? rgba(16, 185, 129, 0.08) : rgba(30, 41, 59, 0.3);
+                            background: net.active ? Theme.accent.transparentize(92%) : Theme.card-bg-opaque.transparentize(70%);
                             border-width: 1px;
-                            border-color: net.active ? #10b981 : #1e293b;
+                            border-color: net.active ? Theme.accent : Theme.border;
                             border-radius: 10px;
                             
                             HorizontalLayout {
@@ -116,7 +117,7 @@ export component WifiScanModal inherits Rectangle {
                                 HorizontalLayout {
                                     spacing: 10px;
                                     alignment: start;
-                                    Text { text: net.active ? "🟢" : "⚪"; font-size: 10px; vertical-alignment: center; }
+                                    Text { text: net.active ? "🟢" : "⚪"; font-size: 12px; vertical-alignment: center; }
                                     VerticalLayout {
                                         alignment: center;
                                         spacing: 2px;
@@ -124,13 +125,13 @@ export component WifiScanModal inherits Rectangle {
                                             text: net.ssid;
                                             font-size: 12.5px;
                                             font-weight: 800;
-                                            color: net.active ? #10b981 : #cbd5e1;
+                                            color: net.active ? Theme.accent : Theme.text-primary;
                                         }
                                         Text {
                                             text: net.bssid;
-                                            font-size: 9.5px;
+                                            font-size: 12px;
                                             font-family: "JetBrains Mono";
-                                            color: net.active ? rgba(16, 185, 129, 0.6) : #64748b;
+                                            color: net.active ? Theme.accent.transparentize(40%) : Theme.text-muted;
                                         }
                                     }
                                 }
@@ -142,7 +143,7 @@ export component WifiScanModal inherits Rectangle {
                                     // Signal badge
                                     Text {
                                         text: net.signal + "% signal";
-                                        font-size: 11px;
+                                        font-size: 12px;
                                         color: #64748b;
                                         font-family: "JetBrains Mono";
                                         vertical-alignment: center;
@@ -150,7 +151,7 @@ export component WifiScanModal inherits Rectangle {
                                     
                                     // Band badge (e.g. 5GHz)
                                     Rectangle {
-                                        background: #1e293b;
+                                        background: Theme.base-bg;
                                         border-radius: 4px;
                                         height: 18px;
                                         y: 19px;
@@ -160,7 +161,7 @@ export component WifiScanModal inherits Rectangle {
                                             padding-right: 4px;
                                             Text {
                                                 text: net.band;
-                                                font-size: 8px;
+                                                font-size: 12px;
                                                 font-weight: 800;
                                                 color: #cbd5e1;
                                                 vertical-alignment: center;
@@ -185,14 +186,14 @@ export component WifiScanModal inherits Rectangle {
                 alignment: space-between;
                 Text {
                     text: "Found: " + root.wifi_list.length + " networks";
-                    font-size: 11px;
+                    font-size: 12px;
                     color: #64748b;
                     vertical-alignment: center;
                 }
                 
                 // Scan button
                 Rectangle {
-                    background: #10b981;
+                    background: Theme.accent;
                     border-radius: 8px;
                     height: 32px;
                     
@@ -201,9 +202,9 @@ export component WifiScanModal inherits Rectangle {
                         padding-right: 12px;
                         Text {
                             text: "Rescan Range";
-                            font-size: 11px;
+                            font-size: 12px;
                             font-weight: 900;
-                            color: #020617;
+                            color: Theme.text-primary;
                             vertical-alignment: center;
                         }
                     }
@@ -226,14 +227,14 @@ export component PasswordModal inherits Rectangle {
     callback close_modals();
     callback connect_wifi_clicked(string, string, string, bool); // bssid, ssid, password, lock_bssid
 
-    background: rgba(2, 6, 23, 0.85); // dark overlay
+    background: Theme.interior-bg.transparentize(15%); // dark overlay
     
     Rectangle {
         width: 400px;
         height: 280px;
-        background: rgba(15, 23, 42, 0.95);
+        background: Theme.card-bg-opaque.transparentize(5%);
         border-width: 1px;
-        border-color: #1e293b;
+        border-color: Theme.border;
         border-radius: 24px;
         
         VerticalLayout {
@@ -252,7 +253,7 @@ export component PasswordModal inherits Rectangle {
                 }
                 Text {
                     text: "Connect to: " + root.selected_wifi_ssid;
-                    font-size: 11px;
+                    font-size: 12px;
                     color: #94a3b8;
                 }
             }
@@ -260,7 +261,7 @@ export component PasswordModal inherits Rectangle {
             // Password input
             VerticalLayout {
                 spacing: 6px;
-                Text { text: "WPA/WPA2 PASSWORD KEY"; font-size: 9px; font-weight: 800; color: #64748b; }
+                Text { text: "WPA/WPA2 PASSWORD KEY"; font-size: 12px; font-weight: 800; color: #64748b; }
                 
                 // Slint LineEdit input box
                 LineEdit {
@@ -281,13 +282,13 @@ export component PasswordModal inherits Rectangle {
                     height: 16px;
                     border-radius: 4px;
                     border-width: 1px;
-                    border-color: #3b82f6;
-                    background: root.lock_bssid ? #3b82f6 : transparent;
+                    border-color: Theme.accent;
+                    background: root.lock_bssid ? Theme.accent : transparent;
                     y: 1px;
                     
                     if (root.lock_bssid) : Text {
                         text: "✓";
-                        font-size: 10px;
+                        font-size: 12px;
                         font-weight: 900;
                         color: #ffffff;
                         horizontal-alignment: center;
@@ -301,7 +302,7 @@ export component PasswordModal inherits Rectangle {
                 
                 Text {
                     text: "Lock BSSID (Fix connection profile to this exact MAC)";
-                    font-size: 10.5px;
+                    font-size: 12px;
                     color: #94a3b8;
                     vertical-alignment: center;
                 }
@@ -314,16 +315,16 @@ export component PasswordModal inherits Rectangle {
                 
                 // Cancel action
                 Rectangle {
-                    background: rgba(30, 41, 59, 0.6);
+                    background: Theme.card-bg-opaque.transparentize(40%);
                     border-radius: 8px;
                     border-width: 1px;
-                    border-color: #334155;
+                    border-color: Theme.border;
                     width: 80px;
                     height: 32px;
                     
                     Text {
                         text: "Cancel";
-                        font-size: 11px;
+                        font-size: 12px;
                         font-weight: 800;
                         color: #94a3b8;
                         horizontal-alignment: center;
@@ -337,16 +338,16 @@ export component PasswordModal inherits Rectangle {
 
                 // Connect action
                 Rectangle {
-                    background: #10b981;
+                    background: Theme.accent;
                     border-radius: 8px;
                     width: 100px;
                     height: 32px;
                     
                     Text {
                         text: "Connect Key";
-                        font-size: 11px;
+                        font-size: 12px;
                         font-weight: 900;
-                        color: #020617;
+                        color: Theme.text-primary;
                         horizontal-alignment: center;
                         vertical-alignment: center;
                     }
