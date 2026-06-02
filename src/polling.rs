@@ -7,20 +7,38 @@ use std::time::Instant;
 pub fn start_polling_loops(ui: &AppWindow) {
     let ui_weak = ui.as_weak();
 
-    // Loop 1: Pulse animations timer (500ms intervals)
+    // Loop 1: Pulse animations timer (500ms intervals when active, 2s when idle)
     let ui_pulse_weak = ui_weak.clone();
     tokio::spawn(async move {
         let mut pulse = false;
         let mut step = 0;
         loop {
-            tokio::time::sleep(std::time::Duration::from_millis(500)).await;
-            pulse = !pulse;
-            step = (step + 1) % 4;
+            let mut sleep_ms = 500;
+            let mut should_pulse = false;
 
-            let _ = ui_pulse_weak.upgrade_in_event_loop(move |ui| {
-                ui.set_pulse_led(pulse);
-                ui.set_radar_step(step);
-            });
+            if let Some(ui) = ui_pulse_weak.upgrade() {
+                let status = ui.get_warp_status_text().to_string();
+                if status.to_lowercase().contains("connecting") {
+                    should_pulse = true;
+                }
+            }
+
+            if should_pulse {
+                pulse = !pulse;
+                step = (step + 1) % 4;
+
+                let _ = ui_pulse_weak.upgrade_in_event_loop(move |ui| {
+                    ui.set_pulse_led(pulse);
+                    ui.set_radar_step(step);
+                });
+            } else {
+                let _ = ui_pulse_weak.upgrade_in_event_loop(move |ui| {
+                    ui.set_pulse_led(false);
+                });
+                sleep_ms = 2000; // Sleep longer when idle to prevent GPU/CPU redrawing loops
+            }
+
+            tokio::time::sleep(std::time::Duration::from_millis(sleep_ms)).await;
         }
     });
 
