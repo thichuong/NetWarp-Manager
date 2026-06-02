@@ -365,62 +365,59 @@ async fn main() -> Result<(), slint::PlatformError> {
                         // 1. Immediately refresh Public IP & Geolocation
                         let ui_geo = ui_inner_weak.clone();
                         tokio::spawn(async move {
-                            if let Ok(raw_json) = net_utils::trace_ip().await {
-                                if let Ok(parsed) =
+                            if let Ok(raw_json) = net_utils::trace_ip().await
+                                && let Ok(parsed) =
                                     serde_json::from_str::<serde_json::Value>(&raw_json)
-                                {
-                                    let ip = parsed
-                                        .get("query")
-                                        .and_then(|v| v.as_str())
-                                        .unwrap_or("Unknown")
-                                        .to_string();
-                                    let isp = parsed
-                                        .get("isp")
-                                        .and_then(|v| v.as_str())
-                                        .unwrap_or("Unknown")
-                                        .to_string();
-                                    let city = parsed
-                                        .get("city")
-                                        .and_then(|v| v.as_str())
-                                        .unwrap_or("")
-                                        .to_string();
-                                    let country = parsed
-                                        .get("country")
-                                        .and_then(|v| v.as_str())
-                                        .unwrap_or("")
-                                        .to_string();
-                                    let location = if city.is_empty() {
-                                        country
-                                    } else {
-                                        format!("{}, {}", city, country)
-                                    };
-                                    let lat =
-                                        parsed.get("lat").and_then(|v| v.as_f64()).unwrap_or(0.0);
-                                    let lon =
-                                        parsed.get("lon").and_then(|v| v.as_f64()).unwrap_or(0.0);
-                                    let coords = format!("{:.4}, {:.4}", lat, lon);
+                            {
+                                let ip = parsed
+                                    .get("query")
+                                    .and_then(|v| v.as_str())
+                                    .unwrap_or("Unknown")
+                                    .to_string();
+                                let isp = parsed
+                                    .get("isp")
+                                    .and_then(|v| v.as_str())
+                                    .unwrap_or("Unknown")
+                                    .to_string();
+                                let city = parsed
+                                    .get("city")
+                                    .and_then(|v| v.as_str())
+                                    .unwrap_or("")
+                                    .to_string();
+                                let country = parsed
+                                    .get("country")
+                                    .and_then(|v| v.as_str())
+                                    .unwrap_or("")
+                                    .to_string();
+                                let location = if city.is_empty() {
+                                    country
+                                } else {
+                                    format!("{}, {}", city, country)
+                                };
+                                let lat = parsed.get("lat").and_then(|v| v.as_f64()).unwrap_or(0.0);
+                                let lon = parsed.get("lon").and_then(|v| v.as_f64()).unwrap_or(0.0);
+                                let coords = format!("{:.4}, {:.4}", lat, lon);
 
-                                    let is_warp = isp.to_lowercase().contains("cloudflare");
-                                    let badge = if is_warp { "WARP" } else { "DIRECT" };
+                                let is_warp = isp.to_lowercase().contains("cloudflare");
+                                let badge = if is_warp { "WARP" } else { "DIRECT" };
 
-                                    let slint_geo = IPGeolocatorInfo {
-                                        ip: ip.into(),
-                                        isp: isp.clone().into(),
-                                        location: location.into(),
-                                        coordinates: coords.into(),
-                                        warp_badge: badge.into(),
-                                    };
-                                    let _ = ui_geo.upgrade_in_event_loop(move |ui| {
-                                        ui.set_geo_info(slint_geo);
-                                        append_log(
-                                            &ui,
-                                            &format!(
-                                                "[GeoIP] Coordinates synced. ISP: {} ({})",
-                                                isp, badge
-                                            ),
-                                        );
-                                    });
-                                }
+                                let slint_geo = IPGeolocatorInfo {
+                                    ip: ip.into(),
+                                    isp: isp.clone().into(),
+                                    location: location.into(),
+                                    coordinates: coords.into(),
+                                    warp_badge: badge.into(),
+                                };
+                                let _ = ui_geo.upgrade_in_event_loop(move |ui| {
+                                    ui.set_geo_info(slint_geo);
+                                    append_log(
+                                        &ui,
+                                        &format!(
+                                            "[GeoIP] Coordinates synced. ISP: {} ({})",
+                                            isp, badge
+                                        ),
+                                    );
+                                });
                             }
                         });
 
@@ -711,59 +708,58 @@ async fn main() -> Result<(), slint::PlatformError> {
                 if state_changed {
                     let ui_geo_trigger = ui.as_weak();
                     tokio::spawn(async move {
-                        if let Ok(raw_json) = net_utils::trace_ip().await {
-                            if let Ok(parsed) = serde_json::from_str::<serde_json::Value>(&raw_json)
-                            {
-                                let ip = parsed
-                                    .get("query")
-                                    .and_then(|v| v.as_str())
-                                    .unwrap_or("Unknown")
-                                    .to_string();
-                                let isp = parsed
-                                    .get("isp")
-                                    .and_then(|v| v.as_str())
-                                    .unwrap_or("Unknown")
-                                    .to_string();
-                                let city = parsed
-                                    .get("city")
-                                    .and_then(|v| v.as_str())
-                                    .unwrap_or("")
-                                    .to_string();
-                                let country = parsed
-                                    .get("country")
-                                    .and_then(|v| v.as_str())
-                                    .unwrap_or("")
-                                    .to_string();
-                                let location = if city.is_empty() {
-                                    country
-                                } else {
-                                    format!("{}, {}", city, country)
-                                };
-                                let lat = parsed.get("lat").and_then(|v| v.as_f64()).unwrap_or(0.0);
-                                let lon = parsed.get("lon").and_then(|v| v.as_f64()).unwrap_or(0.0);
-                                let coords = format!("{:.4}, {:.4}", lat, lon);
+                        if let Ok(raw_json) = net_utils::trace_ip().await
+                            && let Ok(parsed) = serde_json::from_str::<serde_json::Value>(&raw_json)
+                        {
+                            let ip = parsed
+                                .get("query")
+                                .and_then(|v| v.as_str())
+                                .unwrap_or("Unknown")
+                                .to_string();
+                            let isp = parsed
+                                .get("isp")
+                                .and_then(|v| v.as_str())
+                                .unwrap_or("Unknown")
+                                .to_string();
+                            let city = parsed
+                                .get("city")
+                                .and_then(|v| v.as_str())
+                                .unwrap_or("")
+                                .to_string();
+                            let country = parsed
+                                .get("country")
+                                .and_then(|v| v.as_str())
+                                .unwrap_or("")
+                                .to_string();
+                            let location = if city.is_empty() {
+                                country
+                            } else {
+                                format!("{}, {}", city, country)
+                            };
+                            let lat = parsed.get("lat").and_then(|v| v.as_f64()).unwrap_or(0.0);
+                            let lon = parsed.get("lon").and_then(|v| v.as_f64()).unwrap_or(0.0);
+                            let coords = format!("{:.4}, {:.4}", lat, lon);
 
-                                let is_warp = isp.to_lowercase().contains("cloudflare");
-                                let badge = if is_warp { "WARP" } else { "DIRECT" };
+                            let is_warp = isp.to_lowercase().contains("cloudflare");
+                            let badge = if is_warp { "WARP" } else { "DIRECT" };
 
-                                let slint_geo = IPGeolocatorInfo {
-                                    ip: ip.into(),
-                                    isp: isp.clone().into(),
-                                    location: location.into(),
-                                    coordinates: coords.into(),
-                                    warp_badge: badge.into(),
-                                };
-                                let _ = ui_geo_trigger.upgrade_in_event_loop(move |ui| {
-                                    ui.set_geo_info(slint_geo);
-                                    append_log(
-                                        &ui,
-                                        &format!(
-                                            "[GeoIP] Coordinates synced. ISP: {} ({})",
-                                            isp, badge
-                                        ),
-                                    );
-                                });
-                            }
+                            let slint_geo = IPGeolocatorInfo {
+                                ip: ip.into(),
+                                isp: isp.clone().into(),
+                                location: location.into(),
+                                coordinates: coords.into(),
+                                warp_badge: badge.into(),
+                            };
+                            let _ = ui_geo_trigger.upgrade_in_event_loop(move |ui| {
+                                ui.set_geo_info(slint_geo);
+                                append_log(
+                                    &ui,
+                                    &format!(
+                                        "[GeoIP] Coordinates synced. ISP: {} ({})",
+                                        isp, badge
+                                    ),
+                                );
+                            });
                         }
                     });
                 }
@@ -804,58 +800,58 @@ async fn main() -> Result<(), slint::PlatformError> {
     let ui_init_weak = ui_weak.clone();
     tokio::spawn(async move {
         tokio::time::sleep(std::time::Duration::from_millis(1500)).await;
-        if let Ok(raw_json) = net_utils::trace_ip().await {
-            if let Ok(parsed) = serde_json::from_str::<serde_json::Value>(&raw_json) {
-                let ip = parsed
-                    .get("query")
-                    .and_then(|v| v.as_str())
-                    .unwrap_or("Unknown")
-                    .to_string();
-                let isp = parsed
-                    .get("isp")
-                    .and_then(|v| v.as_str())
-                    .unwrap_or("Unknown")
-                    .to_string();
-                let city = parsed
-                    .get("city")
-                    .and_then(|v| v.as_str())
-                    .unwrap_or("")
-                    .to_string();
-                let country = parsed
-                    .get("country")
-                    .and_then(|v| v.as_str())
-                    .unwrap_or("")
-                    .to_string();
-                let location = if city.is_empty() {
-                    country
-                } else {
-                    format!("{}, {}", city, country)
-                };
-                let lat = parsed.get("lat").and_then(|v| v.as_f64()).unwrap_or(0.0);
-                let lon = parsed.get("lon").and_then(|v| v.as_f64()).unwrap_or(0.0);
-                let coords = format!("{:.4}, {:.4}", lat, lon);
+        if let Ok(raw_json) = net_utils::trace_ip().await
+            && let Ok(parsed) = serde_json::from_str::<serde_json::Value>(&raw_json)
+        {
+            let ip = parsed
+                .get("query")
+                .and_then(|v| v.as_str())
+                .unwrap_or("Unknown")
+                .to_string();
+            let isp = parsed
+                .get("isp")
+                .and_then(|v| v.as_str())
+                .unwrap_or("Unknown")
+                .to_string();
+            let city = parsed
+                .get("city")
+                .and_then(|v| v.as_str())
+                .unwrap_or("")
+                .to_string();
+            let country = parsed
+                .get("country")
+                .and_then(|v| v.as_str())
+                .unwrap_or("")
+                .to_string();
+            let location = if city.is_empty() {
+                country
+            } else {
+                format!("{}, {}", city, country)
+            };
+            let lat = parsed.get("lat").and_then(|v| v.as_f64()).unwrap_or(0.0);
+            let lon = parsed.get("lon").and_then(|v| v.as_f64()).unwrap_or(0.0);
+            let coords = format!("{:.4}, {:.4}", lat, lon);
 
-                let is_warp = isp.to_lowercase().contains("cloudflare");
-                let badge = if is_warp { "WARP" } else { "DIRECT" };
+            let is_warp = isp.to_lowercase().contains("cloudflare");
+            let badge = if is_warp { "WARP" } else { "DIRECT" };
 
-                let slint_geo = IPGeolocatorInfo {
-                    ip: ip.clone().into(),
-                    isp: isp.into(),
-                    location: location.into(),
-                    coordinates: coords.into(),
-                    warp_badge: badge.into(),
-                };
-                let _ = ui_init_weak.upgrade_in_event_loop(move |ui| {
-                    ui.set_geo_info(slint_geo);
-                    append_log(
-                        &ui,
-                        &format!(
-                            "[GeoIP] Initial launch sync complete. IP: {} ({})",
-                            ip, badge
-                        ),
-                    );
-                });
-            }
+            let slint_geo = IPGeolocatorInfo {
+                ip: ip.clone().into(),
+                isp: isp.into(),
+                location: location.into(),
+                coordinates: coords.into(),
+                warp_badge: badge.into(),
+            };
+            let _ = ui_init_weak.upgrade_in_event_loop(move |ui| {
+                ui.set_geo_info(slint_geo);
+                append_log(
+                    &ui,
+                    &format!(
+                        "[GeoIP] Initial launch sync complete. IP: {} ({})",
+                        ip, badge
+                    ),
+                );
+            });
         }
     });
 

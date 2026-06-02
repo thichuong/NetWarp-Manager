@@ -29,12 +29,12 @@ fn split_terse_line(line: &str) -> Vec<String> {
     let mut chars = line.chars().peekable();
     while let Some(c) = chars.next() {
         if c == '\\' {
-            if let Some(&next_c) = chars.peek() {
-                if next_c == ':' || next_c == '\\' {
-                    current.push(next_c);
-                    chars.next(); // Consume the next character
-                    continue;
-                }
+            if let Some(&next_c) = chars.peek()
+                && (next_c == ':' || next_c == '\\')
+            {
+                current.push(next_c);
+                chars.next(); // Consume the next character
+                continue;
             }
             current.push(c);
         } else if c == ':' {
@@ -191,10 +191,10 @@ pub async fn connect_wifi(
     let mut cmd = Command::new("nmcli");
     cmd.arg("dev").arg("wifi").arg("connect").arg(&bssid);
 
-    if let Some(ref pwd) = password {
-        if !pwd.trim().is_empty() {
-            cmd.arg("password").arg(pwd);
-        }
+    if let Some(ref pwd) = password
+        && !pwd.trim().is_empty()
+    {
+        cmd.arg("password").arg(pwd);
     }
 
     let output = cmd
@@ -268,46 +268,44 @@ pub async fn connect_wifi(
                     .args(["-t", "-f", "ACTIVE,BSSID", "device", "wifi", "list"])
                     .output();
 
-                if let Ok(bssid_out) = active_bssid_output {
-                    if bssid_out.status.success() {
-                        let bssid_stdout = String::from_utf8_lossy(&bssid_out.stdout);
-                        for line in bssid_stdout.lines() {
-                            let trimmed = line.trim();
-                            if trimmed.is_empty() {
-                                continue;
-                            }
-                            let parts = split_terse_line(trimmed);
-                            if parts.len() < 2 {
-                                continue;
-                            }
-                            let active = parts.first().is_some_and(|s| s.trim() == "yes");
-                            let raw_mac = parts.get(1).map(|s| s.trim().to_string());
-                            if active {
-                                current_active_bssid = raw_mac.map(|m| m.replace("\\:", ":"));
-                                break;
-                            }
+                if let Ok(bssid_out) = active_bssid_output
+                    && bssid_out.status.success()
+                {
+                    let bssid_stdout = String::from_utf8_lossy(&bssid_out.stdout);
+                    for line in bssid_stdout.lines() {
+                        let trimmed = line.trim();
+                        if trimmed.is_empty() {
+                            continue;
+                        }
+                        let parts = split_terse_line(trimmed);
+                        if parts.len() < 2 {
+                            continue;
+                        }
+                        let active = parts.first().is_some_and(|s| s.trim() == "yes");
+                        let raw_mac = parts.get(1).map(|s| s.trim().to_string());
+                        if active {
+                            current_active_bssid = raw_mac.map(|m| m.replace("\\:", ":"));
+                            break;
                         }
                     }
                 }
 
-                if let Some(ref active_mac) = current_active_bssid {
-                    if active_mac.trim().to_lowercase() != bssid.trim().to_lowercase() {
-                        // Reconnection needed because we associated to a different BSSID (e.g. 2.4GHz) initially.
-                        let up_output = Command::new("nmcli")
-                            .args(["connection", "up", &uuid])
-                            .output()
-                            .map_err(|e| {
-                                format!("Failed to force correct BSSID connection: {}", e)
-                            })?;
+                if let Some(ref active_mac) = current_active_bssid
+                    && active_mac.trim().to_lowercase() != bssid.trim().to_lowercase()
+                {
+                    // Reconnection needed because we associated to a different BSSID (e.g. 2.4GHz) initially.
+                    let up_output = Command::new("nmcli")
+                        .args(["connection", "up", &uuid])
+                        .output()
+                        .map_err(|e| format!("Failed to force correct BSSID connection: {}", e))?;
 
-                        if !up_output.status.success() {
-                            let up_err = String::from_utf8_lossy(&up_output.stderr).to_string();
-                            // We return Ok since the first association succeeded, but warn that lock failed.
-                            return Ok(format!(
-                                "Connected successfully, but failed to force association with target BSSID: {}",
-                                up_err
-                            ));
-                        }
+                    if !up_output.status.success() {
+                        let up_err = String::from_utf8_lossy(&up_output.stderr).to_string();
+                        // We return Ok since the first association succeeded, but warn that lock failed.
+                        return Ok(format!(
+                            "Connected successfully, but failed to force association with target BSSID: {}",
+                            up_err
+                        ));
                     }
                 }
             }
@@ -513,22 +511,21 @@ fn get_active_device_details() -> ActiveDeviceDetails {
     if let Ok(iw_output) = Command::new("iw")
         .args(["dev", &interface, "link"])
         .output()
+        && iw_output.status.success()
     {
-        if iw_output.status.success() {
-            let iw_stdout = String::from_utf8_lossy(&iw_output.stdout);
-            for line in iw_stdout.lines() {
-                let trimmed = line.trim();
-                if trimmed.starts_with("tx bitrate:") {
-                    if let Some(part) = trimmed.strip_prefix("tx bitrate:") {
-                        let words: Vec<&str> = part.split_whitespace().collect();
-                        if words.len() >= 2 {
-                            let speed = words.first().unwrap_or(&"");
-                            let unit = words.get(1).unwrap_or(&"");
-                            details.realtime_rate = Some(format!("{} {}", speed, unit));
-                        }
+        let iw_stdout = String::from_utf8_lossy(&iw_output.stdout);
+        for line in iw_stdout.lines() {
+            let trimmed = line.trim();
+            if trimmed.starts_with("tx bitrate:") {
+                if let Some(part) = trimmed.strip_prefix("tx bitrate:") {
+                    let words: Vec<&str> = part.split_whitespace().collect();
+                    if words.len() >= 2 {
+                        let speed = words.first().unwrap_or(&"");
+                        let unit = words.get(1).unwrap_or(&"");
+                        details.realtime_rate = Some(format!("{} {}", speed, unit));
                     }
-                    break;
                 }
+                break;
             }
         }
     }

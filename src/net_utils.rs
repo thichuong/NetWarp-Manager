@@ -102,15 +102,15 @@ pub async fn get_network_io() -> Result<NetworkIO, String> {
 
                 // Index 1 contains bytes received (rx_bytes)
                 // Index 9 contains bytes transmitted (tx_bytes)
-                if let Some(rx_str) = parts.get(1) {
-                    if let Ok(rx) = rx_str.parse::<u64>() {
-                        total_rx += rx;
-                    }
+                if let Some(rx_str) = parts.get(1)
+                    && let Ok(rx) = rx_str.parse::<u64>()
+                {
+                    total_rx += rx;
                 }
-                if let Some(tx_str) = parts.get(9) {
-                    if let Ok(tx) = tx_str.parse::<u64>() {
-                        total_tx += tx;
-                    }
+                if let Some(tx_str) = parts.get(9)
+                    && let Ok(tx) = tx_str.parse::<u64>()
+                {
+                    total_tx += tx;
                 }
             }
         }
@@ -142,16 +142,15 @@ pub async fn ping_multiple(targets: Vec<String>) -> Result<Vec<PingResult>, Stri
 
                     // Parse the more accurate RTT value from command line output
                     for line in stdout.lines() {
-                        if line.contains("time=") {
-                            if let Some(idx) = line.find("time=") {
-                                if let Some(time_str) = line.get(idx + 5..) {
-                                    let parts: Vec<&str> = time_str.split_whitespace().collect();
-                                    if let Some(part) = parts.first() {
-                                        if let Ok(parsed) = part.parse::<f64>() {
-                                            latency = parsed;
-                                        }
-                                    }
-                                }
+                        if line.contains("time=")
+                            && let Some(idx) = line.find("time=")
+                            && let Some(time_str) = line.get(idx + 5..)
+                        {
+                            let parts: Vec<&str> = time_str.split_whitespace().collect();
+                            if let Some(part) = parts.first()
+                                && let Ok(parsed) = part.parse::<f64>()
+                            {
+                                latency = parsed;
                             }
                         }
                     }

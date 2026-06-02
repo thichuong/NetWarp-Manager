@@ -326,11 +326,11 @@ pub async fn get_warp_mode() -> Result<String, String> {
             } else if lower.contains("warp") {
                 return Ok("warp".to_string());
             } else {
-                if let Some(idx) = trimmed.find("Mode:") {
-                    if let Some(mode_str) = trimmed.get(idx + 5..) {
-                        let mode_part = mode_str.trim().to_string();
-                        return Ok(mode_part.to_lowercase());
-                    }
+                if let Some(idx) = trimmed.find("Mode:")
+                    && let Some(mode_str) = trimmed.get(idx + 5..)
+                {
+                    let mode_part = mode_str.trim().to_string();
+                    return Ok(mode_part.to_lowercase());
                 }
             }
         }
