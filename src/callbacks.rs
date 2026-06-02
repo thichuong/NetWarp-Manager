@@ -3,6 +3,8 @@ use slint::ComponentHandle;
 use std::rc::Rc;
 
 /// Registers all user interaction callbacks from Slint UI to Rust backend logic.
+// Developer Warning: Refer to architecture.md Section 6 for full Slint-Rust 
+// synchronization rules before modifying callbacks here!
 pub fn register_callbacks(ui: &AppWindow) {
     let ui_weak = ui.as_weak();
 

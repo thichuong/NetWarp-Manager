@@ -4,6 +4,8 @@ use std::rc::Rc;
 use std::time::Instant;
 
 /// Starts all background polling loop engines for network status, speeds, pings, and animations.
+// Developer Warning: Refer to architecture.md Section 6 for full Slint-Rust 
+// synchronization rules before modifying state polling loops here!
 pub fn start_polling_loops(ui: &AppWindow) {
     let ui_weak = ui.as_weak();
 

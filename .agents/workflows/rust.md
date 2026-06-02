@@ -46,6 +46,13 @@ Agent phải tuân thủ tuyệt đối các nguyên tắc lập trình sau (Use
     - Frontend: Chia nhỏ giao diện thành các thành phần Slint độc lập trong `src/ui/` và file khai báo chung `src/app.slint`.
 *   Ưu tiên hàng đầu cho việc thiết kế kiến trúc rõ ràng, hợp lý, dễ bảo trì và dễ mở rộng.
 
+### 4. Đồng Bộ Hóa Slint-Rust & Cập Nhật Bản Đồ Hướng Dẫn Lai (Slint-Rust Sync & Hybrid Map Update)
+*   🔄 **Luật Đồng Bộ Hóa bắt buộc**: Khi thay đổi bất kỳ file `.slint` nào (thêm/sửa/xóa các thuộc tính `property` hoặc hàm `callback`), Agent **BẮT BUỘC** phải:
+    - Đối chiếu và cập nhật logic liên quan trong `src/callbacks.rs` và `src/polling.rs`.
+    - **Cập nhật Bản đồ Đồng bộ tập trung (Section 6)** trong file `architecture.md` nếu có thay đổi liên quan đến tên thuộc tính, tên callback, hoặc cơ chế hoạt động của luồng polling. Việc này đảm bảo tài liệu kiến trúc trung tâm không bao giờ bị lỗi thời (stale docs).
+    - Đảm bảo giữ khối chú thích cảnh báo ngắn gọn (2-3 dòng) trỏ trực tiếp đến `architecture.md Section 6` ở đầu các file `.slint` và các file Rust bị ảnh hưởng.
+*   📖 **Đọc hướng dẫn trước khi sửa**: Luôn đọc chú thích cảnh báo ở đầu mỗi file và đối chiếu quy tắc đồng bộ chi tiết tại `architecture.md#6` trước khi thực hiện chỉnh sửa.
+
 ---
 
 ## 📈 BƯỚC 3: Quy Trình Thực Thi Nhiệm Vụ (Step-by-Step)
@@ -65,6 +72,6 @@ graph TD
 ```
 
 1.  **Nghiên cứu & Lập kế hoạch**: Thực hiện khảo sát các file mã nguồn tương ứng được liệt kê trong `architecture.md`. Lập bản Kế hoạch triển khai (`implementation_plan.md`) chi tiết trước khi tiến hành viết code.
-2.  **Triển khai & Phân tách**: Tiến hành sửa đổi hoặc tạo mới các file. Nếu thêm tính năng mới, tạo thêm module Rust hoặc component Slint tương ứng, đăng ký chúng vào `main.rs` hoặc `app.slint`.
+2.  **Triển khai & Phân tách**: Tiến hành sửa đổi hoặc tạo mới các file. Nếu thêm tính năng mới, tạo thêm module Rust hoặc component Slint tương ứng, đăng ký chúng vào `main.rs` hoặc `app.slint`, cập nhật/đồng bộ hóa Bản đồ Đồng bộ Slint-Rust (Section 6) trong `architecture.md`, và đảm bảo các file code bị ảnh hưởng đều có comment trỏ tới file kiến trúc.
 3.  **Kiểm tra chất lượng**: Thực thi kiểm tra cú pháp và định dạng code Rust (chỉ áp dụng khi có chỉnh sửa mã nguồn Rust; được bỏ qua hoàn toàn nếu chỉ sửa đổi phần UI).
 4.  **Bàn giao**: Tạo walkthrough chi tiết và hướng dẫn người dùng kiểm thử tính năng mới.
