@@ -166,16 +166,6 @@ pub fn start_polling_loops(ui: &AppWindow) {
                     // Move vectors to Slint VecModels
                     ui.set_download_history(Rc::new(slint::VecModel::from(dl_vec)).into());
                     ui.set_upload_history(Rc::new(slint::VecModel::from(ul_vec)).into());
-
-                    // Format the peak speed label dynamically (converting to MB/s if rate is >= 1024 KB/s)
-                    let max_label = if max_val_safe >= 1024.0 {
-                        format!("{:.2} MB/s", max_val_safe / 1024.0)
-                    } else {
-                        format!("{:.0} KB/s", max_val_safe)
-                    };
-
-                    ui.set_max_history_value(max_val_safe);
-                    ui.set_max_history_label(max_label.into());
                 });
             }
         }

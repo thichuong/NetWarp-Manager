@@ -48,6 +48,7 @@ Agent phải tuân thủ tuyệt đối các nguyên tắc lập trình sau (Use
 
 ### 4. Đồng Bộ Hóa Slint-Rust & Cập Nhật Bản Đồ Hướng Dẫn Lai (Slint-Rust Sync & Hybrid Map Update)
 *   🔄 **Luật Đồng Bộ Hóa bắt buộc**: Khi thay đổi bất kỳ file `.slint` nào (thêm/sửa/xóa các thuộc tính `property` hoặc hàm `callback`), Agent **BẮT BUỘC** phải:
+    - Đồng bộ hóa và cập nhật mã nguồn Rust tương ứng (bao gồm `src/main.rs`, `src/callbacks.rs`, `src/polling.rs`) để tránh việc ứng dụng bị mất đồng bộ (desync) hoặc gặp lỗi biên dịch do thiếu/thừa các phương thức thiết lập giá trị (setters) hoặc xử lý callback.
     - Đối chiếu và cập nhật logic liên quan trong `src/callbacks.rs` và `src/polling.rs`.
     - **Cập nhật Bản đồ Đồng bộ tập trung (Section 6)** trong file `architecture.md` nếu có thay đổi liên quan đến tên thuộc tính, tên callback, hoặc cơ chế hoạt động của luồng polling. Việc này đảm bảo tài liệu kiến trúc trung tâm không bao giờ bị lỗi thời (stale docs).
     - Đảm bảo giữ khối chú thích cảnh báo ngắn gọn (2-3 dòng) trỏ trực tiếp đến `architecture.md Section 6` ở đầu các file `.slint` và các file Rust bị ảnh hưởng.

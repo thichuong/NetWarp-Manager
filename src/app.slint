@@ -68,8 +68,6 @@ export component AppWindow inherits Window {
     // Array of history speeds to render the live chart
     in-out property <[float]> download_history: [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0];
     in-out property <[float]> upload_history: [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0];
-    in-out property <float> max_history_value: 100.0;
-    in-out property <string> max_history_label: "100 KB/s";
     in-out property <string> download_line_path: "";
     in-out property <string> download_area_path: "";
     in-out property <string> upload_line_path: "";
@@ -161,8 +159,6 @@ export component AppWindow inherits Window {
                         speed_stats: root.speed_stats;
                         download_history: root.download_history;
                         upload_history: root.upload_history;
-                        max_history_value: root.max_history_value;
-                        max_history_label: root.max_history_label;
                         download_line_path: root.download_line_path;
                         download_area_path: root.download_area_path;
                         upload_line_path: root.upload_line_path;

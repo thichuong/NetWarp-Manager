@@ -13,8 +13,6 @@ export component SpeedMonitorPanel inherits VerticalLayout {
     in-out property <NetworkSpeed> speed_stats;
     in-out property <[float]> download_history;
     in-out property <[float]> upload_history;
-    in-out property <float> max_history_value: 100.0;
-    in-out property <string> max_history_label: "100 KB/s";
     in-out property <string> download_line_path;
     in-out property <string> download_area_path;
     in-out property <string> upload_line_path;
@@ -214,29 +212,6 @@ export component SpeedMonitorPanel inherits VerticalLayout {
             Text {
                 text: "UL (TX)"; font-size: 10px; font-weight: 900; color: Theme.warning.transparentize(20%);
             }
-        }
-
-        // Dynamic Scale Labels Overlay
-        Text {
-            x: parent.width - 220px;
-            y: 15px;
-            text: "MAX SPEED: " + root.max_history_label;
-            font-size: 11px;
-            font-weight: 800;
-            color: Theme.text-primary;
-            font-family: "JetBrains Mono";
-            horizontal-alignment: right;
-        }
-
-        Text {
-            x: parent.width - 220px;
-            y: parent.height - 30px;
-            text: "MIN SPEED: 0 KB/s";
-            font-size: 11px;
-            font-weight: 800;
-            color: Theme.text-muted;
-            font-family: "JetBrains Mono";
-            horizontal-alignment: right;
         }
     }
 

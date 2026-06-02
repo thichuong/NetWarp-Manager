@@ -36,9 +36,6 @@ async fn main() -> Result<(), slint::PlatformError> {
     let upload_history_model = Rc::new(slint::VecModel::<f32>::from(vec![0.0; 25]));
     ui.set_upload_history(upload_history_model.into());
 
-    ui.set_max_history_value(100.0);
-    ui.set_max_history_label("100 KB/s".into());
-
     // 3. Register UI callbacks
     callbacks::register_callbacks(&ui);
 
