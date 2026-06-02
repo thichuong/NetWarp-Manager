@@ -129,7 +129,10 @@ Mã nguồn dự án được tổ chức tối giản và phân rã thành các
 NetWarp-Manager/
 ├── src/                          # Mã nguồn chính của ứng dụng
 │   ├── app.slint                 # Giao diện người dùng tập trung (Slint UI Declarative)
-│   ├── main.rs                   # Điều phối sự kiện, đăng ký callback & Background Tasks (Bootstrap)
+│   ├── main.rs                   # Điểm khởi chạy tối giản (Bootstrap)
+│   ├── helpers.rs                # Tiện ích định dạng, vẽ đồ thị & các tác vụ GeoIP, Ping dùng chung
+│   ├── callbacks.rs              # Đăng ký và xử lý tất cả sự kiện tương tác người dùng (UI Callbacks)
+│   ├── polling.rs                # Quản lý tập trung các luồng chạy nền giám sát hệ thống
 │   ├── wifi.rs                   # Quản lý nmcli quét, kết nối & khóa cứng BSSID Wi-Fi
 │   ├── warp.rs                   # Điều phối dịch vụ Cloudflare WARP & installer terminal tương tác
 │   └── net_utils.rs              # Đo tốc độ mạng qua proc/net/dev, Ping chẩn đoán & GeoIP

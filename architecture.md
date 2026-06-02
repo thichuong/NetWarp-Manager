@@ -17,7 +17,10 @@ This specification is optimized for LLM coding agents. It provides a dense, toke
 
 ### 2.1 Backend Core (`src/*.rs`)
 - `build.rs`: Compiles `.slint` markup to native Rust at compile time.
-- `main.rs`: Application bootstrap. Hooks UI callbacks, initializes background tasks, manages application state.
+- `main.rs`: Ultra-minimal application bootstrap (under 50 lines). Allocates Slint VecModels, links callbacks, registers background polling tasks, and runs the UI event loop.
+- `helpers.rs`: Geometry graph computations, formatting utilities (`format_speed`, `format_bytes`), system logging (`append_log`), and centralized asynchronous reusable tasks (`refresh_geoip`, `refresh_ping`).
+- `callbacks.rs`: Registers all event handlers and interface triggers bound to `AppWindow` (such as Wi-Fi network scanning/connection and WARP tunnel configuration).
+- `polling.rs`: Coordinated asynchronous polling loops (Pulse, Speeds, Status/WARP, Ping Diagnostics). Integrates directly with consolidated helper tasks.
 - `wifi.rs`: Interfaces with `nmcli` and `iw`.
   - Wi-Fi scanning: parses `nmcli dev wifi list` terse output. Handles colon escaping.
   - Connection/BSSID lock: enforces BSSID connection via `nmcli dev wifi connect <BSSID>`. Modifies profile config `802-11-wireless.bssid <BSSID>` to prevent roaming.
@@ -111,7 +114,7 @@ indexing_slicing = "warn"
 ### 5.2 Error Propagation
 - **Zero Panic Policy**: No `unwrap`, `expect`, or direct `panic!` in the main codebase.
 - **Standard Signature**: System routines must return `Result<T, String>`.
-- **Failure UI integration**: Bubbled errors are caught in `main.rs` and dispatched to the UI console log panel (`app.global::<ConsoleLogger>().log(...)`) or displayed as Toast alerts.
+- **Failure UI integration**: Bubbled errors are caught in `callbacks.rs` or `polling.rs` and dispatched to the UI console log panel via `helpers::append_log(...)` or displayed as Toast alerts.
 
 ### 5.3 Shell Injection Prevention
 - UI never constructs shell command strings directly.
