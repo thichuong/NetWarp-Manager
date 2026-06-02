@@ -204,26 +204,19 @@ pub fn start_polling_loops(ui: &AppWindow) {
 
                     if matches_last && has_cache {
                         // Apply cached static details (MAC, IP, Gateway, DNS) from Slint cache to save CPU process forks
-                        if let Some(ref cache) = cached_wifi_details {
-                            let slint_active = WifiNetwork {
-                                bssid: active.bssid.into(),
-                                ssid: active.ssid.into(),
-                                channel: active.channel,
-                                frequency: active.frequency.into(),
-                                band: active.band.into(),
-                                signal: active.signal,
-                                security: active.security.into(),
-                                active: active.active,
-                                rate: active.rate.unwrap_or_default().into(),
-                                device: cache.device.clone(),
-                                mac: cache.mac.clone(),
-                                ip_address: cache.ip_address.clone(),
-                                gateway: cache.gateway.clone(),
-                                dns_primary: cache.dns_primary.clone(),
-                                dns_secondary: cache.dns_secondary.clone(),
-                            };
-                            current_wifi_ssid = slint_active.ssid.clone();
-                            active_wifi_to_set = Some(slint_active);
+                        if let Some(ref mut cache) = cached_wifi_details {
+                            cache.bssid = active.bssid.into();
+                            cache.ssid = active.ssid.into();
+                            cache.channel = active.channel;
+                            cache.frequency = active.frequency.into();
+                            cache.band = active.band.into();
+                            cache.signal = active.signal;
+                            cache.security = active.security.into();
+                            cache.active = active.active;
+                            cache.rate = active.rate.unwrap_or_default().into();
+
+                            current_wifi_ssid = cache.ssid.clone();
+                            active_wifi_to_set = Some(cache.clone());
                             should_update_wifi_ui = true;
                         }
                     } else {
@@ -333,20 +326,20 @@ pub fn start_polling_loops(ui: &AppWindow) {
             }
 
             let ui_warp_inner = ui_status_weak.clone();
-            let warp_status_clone = warp_status.clone();
-            let ui_geo_trigger = ui_warp_inner.clone();
-            let ui_mode_trigger = ui_warp_inner.clone();
 
             let _ = ui_warp_inner.upgrade_in_event_loop(move |ui| {
-                ui.set_warp_status_text(warp_status_clone.clone());
+                let is_connected = warp_status.to_lowercase().contains("connected");
+                let is_connecting = warp_status.to_lowercase().contains("connecting");
 
-                if warp_status_clone.to_lowercase().contains("connected") {
+                ui.set_warp_status_text(warp_status);
+
+                if is_connected {
                     ui.set_warp_status_color("#10b981".into()); // Green
                     ui.set_warp_network_text(
                         "Your network traffic is encrypted & protected.".into(),
                     );
                     ui.set_warp_toggle_state(true);
-                } else if warp_status_clone.to_lowercase().contains("connecting") {
+                } else if is_connecting {
                     ui.set_warp_status_color("#f59e0b".into()); // Orange pulse
                     ui.set_warp_network_text("Establishing secure Cloudflare tunnel...".into());
                     ui.set_warp_toggle_state(true);
@@ -360,9 +353,11 @@ pub fn start_polling_loops(ui: &AppWindow) {
 
                 // Immediate trigger Geolocation curl fetch and WARP mode refresh if state toggled
                 if state_changed {
+                    let ui_geo_trigger = ui.as_weak();
                     tokio::spawn(helpers::refresh_geoip(ui_geo_trigger));
 
                     // Asynchronously fetch current operating mode and update UI badge to stay in sync
+                    let ui_mode_trigger = ui.as_weak();
                     tokio::spawn(async move {
                         if let Ok(warp_mode) = warp::get_warp_mode().await {
                             let _ = ui_mode_trigger.upgrade_in_event_loop(move |ui| {

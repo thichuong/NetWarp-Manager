@@ -25,7 +25,7 @@ pub fn register_callbacks(ui: &AppWindow) {
             ui.set_is_scanning(true);
             helpers::append_log(&ui, "[Wi-Fi] Initiating active airwaves scan...");
 
-            let ui_inner_weak = ui_change_weak.clone();
+            let ui_inner_weak = ui.as_weak();
 
             // Execute Wi-Fi scan in background thread
             tokio::spawn(async move {
@@ -80,7 +80,7 @@ pub fn register_callbacks(ui: &AppWindow) {
             ui.set_is_scanning(true);
             helpers::append_log(&ui, "[Wi-Fi] Scanning nearby frequencies...");
 
-            let ui_inner_weak = ui_scan_weak.clone();
+            let ui_inner_weak = ui.as_weak();
 
             tokio::spawn(async move {
                 match wifi::get_wifi_list().await {
@@ -138,7 +138,7 @@ pub fn register_callbacks(ui: &AppWindow) {
             helpers::append_log(&ui, &log_msg);
 
             // Background load saved details if profile already exists
-            let ui_inner_weak = ui_select_weak.clone();
+            let ui_inner_weak = ui.as_weak();
             tokio::spawn(async move {
                 let saved_pwd = wifi::get_wifi_password(&ssid_str).await.unwrap_or_default();
                 let locked_bssid = wifi::get_wifi_locked_bssid(&ssid_str)
@@ -176,7 +176,7 @@ pub fn register_callbacks(ui: &AppWindow) {
                 Some(pwd.to_string())
             };
 
-            let ui_inner_weak = ui_conn_weak.clone();
+            let ui_inner_weak = ui.as_weak();
             tokio::spawn(async move {
                 match wifi::connect_wifi(bssid_str, ssid_str, pwd_opt, lock).await {
                     Ok(success_msg) => {
@@ -240,7 +240,7 @@ pub fn register_callbacks(ui: &AppWindow) {
             ui.set_warp_status_text("Connecting...".into());
             ui.set_warp_status_color("#f59e0b".into()); // Orange pulse
 
-            let ui_inner_weak = ui_warp_weak.clone();
+            let ui_inner_weak = ui.as_weak();
             tokio::spawn(async move {
                 match warp::warp_toggle(connect).await {
                     Ok(msg) => {
@@ -273,7 +273,7 @@ pub fn register_callbacks(ui: &AppWindow) {
             );
             let mode_str = mode.to_string();
 
-            let ui_inner_weak = ui_mode_weak.clone();
+            let ui_inner_weak = ui.as_weak();
             tokio::spawn(async move {
                 match warp::set_warp_mode(&mode_str).await {
                     Ok(msg) => {
@@ -320,7 +320,7 @@ pub fn register_callbacks(ui: &AppWindow) {
                 "[System] Initializing warp-cli Polkit deployment wrapper...",
             );
 
-            let ui_inner_weak = ui_install_weak.clone();
+            let ui_inner_weak = ui.as_weak();
             tokio::spawn(async move {
                 match warp::install_warp().await {
                     Ok(msg) => {
