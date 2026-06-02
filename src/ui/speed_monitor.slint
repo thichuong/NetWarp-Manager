@@ -7,6 +7,14 @@ export component SpeedMonitorPanel inherits VerticalLayout {
     in-out property <NetworkSpeed> speed_stats;
     in-out property <[float]> download_history;
     in-out property <[float]> upload_history;
+    in-out property <float> max_history_value: 100.0;
+    in-out property <string> max_history_label: "100 KB/s";
+    in-out property <string> download_line_path;
+    in-out property <string> download_area_path;
+    in-out property <string> upload_line_path;
+    in-out property <string> upload_area_path;
+    in-out property <float> chart_width: speed_chart.width / 1px;
+    in-out property <float> chart_height: speed_chart.height / 1px;
 
     spacing: 12px;
     
@@ -80,59 +88,149 @@ export component SpeedMonitorPanel inherits VerticalLayout {
         border-radius: 20px;
         clip: true;
         
-        // Vertical grid background ticks
+        // Vertical grid background ticks (Sci-fi scanning lines)
         HorizontalLayout {
-            padding: 10px;
+            padding-left: 20px;
+            padding-right: 20px;
+            padding-top: 10px;
+            padding-bottom: 10px;
             alignment: space-between;
-            for i in [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]: Rectangle {
+            for i in [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]: Rectangle {
                 width: 1px;
                 background: Theme.text-primary.transparentize(97%);
             }
         }
 
-        // Horizontal status helper lines
-        VerticalLayout {
-            padding: 20px;
-            alignment: space-between;
-            for i in [1, 2, 3, 4]: Rectangle {
-                height: 1px;
-                background: Theme.text-primary.transparentize(97%);
-            }
+        // Horizontal measurement grid lines (0%, 25%, 50%, 75% height)
+        // 25% height grid line (representing 75% of Max Speed)
+        Rectangle {
+            y: 75px;
+            height: 1px;
+            width: parent.width - 40px;
+            x: 20px;
+            background: Theme.text-primary.transparentize(96%);
         }
 
-        // Real Dynamic Waveform Bars
-        HorizontalLayout {
-            padding-left: 15px;
-            padding-right: 15px;
-            padding-top: 15px;
-            padding-bottom: 15px;
-            spacing: 8px;
-            alignment: center;
+        // 50% height grid line (representing 50% of Max Speed)
+        Rectangle {
+            y: 125px;
+            height: 1px;
+            width: parent.width - 40px;
+            x: 20px;
+            background: Theme.text-primary.transparentize(96%);
+        }
+
+        // 75% height grid line (representing 25% of Max Speed)
+        Rectangle {
+            y: 175px;
+            height: 1px;
+            width: parent.width - 40px;
+            x: 20px;
+            background: Theme.text-primary.transparentize(96%);
+        }
+
+        // Single Axis Dynamic Graph Area
+        speed_chart := Rectangle {
+            x: 20px;
+            y: 35px;
+            width: parent.width - 40px;
+            height: parent.height - 50px;
             
-            for download_pt in root.download_history: VerticalLayout {
-                alignment: end;
-                
-                // Cyber download volume rectangle
-                Rectangle {
-                    width: 12px;
-                    height: Math.min(220px, Math.max(4px, download_pt * 0.003px));
-                    border-radius: 3px;
-                    background: @linear-gradient(180deg, Theme.accent 0%, Theme.accent-bg-trans 100%);
-                    
-                    animate height { duration: 250ms; easing: ease-out; }
-                }
+            // 1. Download Area Gradient
+            Path {
+                width: 100%;
+                height: 100%;
+                viewbox-width: root.chart_width;
+                viewbox-height: root.chart_height;
+                fill: @linear-gradient(180deg, Theme.success.transparentize(80%) 0%, Theme.success.transparentize(98%) 100%);
+                commands: root.download_area_path;
+            }
+
+            // 2. Upload Area Gradient
+            Path {
+                width: 100%;
+                height: 100%;
+                viewbox-width: root.chart_width;
+                viewbox-height: root.chart_height;
+                fill: @linear-gradient(180deg, Theme.warning.transparentize(80%) 0%, Theme.warning.transparentize(98%) 100%);
+                commands: root.upload_area_path;
+            }
+
+            // 3. Download Line Stroke
+            Path {
+                width: 100%;
+                height: 100%;
+                viewbox-width: root.chart_width;
+                viewbox-height: root.chart_height;
+                stroke: Theme.success;
+                stroke-width: 3px;
+                commands: root.download_line_path;
+            }
+
+            // 4. Upload Line Stroke
+            Path {
+                width: 100%;
+                height: 100%;
+                viewbox-width: root.chart_width;
+                viewbox-height: root.chart_height;
+                stroke: Theme.warning;
+                stroke-width: 3px;
+                commands: root.upload_line_path;
             }
         }
 
-        // Title Overlay
-        Text {
+        // Left Side Channel Legends
+        HorizontalLayout {
             x: 20px;
             y: 15px;
-            text: "NETWORK WAVEFORM MONITOR (KB/S)";
-            font-size: 12px;
+            spacing: 12px;
+            
+            Text {
+                text: "NETWORK WAVEFORM MONITOR (DYNAMIC LINE CHART)";
+                font-size: 11px;
+                font-weight: 800;
+                color: rgba(148, 163, 184, 0.4);
+                letter-spacing: 0.8px;
+            }
+            
+            // Download Legend badge
+            Rectangle {
+                width: 10px; height: 10px; border-radius: 5px; background: Theme.success; y: 2px;
+            }
+            Text {
+                text: "DL (RX)"; font-size: 10px; font-weight: 900; color: Theme.success.transparentize(20%);
+            }
+            
+            // Upload Legend badge
+            Rectangle {
+                width: 10px; height: 10px; border-radius: 5px; background: Theme.warning; y: 2px;
+            }
+            Text {
+                text: "UL (TX)"; font-size: 10px; font-weight: 900; color: Theme.warning.transparentize(20%);
+            }
+        }
+
+        // Dynamic Scale Labels Overlay
+        Text {
+            x: parent.width - 220px;
+            y: 15px;
+            text: "MAX SPEED: " + root.max_history_label;
+            font-size: 11px;
             font-weight: 800;
-            color: rgba(148, 163, 184, 0.35);
-            letter-spacing: 1px;
+            color: Theme.text-primary;
+            font-family: "JetBrains Mono";
+            horizontal-alignment: right;
+        }
+
+        Text {
+            x: parent.width - 220px;
+            y: parent.height - 30px;
+            text: "MIN SPEED: 0 KB/s";
+            font-size: 11px;
+            font-weight: 800;
+            color: Theme.text-muted;
+            font-family: "JetBrains Mono";
+            horizontal-alignment: right;
         }
     }
 

@@ -16,6 +16,54 @@ use std::time::Instant;
 
 slint::include_modules!();
 
+/// Generates SVG path commands for a history array mapping into a physical pixel dimension coordinate space.
+fn generate_svg_path(
+    history: &[f32],
+    max_val: f32,
+    chart_w: f32,
+    chart_h: f32,
+    is_area: bool,
+) -> String {
+    if history.is_empty() {
+        return String::new();
+    }
+
+    let len = history.len();
+    let x_step = chart_w / (len - 1) as f32;
+
+    let get_y = |val: f32| -> f32 {
+        let ratio = if max_val > 0.0 { val / max_val } else { 0.0 };
+        // Map 0 to 95% of height, and max to 5% of height (keep 5% padding from boundaries)
+        chart_h - ratio * (chart_h * 0.9) - (chart_h * 0.05)
+    };
+
+    let mut commands = String::new();
+
+    if is_area {
+        // Start at bottom-left corner of the chart area in physical pixels
+        commands.push_str(&format!(
+            "M 0.0 {:.2} L 0.0 {:.2} ",
+            chart_h,
+            get_y(history[0])
+        ));
+    } else {
+        commands.push_str(&format!("M 0.0 {:.2} ", get_y(history[0])));
+    }
+
+    for (i, &val) in history.iter().enumerate().skip(1) {
+        let x = i as f32 * x_step;
+        let y = get_y(val);
+        commands.push_str(&format!("L {:.2} {:.2} ", x, y));
+    }
+
+    if is_area {
+        // Go down to bottom-right corner and close the shape
+        commands.push_str(&format!("L {:.2} {:.2} Z", chart_w, chart_h));
+    }
+
+    commands
+}
+
 /// Converts a size in bytes to a human-readable string (KB, MB, GB, etc.)
 fn format_bytes(bytes: u64) -> String {
     const KB: u64 = 1024;
@@ -77,6 +125,9 @@ async fn main() -> Result<(), slint::PlatformError> {
 
     let upload_history_model = Rc::new(slint::VecModel::<f32>::from(vec![0.0; 25]));
     ui.set_upload_history(upload_history_model.clone().into());
+
+    ui.set_max_history_value(100.0);
+    ui.set_max_history_label("100 KB/s".into());
 
     // 3. Register UI callbacks interacting with backend logic modules
 
@@ -598,7 +649,7 @@ async fn main() -> Result<(), slint::PlatformError> {
                         dl_vec.remove(0);
                     }
                     dl_vec.push(speed_dl_kb as f32);
-                    ui.set_download_history(Rc::new(slint::VecModel::from(dl_vec)).into());
+                    let max_dl = dl_vec.iter().copied().fold(0.0f32, f32::max);
 
                     // Slide upload model array
                     let ul_model = ui.get_upload_history();
@@ -607,7 +658,43 @@ async fn main() -> Result<(), slint::PlatformError> {
                         ul_vec.remove(0);
                     }
                     ul_vec.push(speed_ul_kb as f32);
+                    let max_ul = ul_vec.iter().copied().fold(0.0f32, f32::max);
+
+                    // Calculate the peak value across both historical channels for auto-scaling
+                    let max_val = max_dl.max(max_ul);
+
+                    append_log(&ui, &format!("[DEBUG] UL Vec: {:?}", ul_vec));
+
+                    // Clamp to a safe minimum baseline (100.0 KB/s) to prevent division by zero or overly micro-scaled waves when idle
+                    let max_val_safe = if max_val < 100.0 { 100.0 } else { max_val };
+
+                    let chart_w = ui.get_chart_width();
+                    let chart_h = ui.get_chart_height();
+
+                    // Generate dynamic line and area SVG paths for direct rendering on unified axis
+                    let dl_line = generate_svg_path(&dl_vec, max_val_safe, chart_w, chart_h, false);
+                    let dl_area = generate_svg_path(&dl_vec, max_val_safe, chart_w, chart_h, true);
+                    let ul_line = generate_svg_path(&ul_vec, max_val_safe, chart_w, chart_h, false);
+                    let ul_area = generate_svg_path(&ul_vec, max_val_safe, chart_w, chart_h, true);
+
+                    ui.set_download_line_path(dl_line.into());
+                    ui.set_download_area_path(dl_area.into());
+                    ui.set_upload_line_path(ul_line.into());
+                    ui.set_upload_area_path(ul_area.into());
+
+                    // Move vectors to Slint VecModels
+                    ui.set_download_history(Rc::new(slint::VecModel::from(dl_vec)).into());
                     ui.set_upload_history(Rc::new(slint::VecModel::from(ul_vec)).into());
+
+                    // Format the peak speed label dynamically (converting to MB/s if rate is >= 1024 KB/s)
+                    let max_label = if max_val_safe >= 1024.0 {
+                        format!("{:.2} MB/s", max_val_safe / 1024.0)
+                    } else {
+                        format!("{:.0} KB/s", max_val_safe)
+                    };
+
+                    ui.set_max_history_value(max_val_safe);
+                    ui.set_max_history_label(max_label.into());
                 });
             }
         }
