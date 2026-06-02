@@ -18,6 +18,7 @@ This specification is optimized for LLM coding agents. It provides a dense, toke
 ### 2.1 Backend Core (`src/*.rs`)
 - `build.rs`: Compiles `.slint` markup to native Rust at compile time.
 - `main.rs`: Ultra-minimal application bootstrap (under 50 lines). Allocates Slint VecModels, links callbacks, registers background polling tasks, and runs the UI event loop.
+- `error.rs`: Centralized custom error enum (`AppError`) built with the `thiserror` crate, organizing all runtime and OS errors into structured variants.
 - `helpers.rs`: Geometry graph computations, formatting utilities (`format_speed`, `format_bytes`), system logging (`append_log`), and centralized asynchronous reusable tasks (`refresh_geoip`, `refresh_ping`).
 - `callbacks.rs`: Registers all event handlers and interface triggers bound to `AppWindow` (such as Wi-Fi network scanning/connection and WARP tunnel configuration).
 - `polling.rs`: Coordinated asynchronous polling loops (Pulse, Speeds, Status/WARP, Ping Diagnostics). Integrates directly with consolidated helper tasks.
@@ -28,11 +29,11 @@ This specification is optimized for LLM coding agents. It provides a dense, toke
   - Active link state: parses output of `iw dev <interface> link` for realtime TX bitrate.
 - `warp.rs`: Interfaces with `warp-cli` and orchestrates Cloudflare WARP.
   - Mode management: switches daemon modes (`doh`, `warp`, `warp+doh`).
-  - Wizard Installer: detects local terminal (e.g., `gnome-terminal`, `konsole`, `ptyxis`). Generates `/tmp/install_warp_wizard.sh` which downloads cloudflare-warp and runs `sudo rpm -Uvh --nodeps` (bypasses missing GUI dependencies like `webkit2gtk3`). Auto-deletes script/temp files on exit or interrupt using shell `trap`.
+  - Wizard Installer: detects local terminal (e.g., `gnome-terminal`, `konsole`, `ptyxis`). Generates a secure, unique `/tmp/install_warp_wizard_{PID}.sh` script with atomic `0o700` permissions (owner-only) to eliminate race conditions and symlink attacks. Downloads cloudflare-warp and runs `sudo rpm -Uvh --nodeps` (bypasses missing GUI dependencies like `webkit2gtk3`). Auto-deletes script/temp files on exit or interrupt using shell `trap`.
 - `net_utils.rs`: Auxiliary networking metrics.
   - Realtime Speed: samples `/proc/net/dev` every second. Calculates Upload/Download delta rate.
   - Latency: concurrent single-packet pings to Google DNS (`8.8.8.8`) and Cloudflare DNS (`1.1.1.1`) with 1-second timeout.
-  - Geolocation: Queries `http://ip-api.com/json/` via `curl`. Features a 3-retry fallback.
+  - Geolocation: Queries `http://ip-api.com/json/` via a native Rust HTTP client (`reqwest`). Features an asynchronous 3-retry loop fallback (1s delay, 3s timeout) to prevent blocking and process fork overhead.
 
 ### 2.2 Frontend UI Layer (`src/ui/` & `src/app.slint`)
 - `app.slint`: Main entry point. Declares layout grids, system console logs, toast alerts, modal dialogs, and coordinates sub-components.
@@ -88,7 +89,7 @@ Coordinated asynchronous polling triggers state updates back to Slint at differe
 ### 4.2 Interactive Terminal Installer
 1. Docks terminal list: `["gnome-terminal", "ptyxis", "konsole", "xfce4-terminal", "xterm"]`.
 2. Locates first match. Spawns process using system arguments.
-3. Target shell script `/tmp/install_warp_wizard.sh` sequence:
+3. Target shell script `/tmp/install_warp_wizard_{PID}.sh` sequence:
    ```bash
    trap 'rm -f /tmp/cloudflare-warp-*.rpm "$0"' EXIT INT TERM
    dnf download cloudflare-warp
@@ -113,8 +114,8 @@ indexing_slicing = "warn"
 
 ### 5.2 Error Propagation
 - **Zero Panic Policy**: No `unwrap`, `expect`, or direct `panic!` in the main codebase.
-- **Standard Signature**: System routines must return `Result<T, String>`.
-- **Failure UI integration**: Bubbled errors are caught in `callbacks.rs` or `polling.rs` and dispatched to the UI console log panel via `helpers::append_log(...)` or displayed as Toast alerts.
+- **Standard Signature**: System routines must return `Result<T, AppError>` where `AppError` is a robust custom enum managing categorized runtime errors (Wi-Fi, WARP, I/O, HTTP) using the `thiserror` library.
+- **Failure UI integration**: Bubbled errors are caught in `callbacks.rs` or `polling.rs`, mapped to user-friendly strings using `.to_string()`, and dispatched to the UI console log panel via `helpers::append_log(...)` or displayed as Toast alerts.
 
 ### 5.3 Shell Injection Prevention
 - UI never constructs shell command strings directly.

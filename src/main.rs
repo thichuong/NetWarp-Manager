@@ -7,11 +7,14 @@
 )]
 
 mod callbacks;
+pub mod error;
 mod helpers;
 mod net_utils;
 mod polling;
 mod warp;
 mod wifi;
+
+pub use error::AppError;
 
 use slint::ComponentHandle;
 use std::rc::Rc;

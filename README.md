@@ -25,9 +25,9 @@
 **Cách WiWarp giải quyết triệt để:**
 * **Bypass Dependency thông minh:** Sử dụng backend Rust kết hợp với **Trình Cài Đặt Terminal Tương tác cao cấp (Interactive Terminal Installer)**.
   1. Tự động phát hiện các ứng dụng Terminal Emulator (như GNOME Terminal, Ptyxis, Konsole, v.v.) hiện có trên máy người dùng và khởi chạy một cửa sổ dòng lệnh thực tế.
-  2. Tự động tải gói cài đặt chính thức bằng `dnf download cloudflare-warp` và thực hiện lệnh cài đặt nâng cấp bỏ qua kiểm tra thư viện bị thiếu: `sudo rpm -Uvh --nodeps /tmp/cloudflare-warp-*.rpm`.
+  2. Tự động tải gói cài đặt chính thức bằng `dnf download cloudflare-warp` và thực hiện lệnh cài đặt nâng cấp bỏ qua kiểm tra thư viện bị thiếu thông qua script tạm thời `/tmp/install_warp_wizard_{PID}.sh` được bảo mật bằng quyền hạn nguyên tử `0o700` (chỉ cho phép owner) và chống Symlink Attack bằng `.create_new(true)`: `sudo rpm -Uvh --nodeps /tmp/cloudflare-warp-*.rpm`.
   3. Kích hoạt dịch vụ hệ thống `warp-svc` và hướng dẫn đăng ký client mới (`warp-cli registration new` - xử lý đồng ý các điều khoản sử dụng TOS trực quan trong cửa sổ terminal thật).
-* **Tự dọn dẹp hệ thống (Self-cleaning Trap):** Sử dụng các bẫy tín hiệu `trap` trong script Bash để tự động xóa sạch toàn bộ tệp RPM tạm (~220MB) và **tự xóa chính tệp script** `.sh` tạm khi kết thúc thành công hoặc khi người dùng bấm `Ctrl+C` hủy bỏ giữa chừng, đảm bảo không lưu lại bất cứ rác hệ thống nào.
+* **Tự dọn dẹp hệ thống (Self-cleaning Trap):** Sử dụng các bẫy tín hiệu `trap` trong script Bash để tự động xóa sạch toàn bộ tệp RPM tạm (~220MB) và **tự xóa chính tệp script** `.sh` tạm khi kết thúc thành công hoặc khi người dùng bấm `Ctrl+C` hủy bỏ giữa chừng, kết hợp với cơ chế dọn dẹp chủ động của Backend nếu khởi động terminal thất bại, đảm bảo không lưu lại bất cứ rác hệ thống nào.
 * **Bật/Tắt dễ dàng**: Công tắc Toggle Switch phong cách hiện đại để bật/tắt kết nối WARP chỉ với một chạm từ giao diện đồ họa.
 * **Thăm dò trạng thái liên tục (Polling)**: Đồng bộ hóa giao diện người dùng theo thời gian thực (mỗi 1 giây) với các trạng thái hoạt động thực tế: *Connecting...*, *Connected*, *Disconnected*, hoặc *Not Installed*.
 * **Linh hoạt chuyển đổi 3 chế độ hoạt động (WARP Modes)**:
@@ -62,7 +62,7 @@
 ### 📊 Trình Chẩn Đoán & Đo Lường Tốc Độ Thời Gian Thực
 * **Đo tốc độ mạng thời gian thực**: Sử dụng cơ chế đọc trực tiếp `/proc/net/dev` của Linux để hiển thị tốc độ Upload/Download thực tế của card mạng theo chu kỳ 1 giây, hiển thị đồ thị lịch sử chuyển động mượt mà.
 * **Chẩn đoán Ping liên tục**: Thực hiện ping song song tới **Cloudflare DNS (1.1.1.1)** và **Google DNS (8.8.8.8)** để giám sát độ trễ mạng trực quan.
-* **IP Geolocation**: Tự động phát hiện IP công cộng, nhà mạng cung cấp (ISP) và vị trí địa lý của bạn, phản ánh chính xác khi bạn Bật/Tắt dịch vụ WARP. Hỗ trợ cơ chế **cooldown 30s** để tiết kiệm tài nguyên mạng nhưng sẽ **tự động kích hoạt ngay lập tức** khi có thay đổi trạng thái WARP hoặc mạng Wi-Fi.
+* **IP Geolocation**: Tự động phát hiện IP công cộng, nhà mạng cung cấp (ISP) và vị trí địa lý của bạn bằng cách gọi API bất đồng bộ thông qua thư viện native `reqwest` thuần Rust (chống nghẽn giao diện và tối ưu hóa vượt bậc so với việc fork tiến trình `curl` bên ngoài). Hỗ trợ cơ chế **thử lại thông minh** (retry 3 lần, delay 1s) khi mạng thay đổi đột ngột và cơ chế **cooldown 30s** để tiết kiệm tài nguyên mạng nhưng sẽ **tự động kích hoạt ngay lập tức** khi có thay đổi trạng thái WARP hoặc mạng Wi-Fi.
 
 ### 📋 Console Logs & Toast Thông Báo Cao Cấp
 * **Nhật ký hệ thống mini**: Bảng điều khiển logs thu nhỏ tích hợp trực tiếp trên giao diện hiển thị các tiến trình chạy lệnh hệ thống giúp nhà phát triển và người dùng dễ dàng theo dõi, duy trì tối đa 100 dòng log.
@@ -74,7 +74,7 @@
 
 * **Frontend**: **Slint UI framework (v1.9.0)** - Khai báo thiết kế giao diện bằng cú pháp Slint mạnh mẽ, tối ưu hóa kích thước, biên dịch tĩnh trực tiếp sang mã Rust để tăng hiệu năng tối đa mà không tốn CPU cho WebView.
 * **Backend**: **Rust** & **Tokio runtime** - Quản lý bất đồng bộ các luồng polling và thực thi hệ thống an toàn.
-* **Hệ thống thực thi**: Lệnh hệ thống Linux (`nmcli`, `dnf`, `rpm`, `systemctl`, `iw`, `ping`, `curl`) được gọi bất đồng bộ từ Rust giúp giao diện UI không bao giờ bị đóng băng (non-blocking).
+* **Hệ thống thực thi**: Lệnh hệ thống Linux (`nmcli`, `dnf`, `rpm`, `systemctl`, `iw`, `ping`) được gọi bất đồng bộ thông qua `std::process::Command` từ Rust backend, song song với đó các yêu cầu HTTP (như Geo-IP) được thực hiện native bằng thư viện `reqwest` giúp giao diện UI luôn đạt mức 60 FPS mượt mà (non-blocking).
 
 ---
 
@@ -134,8 +134,9 @@ NetWarp-Manager/
 │   ├── callbacks.rs              # Đăng ký và xử lý tất cả sự kiện tương tác người dùng (UI Callbacks)
 │   ├── polling.rs                # Quản lý tập trung các luồng chạy nền giám sát hệ thống
 │   ├── wifi.rs                   # Quản lý nmcli quét, kết nối & khóa cứng BSSID Wi-Fi
+│   ├── error.rs                  # Định nghĩa custom error enum (AppError) sử dụng thiserror
 │   ├── warp.rs                   # Điều phối dịch vụ Cloudflare WARP & installer terminal tương tác
-│   └── net_utils.rs              # Đo tốc độ mạng qua proc/net/dev, Ping chẩn đoán & GeoIP
+│   └── net_utils.rs              # Đo tốc độ mạng qua proc/net/dev, Ping chẩn đoán & GeoIP (qua reqwest)
 ├── Cargo.toml                    # Quản lý thư viện phụ thuộc và lints nghiêm ngặt của Rust
 ├── Cargo.lock                    # Lưu giữ chính xác các phiên bản dependency đã khóa
 ├── build.rs                      # Build script tự động biên dịch app.slint lúc compile
@@ -157,7 +158,8 @@ NetWarp-Manager/
 
 Dự án sử dụng các cơ chế bảo mật cao cấp của Rust:
 * Mọi câu lệnh can thiệp hệ thống (`nmcli`, `dnf`, `rpm`, `systemctl`) đều được đóng gói an toàn phía Backend Rust. Giao diện Slint hoàn toàn không thể trực tiếp chạy lệnh Shell tùy ý, tránh rủi ro bảo mật shell injection.
-* Quá trình cài đặt WARP Daemon được khởi chạy minh bạch trên cửa sổ terminal hệ thống, giúp người dùng trực tiếp kiểm soát xác thực `sudo` và an tâm tuyệt đối về mặt bảo mật.
+* Quá trình cài đặt WARP Daemon được khởi chạy minh bạch trên cửa sổ terminal hệ thống. File script cài đặt tạm thời được tạo lập ngẫu nhiên theo PID trong thư mục `/tmp` với quyền hạn nguyên tử `rwx------` (0700) và cơ chế chống ghi đè/symlink `create_new(true)`, triệt tiêu hoàn toàn các lỗ hổng tranh chấp đặc quyền (race condition) trên Linux.
+* Áp dụng quy chuẩn lỗi tập trung `AppError` thông qua crate `thiserror` thay thế cho kiểu chuỗi `String` cũ, cải thiện độ chặt chẽ trong phân tích logic và ngăn ngừa mất mát ngữ cảnh lỗi.
 * Áp dụng quy chuẩn lint cực kỳ khắt khe của Rust (`unsafe_code = "deny"`, `unwrap_used = "deny"`, `expect_used = "deny"`, `panic = "deny"` trong sản xuất), cam kết ứng dụng hoạt động ổn định và không bao giờ crash bất thường.
 
 Dự án được phân phối dưới dạng phần mềm mã nguồn mở theo cơ chế cấp phép [**MIT License**](file:///home/exblackhole/Desktop/NetWarp-Manager/LICENSE).

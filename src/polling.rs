@@ -180,7 +180,9 @@ pub fn start_polling_loops(ui: &AppWindow) {
         let mut geo_cooldown_counter = 0;
 
         // Fetch initial WARP Mode on application launch
-        let initial_warp_mode = warp::get_warp_mode().await.unwrap_or_else(|_| "DoH".to_string());
+        let initial_warp_mode = warp::get_warp_mode()
+            .await
+            .unwrap_or_else(|_| "DoH".to_string());
         let mut last_warp_mode = initial_warp_mode.clone();
         let ui_init_mode = ui_status_weak.clone();
         let warp_mode_init_clone = initial_warp_mode.clone();
@@ -198,7 +200,7 @@ pub fn start_polling_loops(ui: &AppWindow) {
             match wifi::get_active_wifi(false).await {
                 Ok(Some(active)) => {
                     current_wifi_ssid = active.ssid.clone();
-                    
+
                     if active.ssid == last_wifi_ssid && cached_wifi_details.is_some() {
                         // Apply cached static details (MAC, IP, Gateway, DNS) from Slint cache to save CPU process forks
                         if let Some(ref cache) = cached_wifi_details {

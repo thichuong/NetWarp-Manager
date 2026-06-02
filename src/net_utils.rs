@@ -1,3 +1,4 @@
+use crate::AppError;
 use std::fs::File;
 use std::io::{BufRead, BufReader};
 use std::process::Command;
@@ -21,18 +22,20 @@ pub struct PingResult {
 /// Executes a ping request to the specified target with 4 packets.
 /// Uses the system command: `ping -c 4 <target>`
 #[allow(dead_code)]
-pub async fn ping_target(target: Option<String>) -> Result<String, String> {
+pub async fn ping_target(target: Option<String>) -> Result<String, AppError> {
     let host = target.unwrap_or_else(|| "1.1.1.1".to_string());
     let clean_host = host.trim();
 
     if clean_host.is_empty() {
-        return Err("Ping target host cannot be empty".to_string());
+        return Err(AppError::Ping(
+            "Ping target host cannot be empty".to_string(),
+        ));
     }
 
     let output = Command::new("ping")
         .args(["-c", "4", clean_host])
         .output()
-        .map_err(|e| format!("Failed to execute ping command: {}", e))?;
+        .map_err(|e| AppError::Ping(format!("Failed to execute ping command: {}", e)))?;
 
     let stdout_str = String::from_utf8_lossy(&output.stdout).to_string();
     let stderr_str = String::from_utf8_lossy(&output.stderr).to_string();
@@ -40,47 +43,52 @@ pub async fn ping_target(target: Option<String>) -> Result<String, String> {
     if output.status.success() {
         Ok(stdout_str)
     } else {
-        Err(if stderr_str.trim().is_empty() {
+        Err(AppError::Ping(if stderr_str.trim().is_empty() {
             stdout_str
         } else {
             stderr_str
-        })
+        }))
     }
 }
 
 /// Traces the current public IP info using a geo-location JSON API.
-/// Uses the system command: `curl -s --retry 3 --retry-delay 1 --connect-timeout 3 http://ip-api.com/json/`
-/// This bypasses frontend CORS restrictions while providing accurate geo details.
-/// Added retry parameters to gracefully handle temporary network dropouts during WARP mode switching.
-pub async fn trace_ip() -> Result<String, String> {
-    let output = Command::new("curl")
-        .args([
-            "-s",
-            "--retry",
-            "3",
-            "--retry-delay",
-            "1",
-            "--connect-timeout",
-            "3",
-            "http://ip-api.com/json/",
-        ])
-        .output()
-        .map_err(|e| format!("Failed to execute curl command: {}", e))?;
+/// Uses native HTTP crate (reqwest) instead of curl.
+/// Implements a 3-retry fallback with 1s delay and 3s connection timeout to gracefully
+/// handle temporary network dropouts during WARP mode switching.
+pub async fn trace_ip() -> Result<String, AppError> {
+    let client = reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(3))
+        .build()
+        .map_err(|e| AppError::GeoIp(format!("Failed to build HTTP client: {}", e)))?;
 
-    if !output.status.success() {
-        let err_msg = String::from_utf8_lossy(&output.stderr).to_string();
-        return Err(format!("Network lookup error: {}", err_msg));
+    let mut last_err = None;
+    for attempt in 1..=4 {
+        match client.get("http://ip-api.com/json/").send().await {
+            Ok(res) => {
+                let body = res.text().await.map_err(|e| {
+                    AppError::GeoIp(format!("Failed to read geo response body: {}", e))
+                })?;
+                return Ok(body);
+            }
+            Err(e) => {
+                last_err = Some(e);
+                if attempt < 4 {
+                    tokio::time::sleep(std::time::Duration::from_secs(1)).await;
+                }
+            }
+        }
     }
 
-    let stdout_str = String::from_utf8_lossy(&output.stdout).to_string();
-    Ok(stdout_str)
+    Err(AppError::GeoIp(format!(
+        "Network lookup failed after 3 retries. Last error: {:?}",
+        last_err
+    )))
 }
 
 /// Fetches the accumulated download (rx) and upload (tx) bytes across active interfaces.
 /// Reads directly from `/proc/net/dev` on Linux systems.
-pub async fn get_network_io() -> Result<NetworkIO, String> {
-    let file =
-        File::open("/proc/net/dev").map_err(|e| format!("Failed to open /proc/net/dev: {}", e))?;
+pub async fn get_network_io() -> Result<NetworkIO, AppError> {
+    let file = File::open("/proc/net/dev")?;
     let reader = BufReader::new(file);
 
     let mut total_rx = 0;
@@ -124,7 +132,7 @@ pub async fn get_network_io() -> Result<NetworkIO, String> {
 
 /// Executes parallel quick pings (1 packet, 1s timeout) to a list of target hosts.
 /// Returns their respective RTT latency in milliseconds and online status.
-pub async fn ping_multiple(targets: Vec<String>) -> Result<Vec<PingResult>, String> {
+pub async fn ping_multiple(targets: Vec<String>) -> Result<Vec<PingResult>, AppError> {
     let mut handles = vec![];
 
     for target in targets {
