@@ -40,9 +40,10 @@ graph TD
 ## 4. Operational Engines
 
 ### 4.1 Multi-Interval Polling Loops (`polling.rs`)
+- **Initial Sync**: One-shot startup hydration → fetches WARP mode, WARP status, and active Wi-Fi immediately on launch. Forwards cached state to Loop 3 via `tokio::sync::oneshot` channel.
 - **500ms**: Animate radar step & pulse LED.
 - **1s00**: Compute network RX/TX IO rates, plot SVG chart paths.
-- **3s00**: Poll WiFi SSID and WARP tunnel status. Auto-trigger GeoIP update on state change.
+- **3s00**: Poll WiFi SSID and WARP tunnel status (receives initial state from startup sync). Auto-trigger GeoIP update on state change.
 - **5s00**: Probe Cloudflare (`1.1.1.1`) and Google (`8.8.8.8`) ping latencies.
 - **Startup**: One-shot startup GeoIP sync after 1.5s delay.
 
