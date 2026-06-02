@@ -1,8 +1,8 @@
 use crate::AppError;
 use std::fs::File;
 use std::io::{BufRead, BufReader};
-use std::process::Command;
 use std::time::Instant;
+use tokio::process::Command;
 
 /// Struct containing total received and transmitted bytes of the system.
 #[derive(serde::Serialize)]
@@ -35,6 +35,7 @@ pub async fn ping_target(target: Option<&str>) -> Result<String, AppError> {
     let output = Command::new("ping")
         .args(["-c", "4", clean_host])
         .output()
+        .await
         .map_err(|e| AppError::Ping(format!("Failed to execute ping command: {}", e)))?;
 
     let stdout_str = String::from_utf8_lossy(&output.stdout).to_string();
@@ -141,7 +142,8 @@ pub async fn ping_multiple(targets: &[&str]) -> Result<Vec<PingResult>, AppError
             let start = Instant::now();
             let output = Command::new("ping")
                 .args(["-c", "1", "-W", "1", &target_string])
-                .output();
+                .output()
+                .await;
 
             match output {
                 Ok(out) if out.status.success() => {

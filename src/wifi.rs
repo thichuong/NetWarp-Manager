@@ -1,5 +1,5 @@
 use crate::AppError;
-use std::process::Command;
+use tokio::process::Command;
 
 /// Structure representing a Wi-Fi network returned to the frontend with detailed information.
 #[derive(serde::Serialize, serde::Deserialize, Clone, Debug)]
@@ -77,6 +77,7 @@ pub async fn get_wifi_list() -> Result<Vec<WifiNetwork>, AppError> {
             "list",
         ])
         .output()
+        .await
         .map_err(|e| AppError::WifiScan(format!("Failed to execute nmcli command: {}", e)))?;
 
     if !output.status.success() {
@@ -193,6 +194,7 @@ pub async fn connect_wifi(
     let profile_exists = Command::new("nmcli")
         .args(["connection", "show", &ssid])
         .output()
+        .await
         .map(|o| o.status.success())
         .unwrap_or(false);
 
@@ -207,7 +209,8 @@ pub async fn connect_wifi(
             // profile and let nmcli create a clean new one with the new password.
             let _ = Command::new("nmcli")
                 .args(["connection", "delete", &ssid])
-                .output();
+                .output()
+                .await;
             true
         } else {
             false // Password matches the saved one, connect without password arg to avoid the bug
@@ -226,7 +229,7 @@ pub async fn connect_wifi(
         cmd.arg("password").arg(pwd);
     }
 
-    let output = cmd.output().map_err(|e| {
+    let output = cmd.output().await.map_err(|e| {
         AppError::WifiConnect(format!("Failed to invoke connection command: {}", e))
     })?;
 
@@ -244,6 +247,7 @@ pub async fn connect_wifi(
     let list_output = Command::new("nmcli")
         .args(["-t", "-f", "ACTIVE,NAME,UUID,TYPE", "connection", "show"])
         .output()
+        .await
         .map_err(|e| AppError::WifiSettings(format!("Failed to query connections list: {}", e)))?;
 
     if list_output.status.success() {
@@ -279,7 +283,7 @@ pub async fn connect_wifi(
                 modify_cmd.arg("802-11-wireless.bssid").arg("");
             }
 
-            let modify_output = modify_cmd.output().map_err(|e| {
+            let modify_output = modify_cmd.output().await.map_err(|e| {
                 AppError::WifiSettings(format!(
                     "Failed to update connection profile BSSID setting: {}",
                     e
@@ -301,7 +305,8 @@ pub async fn connect_wifi(
                 let mut current_active_bssid = None;
                 let active_bssid_output = Command::new("nmcli")
                     .args(["-t", "-f", "ACTIVE,BSSID", "device", "wifi", "list"])
-                    .output();
+                    .output()
+                    .await;
 
                 if let Ok(bssid_out) = active_bssid_output
                     && bssid_out.status.success()
@@ -332,6 +337,7 @@ pub async fn connect_wifi(
                     let up_output = Command::new("nmcli")
                         .args(["connection", "up", &uuid])
                         .output()
+                        .await
                         .map_err(|e| {
                             AppError::WifiConnect(format!(
                                 "Failed to force correct BSSID connection: {}",
@@ -368,6 +374,7 @@ pub async fn get_wifi_locked_bssid(ssid: &str) -> Result<String, AppError> {
             ssid,
         ])
         .output()
+        .await
         .map_err(|e| {
             AppError::WifiSettings(format!("Failed to read connection BSSID info: {}", e))
         })?;
@@ -389,6 +396,7 @@ pub async fn get_saved_wifi_list() -> Result<Vec<String>, AppError> {
     let output = Command::new("nmcli")
         .args(["-g", "NAME,TYPE", "connection", "show"])
         .output()
+        .await
         .map_err(|e| {
             AppError::WifiSettings(format!("Failed to execute nmcli connection command: {}", e))
         })?;
@@ -443,6 +451,7 @@ pub async fn get_wifi_password(ssid: &str) -> Result<String, AppError> {
             ssid,
         ])
         .output()
+        .await
         .map_err(|e| {
             AppError::WifiSettings(format!(
                 "Failed to execute nmcli command for password: {}",
@@ -472,13 +481,14 @@ struct ActiveDeviceDetails {
 }
 
 /// Retrieves additional network interface configuration details for a connected Wi-Fi device
-fn get_active_device_details() -> ActiveDeviceDetails {
+async fn get_active_device_details() -> ActiveDeviceDetails {
     let mut details = ActiveDeviceDetails::default();
 
     // 1. Find active Wi-Fi device interface name
     let dev_output = match Command::new("nmcli")
         .args(["-t", "-f", "DEVICE,TYPE,STATE", "device"])
         .output()
+        .await
     {
         Ok(out) => out,
         Err(_) => return details,
@@ -521,6 +531,7 @@ fn get_active_device_details() -> ActiveDeviceDetails {
     let show_output = match Command::new("nmcli")
         .args(["device", "show", &interface])
         .output()
+        .await
     {
         Ok(out) => out,
         Err(_) => return details,
@@ -560,6 +571,7 @@ fn get_active_device_details() -> ActiveDeviceDetails {
     if let Ok(iw_output) = Command::new("iw")
         .args(["dev", &interface, "link"])
         .output()
+        .await
         && iw_output.status.success()
     {
         let iw_stdout = String::from_utf8_lossy(&iw_output.stdout);
@@ -595,6 +607,7 @@ pub async fn get_active_wifi(full_details: bool) -> Result<Option<WifiNetwork>, 
             "list",
         ])
         .output()
+        .await
         .map_err(|e| AppError::WifiScan(format!("Failed to query active connection: {}", e)))?;
 
     if !output.status.success() {
@@ -648,7 +661,7 @@ pub async fn get_active_wifi(full_details: bool) -> Result<Option<WifiNetwork>, 
 
             let (rate_val, device, mac, ip_address, gateway, dns_primary, dns_secondary) =
                 if full_details {
-                    let details = get_active_device_details();
+                    let details = get_active_device_details().await;
                     (
                         details.realtime_rate.unwrap_or(rate),
                         details.device,

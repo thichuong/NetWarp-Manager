@@ -1,7 +1,17 @@
 use crate::{AppWindow, NetworkSpeed, PingResult, WifiNetwork, helpers, net_utils, warp, wifi};
-use slint::{ComponentHandle, Model};
+use slint::ComponentHandle;
 use std::rc::Rc;
 use std::time::Instant;
+
+// Interval and size constants for background polling engines
+const PULSE_ACTIVE_MS: u64 = 500;
+const PULSE_IDLE_MS: u64 = 2000;
+const SPEED_POLL_MS: u64 = 1000;
+const STATUS_POLL_MS: u64 = 3000;
+const PING_POLL_MS: u64 = 5000;
+const INITIAL_GEO_DELAY_MS: u64 = 1500;
+const GEO_COOLDOWN_CYCLES: i32 = 10;
+const HISTORY_SIZE: usize = 25;
 
 /// Starts all background polling loop engines for network status, speeds, pings, and animations.
 // Developer Warning: Refer to architecture.md Section 6 for full Slint-Rust
@@ -15,7 +25,7 @@ pub fn start_polling_loops(ui: &AppWindow) {
         let mut pulse = false;
         let mut step = 0;
         loop {
-            let mut sleep_ms = 500;
+            let mut sleep_ms = PULSE_ACTIVE_MS;
             let mut should_pulse = false;
 
             if let Some(ui) = ui_pulse_weak.upgrade() {
@@ -37,7 +47,7 @@ pub fn start_polling_loops(ui: &AppWindow) {
                 let _ = ui_pulse_weak.upgrade_in_event_loop(move |ui| {
                     ui.set_pulse_led(false);
                 });
-                sleep_ms = 2000; // Sleep longer when idle to prevent GPU/CPU redrawing loops
+                sleep_ms = PULSE_IDLE_MS; // Sleep longer when idle to prevent GPU/CPU redrawing loops
             }
 
             tokio::time::sleep(std::time::Duration::from_millis(sleep_ms)).await;
@@ -55,8 +65,12 @@ pub fn start_polling_loops(ui: &AppWindow) {
         let mut total_session_usage = 0;
         let mut first_run = true;
 
+        // Use pre-allocated Ring Buffers to eliminate massive allocations and O(n) shifts in Slint's Event Loop
+        let mut dl_ring = std::collections::VecDeque::from(vec![0.0f32; HISTORY_SIZE]);
+        let mut ul_ring = std::collections::VecDeque::from(vec![0.0f32; HISTORY_SIZE]);
+
         loop {
-            tokio::time::sleep(std::time::Duration::from_millis(1000)).await;
+            tokio::time::sleep(std::time::Duration::from_millis(SPEED_POLL_MS)).await;
 
             if let Ok(io) = net_utils::get_network_io().await {
                 // Read exact bytes parsed directly from /proc/net/dev
@@ -109,26 +123,20 @@ pub fn start_polling_loops(ui: &AppWindow) {
                     total_usage: helpers::format_bytes(total_session_usage).into(),
                 };
 
+                // Slide ring buffers with O(1) efficiency
+                dl_ring.pop_front();
+                dl_ring.push_back(speed_dl_kb as f32);
+                ul_ring.pop_front();
+                ul_ring.push_back(speed_ul_kb as f32);
+
+                let dl_vec: Vec<f32> = dl_ring.iter().copied().collect();
+                let ul_vec: Vec<f32> = ul_ring.iter().copied().collect();
+
                 // Push new history to rolling models of graph visualization
                 let _ = ui_speed_weak.upgrade_in_event_loop(move |ui| {
                     ui.set_speed_stats(speed_stats);
 
-                    // Slide download model array
-                    let dl_model = ui.get_download_history();
-                    let mut dl_vec: Vec<f32> = dl_model.iter().collect();
-                    if !dl_vec.is_empty() {
-                        dl_vec.remove(0);
-                    }
-                    dl_vec.push(speed_dl_kb as f32);
                     let max_dl = dl_vec.iter().copied().fold(0.0f32, f32::max);
-
-                    // Slide upload model array
-                    let ul_model = ui.get_upload_history();
-                    let mut ul_vec: Vec<f32> = ul_model.iter().collect();
-                    if !ul_vec.is_empty() {
-                        ul_vec.remove(0);
-                    }
-                    ul_vec.push(speed_ul_kb as f32);
                     let max_ul = ul_vec.iter().copied().fold(0.0f32, f32::max);
 
                     // Calculate the peak value across both historical channels for auto-scaling
@@ -277,9 +285,36 @@ pub fn start_polling_loops(ui: &AppWindow) {
                 Err(_) => {}
             }
 
-            if should_update_wifi_ui {
-                let ui_wifi_weak = ui_status_weak.clone();
-                let _ = ui_wifi_weak.upgrade_in_event_loop(move |ui| {
+            // Polling Cloudflare WARP Status
+            let warp_status = slint::SharedString::from(
+                warp::get_warp_status()
+                    .await
+                    .unwrap_or_else(|_| "Disconnected".to_string()),
+            );
+
+            // Detect if connection state or wifi SSID changed to trigger immediate Geo IP refresh
+            let state_changed = warp_status != last_warp_state
+                || current_wifi_ssid != last_wifi_ssid
+                || geo_cooldown_counter >= GEO_COOLDOWN_CYCLES;
+
+            if state_changed {
+                last_warp_state = warp_status.clone();
+                last_wifi_ssid = current_wifi_ssid.clone();
+                geo_cooldown_counter = 0;
+            } else {
+                geo_cooldown_counter += 1;
+            }
+
+            // Precompute lowering and status booleans to avoid overhead inside the event loop closure
+            let warp_lower = warp_status.to_lowercase();
+            let is_connected = warp_lower.contains("connected");
+            let is_connecting = warp_lower.contains("connecting");
+
+            let ui_status_weak_inner = ui_status_weak.clone();
+
+            // Consolidate updates into a single event loop call to minimize cross-thread message passing
+            let _ = ui_status_weak_inner.upgrade_in_event_loop(move |ui| {
+                if should_update_wifi_ui {
                     if let Some(active) = active_wifi_to_set {
                         ui.set_active_wifi(active);
                     } else {
@@ -301,35 +336,7 @@ pub fn start_polling_loops(ui: &AppWindow) {
                             frequency: "--".into(),
                         });
                     }
-                });
-            }
-
-            // Polling Cloudflare WARP Status
-            let warp_status = slint::SharedString::from(
-                warp::get_warp_status()
-                    .await
-                    .unwrap_or_else(|_| "Disconnected".to_string()),
-            );
-
-            // Detect if connection state or wifi SSID changed to trigger immediate Geo IP refresh
-            // 3-second cycle: geo_cooldown_counter >= 10 matches 30 seconds interval
-            let state_changed = warp_status != last_warp_state
-                || current_wifi_ssid != last_wifi_ssid
-                || geo_cooldown_counter >= 10;
-
-            if state_changed {
-                last_warp_state = warp_status.clone();
-                last_wifi_ssid = current_wifi_ssid.clone();
-                geo_cooldown_counter = 0;
-            } else {
-                geo_cooldown_counter += 1;
-            }
-
-            let ui_warp_inner = ui_status_weak.clone();
-
-            let _ = ui_warp_inner.upgrade_in_event_loop(move |ui| {
-                let is_connected = warp_status.to_lowercase().contains("connected");
-                let is_connecting = warp_status.to_lowercase().contains("connecting");
+                }
 
                 ui.set_warp_status_text(warp_status);
 
@@ -371,7 +378,7 @@ pub fn start_polling_loops(ui: &AppWindow) {
                 }
             });
 
-            tokio::time::sleep(std::time::Duration::from_millis(3000)).await;
+            tokio::time::sleep(std::time::Duration::from_millis(STATUS_POLL_MS)).await;
         }
     });
 
@@ -399,14 +406,14 @@ pub fn start_polling_loops(ui: &AppWindow) {
                     }
                 });
             }
-            tokio::time::sleep(std::time::Duration::from_millis(5000)).await;
+            tokio::time::sleep(std::time::Duration::from_millis(PING_POLL_MS)).await;
         }
     });
 
     // Loop 5: Initial Geolocation sync on application launch
     let ui_init_weak = ui_weak.clone();
     tokio::spawn(async move {
-        tokio::time::sleep(std::time::Duration::from_millis(1500)).await;
+        tokio::time::sleep(std::time::Duration::from_millis(INITIAL_GEO_DELAY_MS)).await;
         helpers::refresh_geoip(ui_init_weak).await;
     });
 }

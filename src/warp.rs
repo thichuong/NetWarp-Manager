@@ -2,7 +2,8 @@ use crate::AppError;
 use std::env;
 use std::io::Write;
 use std::os::unix::fs::OpenOptionsExt;
-use std::process::Command;
+use std::process::Command as StdCommand;
+use tokio::process::Command;
 
 /// Helper function to detect available terminal emulators on Linux.
 /// Returns the terminal name and the appropriate flag to execute a script.
@@ -19,7 +20,7 @@ fn find_terminal() -> Option<(String, Vec<String>)> {
     ];
 
     for (term, args) in terminals {
-        if Command::new("which")
+        if StdCommand::new("which")
             .arg(term)
             .output()
             .map(|o| o.status.success())
@@ -235,7 +236,7 @@ read -r
             term
         );
         args.push(script_path_str.to_string());
-        if let Err(e) = Command::new(&term).args(args).spawn() {
+        if let Err(e) = StdCommand::new(&term).args(args).spawn() {
             let _ = std::fs::remove_file(&script_path); // Cleanup on spawn failure
             return Err(AppError::WarpInstaller(format!(
                 "Failed to launch terminal '{}': {}",
@@ -263,6 +264,7 @@ pub async fn warp_toggle(connect: bool) -> Result<String, AppError> {
     let output = Command::new("warp-cli")
         .arg(action)
         .output()
+        .await
         .map_err(|e| AppError::WarpControl(format!("Failed to execute warp-cli command: {}", e)))?;
 
     if output.status.success() {
@@ -280,7 +282,7 @@ pub async fn warp_toggle(connect: bool) -> Result<String, AppError> {
 /// Retrieves the connection status of Cloudflare WARP.
 /// Runs `warp-cli status` and parses the output.
 pub async fn get_warp_status() -> Result<String, AppError> {
-    let output_result = Command::new("warp-cli").arg("status").output();
+    let output_result = Command::new("warp-cli").arg("status").output().await;
 
     let output = match output_result {
         Ok(o) => o,
@@ -325,6 +327,7 @@ pub async fn get_warp_mode() -> Result<String, AppError> {
     let output = Command::new("warp-cli")
         .args(["settings", "list"])
         .output()
+        .await
         .map_err(|e| AppError::WarpStatus(format!("Failed to call settings list: {}", e)))?;
 
     if !output.status.success() {
@@ -373,6 +376,7 @@ pub async fn set_warp_mode(mode: &str) -> Result<String, AppError> {
     let output = Command::new("warp-cli")
         .args(["mode", mode])
         .output()
+        .await
         .map_err(|e| AppError::WarpControl(format!("Failed to execute warp-cli command: {}", e)))?;
 
     if output.status.success() {

@@ -23,28 +23,31 @@ pub fn generate_svg_path(
         chart_h - ratio * (chart_h * 0.9) - (chart_h * 0.05)
     };
 
-    let mut commands = String::new();
+    use std::fmt::Write;
+    let estimated_capacity = history.len() * 24 + 32;
+    let mut commands = String::with_capacity(estimated_capacity);
 
     if is_area {
         // Start at bottom-left corner of the chart area in physical pixels
-        commands.push_str(&format!(
+        let _ = write!(
+            commands,
             "M 0.0 {:.2} L 0.0 {:.2} ",
             chart_h,
             get_y(history[0])
-        ));
+        );
     } else {
-        commands.push_str(&format!("M 0.0 {:.2} ", get_y(history[0])));
+        let _ = write!(commands, "M 0.0 {:.2} ", get_y(history[0]));
     }
 
     for (i, &val) in history.iter().enumerate().skip(1) {
         let x = i as f32 * x_step;
         let y = get_y(val);
-        commands.push_str(&format!("L {:.2} {:.2} ", x, y));
+        let _ = write!(commands, "L {:.2} {:.2} ", x, y);
     }
 
     if is_area {
         // Go down to bottom-right corner and close the shape
-        commands.push_str(&format!("L {:.2} {:.2} Z", chart_w, chart_h));
+        let _ = write!(commands, "L {:.2} {:.2} Z", chart_w, chart_h);
     }
 
     commands
