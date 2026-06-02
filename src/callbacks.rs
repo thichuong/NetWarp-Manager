@@ -128,21 +128,20 @@ pub fn register_callbacks(ui: &AppWindow) {
     let ui_select_weak = ui_weak.clone();
     ui.on_wifi_selected(move |ssid, bssid| {
         if let Some(ui) = ui_select_weak.upgrade() {
-            ui.set_selected_wifi_ssid(ssid.clone());
-            ui.set_selected_wifi_bssid(bssid.clone());
+            let log_msg = format!("[Wi-Fi] Selected AP: {} ({})", ssid, bssid);
+            let ssid_str = ssid.to_string();
+            ui.set_selected_wifi_ssid(ssid);
+            ui.set_selected_wifi_bssid(bssid);
             ui.set_show_password_modal(true);
             ui.set_pwd_input_val("".into()); // Clear old input
 
-            helpers::append_log(&ui, &format!("[Wi-Fi] Selected AP: {} ({})", ssid, bssid));
+            helpers::append_log(&ui, &log_msg);
 
             // Background load saved details if profile already exists
             let ui_inner_weak = ui_select_weak.clone();
-            let ssid_str = ssid.to_string();
             tokio::spawn(async move {
-                let saved_pwd = wifi::get_wifi_password(ssid_str.clone())
-                    .await
-                    .unwrap_or_default();
-                let locked_bssid = wifi::get_wifi_locked_bssid(ssid_str)
+                let saved_pwd = wifi::get_wifi_password(&ssid_str).await.unwrap_or_default();
+                let locked_bssid = wifi::get_wifi_locked_bssid(&ssid_str)
                     .await
                     .unwrap_or_default();
                 let has_lock = !locked_bssid.trim().is_empty();
@@ -276,7 +275,7 @@ pub fn register_callbacks(ui: &AppWindow) {
 
             let ui_inner_weak = ui_mode_weak.clone();
             tokio::spawn(async move {
-                match warp::set_warp_mode(mode_str).await {
+                match warp::set_warp_mode(&mode_str).await {
                     Ok(msg) => {
                         let _ = ui_inner_weak.upgrade_in_event_loop(move |ui| {
                             helpers::append_log(
@@ -288,11 +287,10 @@ pub fn register_callbacks(ui: &AppWindow) {
                         // Query and update warp mode details immediately
                         if let Ok(warp_mode) = warp::get_warp_mode().await {
                             let ui_mode_update = ui_inner_weak.clone();
-                            let warp_mode_clone = warp_mode.clone();
                             let _ = ui_mode_update.upgrade_in_event_loop(move |ui| {
-                                ui.set_warp_mode_badge(format!("Mode: {}", warp_mode_clone).into());
+                                ui.set_warp_mode_badge(format!("Mode: {}", warp_mode).into());
                                 ui.set_warp_mode_doh_active(
-                                    !warp_mode_clone.to_lowercase().contains("warp"),
+                                    !warp_mode.to_lowercase().contains("warp"),
                                 );
                             });
                         }

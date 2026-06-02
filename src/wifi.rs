@@ -198,7 +198,7 @@ pub async fn connect_wifi(
 
     let use_password = if profile_exists {
         // Fetch the saved password for comparison
-        let saved_pwd = get_wifi_password(ssid.clone()).await.unwrap_or_default();
+        let saved_pwd = get_wifi_password(&ssid).await.unwrap_or_default();
         let input_pwd = password.as_deref().unwrap_or("").trim();
 
         if input_pwd != saved_pwd.trim() {
@@ -221,10 +221,10 @@ pub async fn connect_wifi(
 
     if use_password
         && let Some(ref pwd) = password
-            && !pwd.trim().is_empty()
-        {
-            cmd.arg("password").arg(pwd);
-        }
+        && !pwd.trim().is_empty()
+    {
+        cmd.arg("password").arg(pwd);
+    }
 
     let output = cmd.output().map_err(|e| {
         AppError::WifiConnect(format!("Failed to invoke connection command: {}", e))
@@ -357,7 +357,7 @@ pub async fn connect_wifi(
 
 /// Retrieves the locked BSSID for a specific connection profile (SSID) if configured.
 /// Returns an empty string if there is no lock or if the profile doesn't exist.
-pub async fn get_wifi_locked_bssid(ssid: String) -> Result<String, AppError> {
+pub async fn get_wifi_locked_bssid(ssid: &str) -> Result<String, AppError> {
     let output = Command::new("nmcli")
         .args([
             "-s",
@@ -365,7 +365,7 @@ pub async fn get_wifi_locked_bssid(ssid: String) -> Result<String, AppError> {
             "802-11-wireless.bssid",
             "connection",
             "show",
-            &ssid,
+            ssid,
         ])
         .output()
         .map_err(|e| {
@@ -432,7 +432,7 @@ pub async fn get_saved_wifi_list() -> Result<Vec<String>, AppError> {
 
 /// Retrieves the saved WPA/WEP password for a specific Wi-Fi connection.
 /// Uses the command: `nmcli -s -g 802-11-wireless-security.psk connection show <ssid>`
-pub async fn get_wifi_password(ssid: String) -> Result<String, AppError> {
+pub async fn get_wifi_password(ssid: &str) -> Result<String, AppError> {
     let output = Command::new("nmcli")
         .args([
             "-s",
@@ -440,7 +440,7 @@ pub async fn get_wifi_password(ssid: String) -> Result<String, AppError> {
             "802-11-wireless-security.psk",
             "connection",
             "show",
-            &ssid,
+            ssid,
         ])
         .output()
         .map_err(|e| {

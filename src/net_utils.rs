@@ -22,8 +22,8 @@ pub struct PingResult {
 /// Executes a ping request to the specified target with 4 packets.
 /// Uses the system command: `ping -c 4 <target>`
 #[allow(dead_code)]
-pub async fn ping_target(target: Option<String>) -> Result<String, AppError> {
-    let host = target.unwrap_or_else(|| "1.1.1.1".to_string());
+pub async fn ping_target(target: Option<&str>) -> Result<String, AppError> {
+    let host = target.unwrap_or("1.1.1.1");
     let clean_host = host.trim();
 
     if clean_host.is_empty() {
@@ -132,14 +132,15 @@ pub async fn get_network_io() -> Result<NetworkIO, AppError> {
 
 /// Executes parallel quick pings (1 packet, 1s timeout) to a list of target hosts.
 /// Returns their respective RTT latency in milliseconds and online status.
-pub async fn ping_multiple(targets: Vec<String>) -> Result<Vec<PingResult>, AppError> {
+pub async fn ping_multiple(targets: &[&str]) -> Result<Vec<PingResult>, AppError> {
     let mut handles = vec![];
 
-    for target in targets {
+    for &target in targets {
+        let target_string = target.to_string();
         let handle = tokio::spawn(async move {
             let start = Instant::now();
             let output = Command::new("ping")
-                .args(["-c", "1", "-W", "1", &target])
+                .args(["-c", "1", "-W", "1", &target_string])
                 .output();
 
             match output {
@@ -164,13 +165,13 @@ pub async fn ping_multiple(targets: Vec<String>) -> Result<Vec<PingResult>, AppE
                     }
 
                     PingResult {
-                        target,
+                        target: target_string,
                         latency: Some(latency),
                         status: "Online".to_string(),
                     }
                 }
                 _ => PingResult {
-                    target,
+                    target: target_string,
                     latency: None,
                     status: "Offline".to_string(),
                 },

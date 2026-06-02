@@ -369,9 +369,9 @@ pub async fn get_warp_mode() -> Result<String, AppError> {
 
 /// Configures a new operating mode for WARP.
 /// Runs `warp-cli mode <mode>`
-pub async fn set_warp_mode(mode: String) -> Result<String, AppError> {
+pub async fn set_warp_mode(mode: &str) -> Result<String, AppError> {
     let output = Command::new("warp-cli")
-        .args(["mode", &mode])
+        .args(["mode", mode])
         .output()
         .map_err(|e| AppError::WarpControl(format!("Failed to execute warp-cli command: {}", e)))?;
 

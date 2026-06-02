@@ -27,3 +27,12 @@ Ensure all new/modified properties or callbacks are correctly implemented in the
 - **Structs in Slint (`ui/structs.slint`)**: Shared data structures. Any changes here require corresponding modifications in the Rust struct definitions in `src/main.rs` (or where the Slint code generator compiles them) and their mappings in `src/callbacks.rs` and `src/polling.rs`.
 
 Always run `cargo check` and `cargo clippy` after making UI changes to verify that the generated Rust bindings and your implementation are in perfect synchronization.
+
+## 4. Idiomatic Rust & Cost-Effective Cloning Rules
+
+To maintain high performance and clean memory usage, all Rust code interacting with the Slint UI must follow these cloning and allocation rules:
+- **Use `slint::SharedString` for State Buffers**: When storing local state variables (such as active SSIDs or WARP states in `src/polling.rs`) that are only used for comparison or UI updates, store them as `slint::SharedString` rather than `String`. Cloning a `SharedString` is extremely cheap (reference-counted, zero-cost allocation).
+- **Prefer Borrowed Parameters (`&str`/`&[&str]`)**: Backend utility functions (e.g., in `src/wifi.rs`, `src/warp.rs`, `src/net_utils.rs`) should accept `&str` or slices `&[&str]` instead of owned `String` or `Vec<String>`. This avoids redundant `.clone()` operations on the caller side.
+- **Pre-format Log Messages**: When logging details inside event handlers or async tasks, format the log message *before* constructing Slint data structures or moving parameters into closures. This allows moving values directly into the closure and completely avoids cloning.
+- **Direct Move in Closures**: Move local variables directly into event loop closures where possible rather than cloning them, if they are not reused in the outer scope during that iteration.
+

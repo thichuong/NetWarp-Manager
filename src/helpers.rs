@@ -133,10 +133,14 @@ pub async fn refresh_geoip(ui_weak: slint::Weak<AppWindow>) {
 
         let is_warp = isp.to_lowercase().contains("cloudflare");
         let badge = if is_warp { "WARP" } else { "DIRECT" };
+        let log_message = format!(
+            "[GeoIP] Coordinates synced. IP: {} | ISP: {} ({})",
+            ip, isp, badge
+        );
 
         let slint_geo = IPGeolocatorInfo {
-            ip: ip.clone().into(),
-            isp: isp.clone().into(),
+            ip: ip.into(),
+            isp: isp.into(),
             location: location.into(),
             coordinates: coords.into(),
             warp_badge: badge.into(),
@@ -144,32 +148,27 @@ pub async fn refresh_geoip(ui_weak: slint::Weak<AppWindow>) {
 
         let _ = ui_weak.upgrade_in_event_loop(move |ui| {
             ui.set_geo_info(slint_geo);
-            append_log(
-                &ui,
-                &format!(
-                    "[GeoIP] Coordinates synced. IP: {} | ISP: {} ({})",
-                    ip, isp, badge
-                ),
-            );
+            append_log(&ui, &log_message);
         });
     }
 }
 
 /// Refreshes target latency pings (1.1.1.1 and 8.8.8.8) and updates diagnostic widgets.
 pub async fn refresh_ping(ui_weak: slint::Weak<AppWindow>) {
-    let targets = vec!["1.1.1.1".to_string(), "8.8.8.8".to_string()];
-    if let Ok(results) = net_utils::ping_multiple(targets).await {
+    if let Ok(results) = net_utils::ping_multiple(&["1.1.1.1", "8.8.8.8"]).await {
         let _ = ui_weak.upgrade_in_event_loop(move |ui| {
             for res in results {
+                let is_ping1 = res.target == "1.1.1.1";
+                let is_ping2 = res.target == "8.8.8.8";
                 let slint_res = PingResult {
-                    target: res.target.clone().into(),
+                    target: res.target.into(),
                     latency: res.latency.unwrap_or(999.0) as f32,
                     status: res.status.into(),
                 };
 
-                if res.target == "1.1.1.1" {
+                if is_ping1 {
                     ui.set_ping1(slint_res);
-                } else if res.target == "8.8.8.8" {
+                } else if is_ping2 {
                     ui.set_ping2(slint_res);
                 }
             }

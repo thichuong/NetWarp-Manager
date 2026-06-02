@@ -176,8 +176,8 @@ pub fn start_polling_loops(ui: &AppWindow) {
     // Loop 3: Wi-Fi active interface, Cloudflare WARP Daemon status and Mode (3 second interval)
     let ui_status_weak = ui_weak.clone();
     tokio::spawn(async move {
-        let mut last_warp_state = String::new();
-        let mut last_wifi_ssid = String::new();
+        let mut last_warp_state = slint::SharedString::new();
+        let mut last_wifi_ssid = slint::SharedString::new();
         let mut cached_wifi_details: Option<WifiNetwork> = None;
         let mut geo_cooldown_counter = 0;
 
@@ -186,23 +186,23 @@ pub fn start_polling_loops(ui: &AppWindow) {
             .await
             .unwrap_or_else(|_| "DoH".to_string());
         let ui_init_mode = ui_status_weak.clone();
-        let warp_mode_init_clone = initial_warp_mode.clone();
         let _ = ui_init_mode.upgrade_in_event_loop(move |ui| {
-            ui.set_warp_mode_badge(format!("Mode: {}", warp_mode_init_clone).into());
-            ui.set_warp_mode_doh_active(!warp_mode_init_clone.to_lowercase().contains("warp"));
+            ui.set_warp_mode_badge(format!("Mode: {}", initial_warp_mode).into());
+            ui.set_warp_mode_doh_active(!initial_warp_mode.to_lowercase().contains("warp"));
         });
 
         loop {
-            let mut current_wifi_ssid = String::new();
+            let mut current_wifi_ssid = slint::SharedString::new();
             let mut active_wifi_to_set = None;
             let mut should_update_wifi_ui = false;
 
             // Polling active Wi-Fi connection (optimized)
             match wifi::get_active_wifi(false).await {
                 Ok(Some(active)) => {
-                    current_wifi_ssid = active.ssid.clone();
+                    let has_cache = cached_wifi_details.is_some();
+                    let matches_last = active.ssid.as_str() == last_wifi_ssid.as_str();
 
-                    if active.ssid == last_wifi_ssid && cached_wifi_details.is_some() {
+                    if matches_last && has_cache {
                         // Apply cached static details (MAC, IP, Gateway, DNS) from Slint cache to save CPU process forks
                         if let Some(ref cache) = cached_wifi_details {
                             let slint_active = WifiNetwork {
@@ -222,6 +222,7 @@ pub fn start_polling_loops(ui: &AppWindow) {
                                 dns_primary: cache.dns_primary.clone(),
                                 dns_secondary: cache.dns_secondary.clone(),
                             };
+                            current_wifi_ssid = slint_active.ssid.clone();
                             active_wifi_to_set = Some(slint_active);
                             should_update_wifi_ui = true;
                         }
@@ -230,7 +231,7 @@ pub fn start_polling_loops(ui: &AppWindow) {
                         if let Ok(Some(active_full)) = wifi::get_active_wifi(true).await {
                             let slint_active = WifiNetwork {
                                 bssid: active_full.bssid.into(),
-                                ssid: active_full.ssid.clone().into(),
+                                ssid: active_full.ssid.into(),
                                 channel: active_full.channel,
                                 frequency: active_full.frequency.into(),
                                 band: active_full.band.into(),
@@ -246,7 +247,8 @@ pub fn start_polling_loops(ui: &AppWindow) {
                                 dns_secondary: active_full.dns_secondary.unwrap_or_default().into(),
                             };
                             cached_wifi_details = Some(slint_active.clone());
-                            last_wifi_ssid = active_full.ssid.clone();
+                            last_wifi_ssid = slint_active.ssid.clone();
+                            current_wifi_ssid = slint_active.ssid.clone();
                             active_wifi_to_set = Some(slint_active);
                             should_update_wifi_ui = true;
                         } else {
@@ -268,6 +270,7 @@ pub fn start_polling_loops(ui: &AppWindow) {
                                 dns_primary: "--".into(),
                                 dns_secondary: "--".into(),
                             };
+                            current_wifi_ssid = slint_active.ssid.clone();
                             active_wifi_to_set = Some(slint_active);
                             should_update_wifi_ui = true;
                         }
@@ -275,7 +278,7 @@ pub fn start_polling_loops(ui: &AppWindow) {
                 }
                 Ok(None) => {
                     cached_wifi_details = None;
-                    last_wifi_ssid = String::new();
+                    last_wifi_ssid = slint::SharedString::new();
                     should_update_wifi_ui = true; // Set to "Not Connected"
                 }
                 Err(_) => {}
@@ -283,9 +286,8 @@ pub fn start_polling_loops(ui: &AppWindow) {
 
             if should_update_wifi_ui {
                 let ui_wifi_weak = ui_status_weak.clone();
-                let active_opt = active_wifi_to_set.clone();
                 let _ = ui_wifi_weak.upgrade_in_event_loop(move |ui| {
-                    if let Some(active) = active_opt {
+                    if let Some(active) = active_wifi_to_set {
                         ui.set_active_wifi(active);
                     } else {
                         ui.set_active_wifi(WifiNetwork {
@@ -310,9 +312,11 @@ pub fn start_polling_loops(ui: &AppWindow) {
             }
 
             // Polling Cloudflare WARP Status
-            let warp_status = warp::get_warp_status()
-                .await
-                .unwrap_or_else(|_| "Disconnected".to_string());
+            let warp_status = slint::SharedString::from(
+                warp::get_warp_status()
+                    .await
+                    .unwrap_or_else(|_| "Disconnected".to_string()),
+            );
 
             // Detect if connection state or wifi SSID changed to trigger immediate Geo IP refresh
             // 3-second cycle: geo_cooldown_counter >= 10 matches 30 seconds interval
@@ -334,7 +338,7 @@ pub fn start_polling_loops(ui: &AppWindow) {
             let ui_mode_trigger = ui_warp_inner.clone();
 
             let _ = ui_warp_inner.upgrade_in_event_loop(move |ui| {
-                ui.set_warp_status_text(warp_status_clone.clone().into());
+                ui.set_warp_status_text(warp_status_clone.clone());
 
                 if warp_status_clone.to_lowercase().contains("connected") {
                     ui.set_warp_status_color("#10b981".into()); // Green
@@ -380,20 +384,21 @@ pub fn start_polling_loops(ui: &AppWindow) {
     let ui_ping_weak = ui_weak.clone();
     tokio::spawn(async move {
         loop {
-            let targets = vec!["1.1.1.1".to_string(), "8.8.8.8".to_string()];
-            if let Ok(results) = net_utils::ping_multiple(targets).await {
+            if let Ok(results) = net_utils::ping_multiple(&["1.1.1.1", "8.8.8.8"]).await {
                 let ui_ping_inner = ui_ping_weak.clone();
                 let _ = ui_ping_inner.upgrade_in_event_loop(move |ui| {
                     for res in results {
+                        let is_ping1 = res.target == "1.1.1.1";
+                        let is_ping2 = res.target == "8.8.8.8";
                         let slint_res = PingResult {
-                            target: res.target.clone().into(),
+                            target: res.target.into(),
                             latency: res.latency.unwrap_or(999.0) as f32,
                             status: res.status.into(),
                         };
 
-                        if res.target == "1.1.1.1" {
+                        if is_ping1 {
                             ui.set_ping1(slint_res);
-                        } else if res.target == "8.8.8.8" {
+                        } else if is_ping2 {
                             ui.set_ping2(slint_res);
                         }
                     }
