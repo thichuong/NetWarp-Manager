@@ -4,8 +4,6 @@ use std::rc::Rc;
 use std::time::Instant;
 
 // Interval and size constants for background polling engines
-const PULSE_ACTIVE_MS: u64 = 500;
-const PULSE_IDLE_MS: u64 = 2000;
 const SPEED_POLL_MS: u64 = 1000;
 const STATUS_POLL_MS: u64 = 3000;
 const PING_POLL_MS: u64 = 5000;
@@ -13,48 +11,13 @@ const INITIAL_GEO_DELAY_MS: u64 = 1500;
 const GEO_COOLDOWN_CYCLES: i32 = 10;
 const HISTORY_SIZE: usize = 25;
 
-/// Starts all background polling loop engines for network status, speeds, pings, and animations.
+/// Starts all background polling loop engines for network status, speeds, and pings.
 // Developer Warning: Refer to architecture.md Section 6 for full Slint-Rust
 // synchronization rules before modifying state polling loops here!
 pub fn start_polling_loops(ui: &AppWindow) {
     let ui_weak = ui.as_weak();
 
-    // Loop 1: Pulse animations timer (500ms intervals when active, 2s when idle)
-    let ui_pulse_weak = ui_weak.clone();
-    tokio::spawn(async move {
-        let mut pulse = false;
-        let mut step = 0;
-        loop {
-            let mut sleep_ms = PULSE_ACTIVE_MS;
-            let mut should_pulse = false;
-
-            if let Some(ui) = ui_pulse_weak.upgrade() {
-                let status = ui.get_warp_status_text().to_string();
-                if status.to_lowercase().contains("connecting") {
-                    should_pulse = true;
-                }
-            }
-
-            if should_pulse {
-                pulse = !pulse;
-                step = (step + 1) % 4;
-
-                let _ = ui_pulse_weak.upgrade_in_event_loop(move |ui| {
-                    ui.set_pulse_led(pulse);
-                    ui.set_radar_step(step);
-                });
-            } else {
-                let _ = ui_pulse_weak.upgrade_in_event_loop(move |ui| {
-                    ui.set_pulse_led(false);
-                });
-                sleep_ms = PULSE_IDLE_MS; // Sleep longer when idle to prevent GPU/CPU redrawing loops
-            }
-
-            tokio::time::sleep(std::time::Duration::from_millis(sleep_ms)).await;
-        }
-    });
-
-    // Loop 2: Network Bandwidth IO speed monitoring (1 second interval)
+    // Loop 1: Network Bandwidth IO speed monitoring (1 second interval)
     let ui_speed_weak = ui_weak.clone();
     tokio::spawn(async move {
         let mut last_rx = 0;
@@ -250,11 +213,11 @@ pub fn start_polling_loops(ui: &AppWindow) {
             });
         }
 
-        // Forward cached state to Loop 3 so it starts with accurate baseline
+        // Forward cached state to Loop 2 so it starts with accurate baseline
         let _ = init_tx.send((warp_state, wifi_ssid, wifi_cache));
     });
 
-    // Loop 3: Wi-Fi active interface, Cloudflare WARP Daemon status and Mode (3 second interval)
+    // Loop 2: Wi-Fi active interface, Cloudflare WARP Daemon status and Mode (3 second interval)
     let ui_status_weak = ui_weak.clone();
     tokio::spawn(async move {
         // Receive initial state from the startup sync task, or fall back to defaults
@@ -446,7 +409,7 @@ pub fn start_polling_loops(ui: &AppWindow) {
         }
     });
 
-    // Loop 4: Ping Diagnostics Latencies (5 second interval)
+    // Loop 3: Ping Diagnostics Latencies (5 second interval)
     let ui_ping_weak = ui_weak.clone();
     tokio::spawn(async move {
         loop {
@@ -474,7 +437,7 @@ pub fn start_polling_loops(ui: &AppWindow) {
         }
     });
 
-    // Loop 5: Initial Geolocation sync on application launch
+    // Loop 4: Initial Geolocation sync on application launch
     let ui_init_weak = ui_weak.clone();
     tokio::spawn(async move {
         tokio::time::sleep(std::time::Duration::from_millis(INITIAL_GEO_DELAY_MS)).await;

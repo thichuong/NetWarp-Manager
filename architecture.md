@@ -40,8 +40,7 @@ graph TD
 ## 4. Operational Engines
 
 ### 4.1 Multi-Interval Polling Loops (`polling.rs`)
-- **Initial Sync**: One-shot startup hydration → fetches WARP mode, WARP status, and active Wi-Fi immediately on launch. Forwards cached state to Loop 3 via `tokio::sync::oneshot` channel.
-- **500ms**: Animate radar step & pulse LED.
+- **Initial Sync**: One-shot startup hydration → fetches WARP mode, WARP status, and active Wi-Fi immediately on launch. Forwards cached state to Loop 2 via `tokio::sync::oneshot` channel.
 - **1s00**: Compute network RX/TX IO rates, plot SVG chart paths.
 - **3s00**: Poll WiFi SSID and WARP tunnel status (receives initial state from startup sync). Auto-trigger GeoIP update on state change.
 - **5s00**: Probe Cloudflare (`1.1.1.1`) and Google (`8.8.8.8`) ping latencies.
@@ -75,8 +74,7 @@ Linked in `src/callbacks.rs` inside `register_callbacks`:
 
 ### 6.2 State Properties (Rust ➔ UI Updates)
 Updated via background loops in `src/polling.rs`:
-- Loop 1 ➔ `pulse_led`, `radar_step`.
-- Loop 2 ➔ `speed_stats`, `download_history`, `upload_history`, dynamic SVG chart paths.
-- Loop 3 ➔ `active_wifi`, `warp_status_text`, `warp_status_color`, `warp_network_text`, `warp_toggle_state`.
-- Loop 4 ➔ `ping1`, `ping2`.
-- Loop 5 ➔ `geo_info` details.
+- Loop 1 ➔ `speed_stats`, `download_history`, `upload_history`, dynamic SVG chart paths.
+- Loop 2 ➔ `active_wifi`, `warp_status_text`, `warp_status_color`, `warp_network_text`, `warp_toggle_state`.
+- Loop 3 ➔ `ping1`, `ping2`.
+- Loop 4 ➔ `geo_info` details.

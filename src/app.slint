@@ -94,8 +94,6 @@ export component AppWindow inherits Window {
     in-out property <[string]> console_logs: ["[System] Engine initialized. Awaiting user input commands."];
 
     // Animation assistance variables
-    in-out property <bool> pulse_led: false;
-    in-out property <int> radar_step: 0;
 
     // --- Callbacks handled by Rust ---
     callback change_network_clicked();
@@ -176,7 +174,6 @@ export component AppWindow inherits Window {
                 // COLUMN 2: Cloudflare WARP Controller & mini logs (4/12)
                 WarpControlPanel {
                     horizontal-stretch: 1;
-                    pulse_led: root.pulse_led;
                     warp_status_text: root.warp_status_text;
                     warp_status_color: root.warp_status_color;
                     warp_network_text: root.warp_network_text;
