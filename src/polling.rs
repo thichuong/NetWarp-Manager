@@ -183,7 +183,6 @@ pub fn start_polling_loops(ui: &AppWindow) {
         let initial_warp_mode = warp::get_warp_mode()
             .await
             .unwrap_or_else(|_| "DoH".to_string());
-        let mut last_warp_mode = initial_warp_mode.clone();
         let ui_init_mode = ui_status_weak.clone();
         let warp_mode_init_clone = initial_warp_mode.clone();
         let _ = ui_init_mode.upgrade_in_event_loop(move |ui| {
@@ -313,21 +312,14 @@ pub fn start_polling_loops(ui: &AppWindow) {
                 .await
                 .unwrap_or_else(|_| "Disconnected".to_string());
 
-            let mut warp_mode = last_warp_mode.clone();
-
-            // Detect if connection state, warp mode, or wifi SSID changed to trigger immediate Geo IP refresh
+            // Detect if connection state or wifi SSID changed to trigger immediate Geo IP refresh
             // 3-second cycle: geo_cooldown_counter >= 10 matches 30 seconds interval
             let state_changed = warp_status != last_warp_state
                 || current_wifi_ssid != last_wifi_ssid
                 || geo_cooldown_counter >= 10;
 
             if state_changed {
-                // Refresh WARP mode on state change or periodically to stay perfectly in sync
-                if let Ok(current_mode) = warp::get_warp_mode().await {
-                    warp_mode = current_mode;
-                }
                 last_warp_state = warp_status.clone();
-                last_warp_mode = warp_mode.clone();
                 last_wifi_ssid = current_wifi_ssid.clone();
                 geo_cooldown_counter = 0;
             } else {
@@ -336,7 +328,6 @@ pub fn start_polling_loops(ui: &AppWindow) {
 
             let ui_warp_inner = ui_status_weak.clone();
             let warp_status_clone = warp_status.clone();
-            let warp_mode_clone = warp_mode.clone();
             let ui_geo_trigger = ui_warp_inner.clone();
 
             let _ = ui_warp_inner.upgrade_in_event_loop(move |ui| {
@@ -359,9 +350,6 @@ pub fn start_polling_loops(ui: &AppWindow) {
                     );
                     ui.set_warp_toggle_state(false);
                 }
-
-                ui.set_warp_mode_badge(format!("Mode: {}", warp_mode_clone).into());
-                ui.set_warp_mode_doh_active(!warp_mode_clone.to_lowercase().contains("warp"));
 
                 // Immediate trigger Geolocation curl fetch if state toggled
                 if state_changed {
