@@ -1,0 +1,368 @@
+// Overlay Dialogs and Modals Components
+
+import { ScrollView, LineEdit } from "std-widgets.slint";
+import { WifiNetwork } from "structs.slint";
+
+export component WifiScanModal inherits Rectangle {
+    in-out property <bool> is_scanning;
+    in-out property <[WifiNetwork]> wifi_list;
+
+    callback close_modals();
+    callback wifi_selected(string, string);
+    callback scan_range_clicked();
+
+    background: rgba(2, 6, 23, 0.85); // overlay dark backdrop blur
+    
+    Rectangle {
+        width: 480px;
+        height: 520px;
+        background: rgba(15, 23, 42, 0.95);
+        border-width: 1px;
+        border-color: #1e293b;
+        border-radius: 28px;
+        
+        VerticalLayout {
+            padding: 24px;
+            spacing: 16px;
+            
+            // Modal Header
+            HorizontalLayout {
+                alignment: space-between;
+                
+                HorizontalLayout {
+                    spacing: 12px;
+                    Rectangle {
+                        width: 36px;
+                        height: 36px;
+                        background: rgba(16, 185, 129, 0.1);
+                        border-radius: 10px;
+                        Text { text: "📶"; font-size: 16px; horizontal-alignment: center; vertical-alignment: center; }
+                    }
+                    VerticalLayout {
+                        alignment: center;
+                        Text { text: "Available Wi-Fi Networks"; font-size: 14px; font-weight: 800; color: #f8fafc; }
+                        Text { text: "Select a wireless network below"; font-size: 10px; color: #64748b; }
+                    }
+                }
+
+                // Close x button
+                Rectangle {
+                    width: 28px;
+                    height: 28px;
+                    background: rgba(30, 41, 59, 0.6);
+                    border-radius: 6px;
+                    Text { text: "✖"; font-size: 10px; color: #94a3b8; horizontal-alignment: center; vertical-alignment: center; }
+                    TouchArea {
+                        clicked => { root.close_modals(); }
+                    }
+                }
+            }
+
+            // Dynamic radar scan pulse banner when isScanning is true
+            if (root.is_scanning) : Rectangle {
+                height: 50px;
+                background: rgba(16, 185, 129, 0.05);
+                border-width: 1px;
+                border-color: rgba(16, 185, 129, 0.1);
+                border-radius: 12px;
+                
+                HorizontalLayout {
+                    alignment: center;
+                    spacing: 10px;
+                    Text { text: "🔄"; font-size: 14px; vertical-alignment: center; }
+                    Text {
+                        text: "SCANNING FREQUENCIES IN RANGE...";
+                        font-size: 10px;
+                        font-weight: 900;
+                        color: #10b981;
+                        vertical-alignment: center;
+                    }
+                }
+            }
+
+            // Scrollable Wifi Network cards list
+            Rectangle {
+                background: #020617;
+                border-width: 1px;
+                border-color: #1e293b;
+                border-radius: 16px;
+                vertical-stretch: 1; // expand to fill height
+                
+                ScrollView {
+                    VerticalLayout {
+                        padding: 8px;
+                        spacing: 8px;
+                        alignment: start;
+                        
+                        if (root.wifi_list.length == 0 && !root.is_scanning) : Text {
+                            text: "No Wi-Fi systems discovered. Trigger a rescan.";
+                            font-size: 12px;
+                            color: #64748b;
+                            horizontal-alignment: center;
+                        }
+                        
+                        for net in root.wifi_list: Rectangle {
+                            height: 56px;
+                            background: net.active ? rgba(16, 185, 129, 0.08) : rgba(30, 41, 59, 0.3);
+                            border-width: 1px;
+                            border-color: net.active ? #10b981 : #1e293b;
+                            border-radius: 10px;
+                            
+                            HorizontalLayout {
+                                padding-left: 14px;
+                                padding-right: 14px;
+                                alignment: space-between;
+                                
+                                HorizontalLayout {
+                                    spacing: 10px;
+                                    alignment: start;
+                                    Text { text: net.active ? "🟢" : "⚪"; font-size: 10px; vertical-alignment: center; }
+                                    VerticalLayout {
+                                        alignment: center;
+                                        spacing: 2px;
+                                        Text {
+                                            text: net.ssid;
+                                            font-size: 12.5px;
+                                            font-weight: 800;
+                                            color: net.active ? #10b981 : #cbd5e1;
+                                        }
+                                        Text {
+                                            text: net.bssid;
+                                            font-size: 9.5px;
+                                            font-family: "JetBrains Mono";
+                                            color: net.active ? rgba(16, 185, 129, 0.6) : #64748b;
+                                        }
+                                    }
+                                }
+                                
+                                HorizontalLayout {
+                                    spacing: 12px;
+                                    alignment: end;
+                                    
+                                    // Signal badge
+                                    Text {
+                                        text: net.signal + "% signal";
+                                        font-size: 11px;
+                                        color: #64748b;
+                                        font-family: "JetBrains Mono";
+                                        vertical-alignment: center;
+                                    }
+                                    
+                                    // Band badge (e.g. 5GHz)
+                                    Rectangle {
+                                        background: #1e293b;
+                                        border-radius: 4px;
+                                        height: 18px;
+                                        y: 19px;
+                                        
+                                        HorizontalLayout {
+                                            padding-left: 4px;
+                                            padding-right: 4px;
+                                            Text {
+                                                text: net.band;
+                                                font-size: 8px;
+                                                font-weight: 800;
+                                                color: #cbd5e1;
+                                                vertical-alignment: center;
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                            
+                            TouchArea {
+                                clicked => {
+                                    root.wifi_selected(net.ssid, net.bssid);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Modal Footer
+            HorizontalLayout {
+                alignment: space-between;
+                Text {
+                    text: "Found: " + root.wifi_list.length + " networks";
+                    font-size: 11px;
+                    color: #64748b;
+                    vertical-alignment: center;
+                }
+                
+                // Scan button
+                Rectangle {
+                    background: #10b981;
+                    border-radius: 8px;
+                    height: 32px;
+                    
+                    HorizontalLayout {
+                        padding-left: 12px;
+                        padding-right: 12px;
+                        Text {
+                            text: "Rescan Range";
+                            font-size: 11px;
+                            font-weight: 900;
+                            color: #020617;
+                            vertical-alignment: center;
+                        }
+                    }
+                    
+                    TouchArea {
+                        clicked => { root.scan_range_clicked(); }
+                    }
+                }
+            }
+        }
+    }
+}
+
+export component PasswordModal inherits Rectangle {
+    in-out property <string> selected_wifi_ssid;
+    in-out property <string> selected_wifi_bssid;
+    in-out property <string> pwd_input_val;
+    in-out property <bool> lock_bssid;
+
+    callback close_modals();
+    callback connect_wifi_clicked(string, string, string, bool); // bssid, ssid, password, lock_bssid
+
+    background: rgba(2, 6, 23, 0.85); // dark overlay
+    
+    Rectangle {
+        width: 400px;
+        height: 280px;
+        background: rgba(15, 23, 42, 0.95);
+        border-width: 1px;
+        border-color: #1e293b;
+        border-radius: 24px;
+        
+        VerticalLayout {
+            padding: 24px;
+            spacing: 16px;
+            alignment: space-between;
+            
+            // Header
+            VerticalLayout {
+                spacing: 4px;
+                Text {
+                    text: "🔒 Wi-Fi Credentials Required";
+                    font-size: 14px;
+                    font-weight: 800;
+                    color: #f8fafc;
+                }
+                Text {
+                    text: "Connect to: " + root.selected_wifi_ssid;
+                    font-size: 11px;
+                    color: #94a3b8;
+                }
+            }
+
+            // Password input
+            VerticalLayout {
+                spacing: 6px;
+                Text { text: "WPA/WPA2 PASSWORD KEY"; font-size: 9px; font-weight: 800; color: #64748b; }
+                
+                // Slint LineEdit input box
+                LineEdit {
+                    placeholder-text: "Provide wireless password...";
+                    text: root.pwd_input_val;
+                    edited(val) => { root.pwd_input_val = val; }
+                }
+            }
+
+            // Lock BSSID checkbox general option
+            HorizontalLayout {
+                spacing: 8px;
+                alignment: start;
+                
+                // Simple checkbox drawing
+                Rectangle {
+                    width: 16px;
+                    height: 16px;
+                    border-radius: 4px;
+                    border-width: 1px;
+                    border-color: #3b82f6;
+                    background: root.lock_bssid ? #3b82f6 : transparent;
+                    y: 1px;
+                    
+                    if (root.lock_bssid) : Text {
+                        text: "✓";
+                        font-size: 10px;
+                        font-weight: 900;
+                        color: #ffffff;
+                        horizontal-alignment: center;
+                        vertical-alignment: center;
+                    }
+                    
+                    TouchArea {
+                        clicked => { root.lock_bssid = !root.lock_bssid; }
+                    }
+                }
+                
+                Text {
+                    text: "Lock BSSID (Fix connection profile to this exact MAC)";
+                    font-size: 10.5px;
+                    color: #94a3b8;
+                    vertical-alignment: center;
+                }
+            }
+
+            // Action controls buttons
+            HorizontalLayout {
+                spacing: 12px;
+                alignment: end;
+                
+                // Cancel action
+                Rectangle {
+                    background: rgba(30, 41, 59, 0.6);
+                    border-radius: 8px;
+                    border-width: 1px;
+                    border-color: #334155;
+                    width: 80px;
+                    height: 32px;
+                    
+                    Text {
+                        text: "Cancel";
+                        font-size: 11px;
+                        font-weight: 800;
+                        color: #94a3b8;
+                        horizontal-alignment: center;
+                        vertical-alignment: center;
+                    }
+                    
+                    TouchArea {
+                        clicked => { root.close_modals(); }
+                    }
+                }
+
+                // Connect action
+                Rectangle {
+                    background: #10b981;
+                    border-radius: 8px;
+                    width: 100px;
+                    height: 32px;
+                    
+                    Text {
+                        text: "Connect Key";
+                        font-size: 11px;
+                        font-weight: 900;
+                        color: #020617;
+                        horizontal-alignment: center;
+                        vertical-alignment: center;
+                    }
+                    
+                    TouchArea {
+                        clicked => {
+                            root.connect_wifi_clicked(
+                                root.selected_wifi_bssid,
+                                root.selected_wifi_ssid,
+                                root.pwd_input_val,
+                                root.lock_bssid
+                            );
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

@@ -1,0 +1,192 @@
+// Diagnostics and Geolocation Component
+
+import { PingResult, IPGeolocatorInfo } from "structs.slint";
+
+export component DiagnosticsPanel inherits HorizontalLayout {
+    in-out property <PingResult> ping1;
+    in-out property <PingResult> ping2;
+    in-out property <IPGeolocatorInfo> geo_info;
+
+    spacing: 24px;
+    
+    // Left widget: Ping latencies (Google & Cloudflare)
+    VerticalLayout {
+        width: 320px;
+        spacing: 12px;
+        
+        Text {
+            text: "⚡ PING LATENCY chẩn đoán";
+            font-size: 10px;
+            font-weight: 800;
+            color: #64748b;
+            letter-spacing: 1px;
+        }
+
+        // Ping Cloudflare Block
+        Rectangle {
+            height: 60px;
+            background: rgba(15, 23, 42, 0.45);
+            border-width: 1px;
+            border-color: #1e293b;
+            border-radius: 14px;
+            
+            VerticalLayout {
+                padding: 12px;
+                alignment: center;
+                spacing: 4px;
+                HorizontalLayout {
+                    alignment: space-between;
+                    HorizontalLayout {
+                        spacing: 6px;
+                        Rectangle { width: 5px; height: 5px; border-radius: 2.5px; background: #10b981; y: 4px; }
+                        Text { text: "Cloudflare (1.1.1.1)"; font-size: 11px; font-weight: 700; color: #cbd5e1; font-family: "JetBrains Mono"; }
+                    }
+                    Text {
+                        text: root.ping1.status == "Online" ? Math.round(root.ping1.latency) + " ms" : "Offline";
+                        font-size: 13px;
+                        font-weight: 900;
+                        color: root.ping1.status == "Online" ? #10b981 : #f43f5e;
+                        font-family: "JetBrains Mono";
+                    }
+                }
+                
+                // Miniature bar gauge
+                Rectangle {
+                    height: 3px;
+                    background: #020617;
+                    border-radius: 1.5px;
+                    
+                    Rectangle {
+                        x: 0px;
+                        width: Math.min(1.0, root.ping1.latency / 200.0) * parent.width;
+                        height: 100%;
+                        border-radius: 1.5px;
+                        background: root.ping1.status == "Online" ? #10b981 : #f43f5e;
+                    }
+                }
+            }
+        }
+
+        // Ping Google Block
+        Rectangle {
+            height: 60px;
+            background: rgba(15, 23, 42, 0.45);
+            border-width: 1px;
+            border-color: #1e293b;
+            border-radius: 14px;
+            
+            VerticalLayout {
+                padding: 12px;
+                alignment: center;
+                spacing: 4px;
+                HorizontalLayout {
+                    alignment: space-between;
+                    HorizontalLayout {
+                        spacing: 6px;
+                        Rectangle { width: 5px; height: 5px; border-radius: 2.5px; background: #3b82f6; y: 4px; }
+                        Text { text: "Google (8.8.8.8)"; font-size: 11px; font-weight: 700; color: #cbd5e1; font-family: "JetBrains Mono"; }
+                    }
+                    Text {
+                        text: root.ping2.status == "Online" ? Math.round(root.ping2.latency) + " ms" : "Offline";
+                        font-size: 13px;
+                        font-weight: 900;
+                        color: root.ping2.status == "Online" ? #3b82f6 : #f43f5e;
+                        font-family: "JetBrains Mono";
+                    }
+                }
+                
+                // Miniature bar gauge
+                Rectangle {
+                    height: 3px;
+                    background: #020617;
+                    border-radius: 1.5px;
+                    
+                    Rectangle {
+                        x: 0px;
+                        width: Math.min(1.0, root.ping2.latency / 200.0) * parent.width;
+                        height: 100%;
+                        border-radius: 1.5px;
+                        background: root.ping2.status == "Online" ? #3b82f6 : #f43f5e;
+                    }
+                }
+            }
+        }
+    }
+
+    // Right widget: IP Geolocation details (Public coordinates & ISP)
+    VerticalLayout {
+        spacing: 12px;
+        
+        HorizontalLayout {
+            alignment: space-between;
+            Text {
+                text: "🌍 PUBLIC IP GEOLOCATION";
+                font-size: 10px;
+                font-weight: 800;
+                color: #64748b;
+                letter-spacing: 1px;
+            }
+            
+            // Direct / Protected WARP Badge
+            Rectangle {
+                background: root.geo_info.warp_badge == "WARP" ? rgba(16, 185, 129, 0.1) : rgba(244, 63, 94, 0.1);
+                border-width: 1px;
+                border-color: root.geo_info.warp_badge == "WARP" ? rgba(16, 185, 129, 0.2) : rgba(244, 63, 94, 0.2);
+                border-radius: 6px;
+                height: 18px;
+                
+                HorizontalLayout {
+                    padding-left: 6px;
+                    padding-right: 6px;
+                    Text {
+                        text: root.geo_info.warp_badge;
+                        font-size: 9px;
+                        font-weight: 900;
+                        color: root.geo_info.warp_badge == "WARP" ? #10b981 : #f43f5e;
+                        font-family: "JetBrains Mono";
+                        vertical-alignment: center;
+                    }
+                }
+            }
+        }
+
+        // Geo info grid card
+        Rectangle {
+            background: rgba(15, 23, 42, 0.45);
+            border-width: 1px;
+            border-color: #1e293b;
+            border-radius: 16px;
+            height: 132px;
+            
+            GridLayout {
+                padding-left: 20px;
+                padding-right: 20px;
+                spacing: 14px;
+                
+                // Row 1
+                Row {
+                    VerticalLayout {
+                        Text { text: "IP Address"; color: #64748b; font-size: 9px; font-weight: 800; letter-spacing: 0.5px; }
+                        Text { text: root.geo_info.ip; color: #f8fafc; font-size: 13px; font-weight: 700; font-family: "JetBrains Mono"; }
+                    }
+                    VerticalLayout {
+                        Text { text: "Location"; color: #64748b; font-size: 9px; font-weight: 800; letter-spacing: 0.5px; }
+                        Text { text: root.geo_info.location; color: #f8fafc; font-size: 13px; font-weight: 700; }
+                    }
+                }
+                
+                // Row 2
+                Row {
+                    VerticalLayout {
+                        Text { text: "ISP Provider"; color: #64748b; font-size: 9px; font-weight: 800; letter-spacing: 0.5px; }
+                        Text { text: root.geo_info.isp; color: #cbd5e1; font-size: 13px; font-weight: 700; }
+                    }
+                    VerticalLayout {
+                        Text { text: "Coordinates"; color: #64748b; font-size: 9px; font-weight: 800; letter-spacing: 0.5px; }
+                        Text { text: root.geo_info.coordinates; color: #cbd5e1; font-size: 13px; font-weight: 700; font-family: "JetBrains Mono"; }
+                    }
+                }
+            }
+        }
+    }
+}

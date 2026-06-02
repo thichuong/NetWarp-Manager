@@ -1,0 +1,41 @@
+// Shared Data Structures for WiWarp GUI
+
+export struct WifiNetwork {
+    bssid: string,
+    ssid: string,
+    channel: int,
+    frequency: string,
+    band: string,
+    signal: int,
+    security: string,
+    active: bool,
+    rate: string,
+    device: string,
+    mac: string,
+    ip_address: string,
+    gateway: string,
+    dns_primary: string,
+    dns_secondary: string,
+}
+
+export struct PingResult {
+    target: string,
+    latency: float,
+    status: string,
+}
+
+export struct NetworkSpeed {
+    download_speed: string,
+    upload_speed: string,
+    peak_download: string,
+    peak_upload: string,
+    total_usage: string,
+}
+
+export struct IPGeolocatorInfo {
+    ip: string,
+    isp: string,
+    location: string,
+    coordinates: string,
+    warp_badge: string, // "DIRECT" or "WARP"
+}

@@ -1,0 +1,322 @@
+// Cloudflare WARP Controller & System Logs component
+
+import { ScrollView } from "std-widgets.slint";
+
+export component WarpControlPanel inherits Rectangle {
+    in-out property <bool> pulse_led;
+    in-out property <string> warp_status_text;
+    in-out property <string> warp_status_color;
+    in-out property <string> warp_network_text;
+    in-out property <string> warp_mode_badge;
+    in-out property <bool> warp_toggle_state;
+    in-out property <bool> warp_mode_doh_active;
+    in-out property <[string]> console_logs;
+
+    callback warp_toggle_clicked(bool);
+    callback warp_mode_clicked(string);
+    callback install_rpm_clicked();
+
+    background: rgba(15, 23, 42, 0.4);
+    border-width: 1px;
+    border-color: #1e293b;
+    border-radius: 24px;
+    
+    VerticalLayout {
+        padding: 24px;
+        spacing: 20px;
+        alignment: space-between;
+        
+        // Upper Section: Shield emblem and connection toggle
+        VerticalLayout {
+            spacing: 16px;
+            alignment: start;
+            
+            // Shield Graphics Center
+            Rectangle {
+                height: 160px;
+                background: transparent;
+                
+                // Concentric pulsing status halo
+                Rectangle {
+                    width: root.pulse_led ? 124px : 110px;
+                    height: root.pulse_led ? 124px : 110px;
+                    border-radius: root.pulse_led ? 62px : 55px;
+                    background: transparent;
+                    border-width: 1.5px;
+                    border-color: root.warp_status_text == "Connected" ? rgba(16, 185, 129, 0.1) : rgba(244, 63, 94, 0.1);
+                    animate width, height, border-radius { duration: 800ms; easing: ease-in-out; }
+                }
+
+                // Glowing Shield Circle
+                Rectangle {
+                    width: 84px;
+                    height: 84px;
+                    border-radius: 42px;
+                    background: #020617;
+                    border-width: 1px;
+                    border-color: root.warp_status_text == "Connected" ? #10b981 : #f43f5e;
+                    
+                    Text {
+                        text: "🛡️";
+                        font-size: 38px;
+                        horizontal-alignment: center;
+                        vertical-alignment: center;
+                    }
+
+                    // Led dynamic dot inside shield corner
+                    Rectangle {
+                        x: 58px;
+                        y: 6px;
+                        width: 12px;
+                        height: 12px;
+                        border-radius: 6px;
+                        background: root.warp_status_text == "Connected" ? #10b981 : (root.warp_status_text == "Connecting..." ? #f59e0b : #f43f5e);
+                        border-width: 2px;
+                        border-color: #020617;
+                    }
+                }
+            }
+
+            // Status Info Block
+            VerticalLayout {
+                spacing: 4px;
+                Text {
+                    text: "Cloudflare WARP Tunnel";
+                    font-size: 15px;
+                    font-weight: 800;
+                    color: #f8fafc;
+                    horizontal-alignment: center;
+                }
+                Text {
+                    text: root.warp_status_text;
+                    font-size: 13px;
+                    font-weight: 900;
+                    color: root.warp_status_text == "Connected" ? #10b981 : (root.warp_status_text == "Connecting..." ? #f59e0b : #f43f5e);
+                    font-family: "JetBrains Mono";
+                    horizontal-alignment: center;
+                    letter-spacing: 1.5px;
+                }
+                Text {
+                    text: root.warp_network_text;
+                    font-size: 11px;
+                    color: #64748b;
+                    horizontal-alignment: center;
+                    wrap: word-wrap;
+                    width: 280px;
+                }
+                
+                // Operating mode active status badge
+                if (root.warp_status_text == "Connected") : HorizontalLayout {
+                    alignment: center;
+                    Rectangle {
+                        background: rgba(30, 41, 59, 0.6);
+                        border-width: 1px;
+                        border-color: #334155;
+                        border-radius: 12px;
+                        height: 22px;
+                        
+                        HorizontalLayout {
+                            padding-left: 12px;
+                            padding-right: 12px;
+                            Text {
+                                text: root.warp_mode_badge;
+                                font-size: 9px;
+                                font-weight: 800;
+                                color: #cbd5e1;
+                                vertical-alignment: center;
+                            }
+                        }
+                    }
+                }
+            }
+
+            // iOS styled Toggle connected switch
+            Rectangle {
+                height: 48px;
+                background: rgba(2, 6, 23, 0.4);
+                border-width: 1px;
+                border-color: #1e293b;
+                border-radius: 14px;
+                
+                HorizontalLayout {
+                    padding-left: 16px;
+                    padding-right: 16px;
+                    alignment: space-between;
+                    Text {
+                        text: root.warp_toggle_state ? "CONNECT CLIENT ACTIVATED" : "CONNECT CLIENT DEACTIVATED";
+                        font-size: 10px;
+                        font-weight: 800;
+                        color: root.warp_toggle_state ? #10b981 : #64748b;
+                        letter-spacing: 0.5px;
+                        vertical-alignment: center;
+                    }
+
+                    // Interactive switch toggle pill
+                    Rectangle {
+                        width: 44px;
+                        height: 24px;
+                        border-radius: 12px;
+                        background: root.warp_toggle_state ? #10b981 : #1e293b;
+                        y: 11px;
+                        
+                        // Inner toggle circular knob
+                        Rectangle {
+                            x: root.warp_toggle_state ? 22px : 2px;
+                            y: 2px;
+                            width: 20px;
+                            height: 20px;
+                            border-radius: 10px;
+                            background: #ffffff;
+                            
+                            animate x { duration: 200ms; easing: ease-in-out; }
+                        }
+
+                        TouchArea {
+                            clicked => {
+                                root.warp_toggle_state = !root.warp_toggle_state;
+                                root.warp_toggle_clicked(root.warp_toggle_state);
+                            }
+                        }
+                    }
+                }
+            }
+
+            // WARP mode selection tabs
+            VerticalLayout {
+                spacing: 8px;
+                padding-top: 8px;
+                
+                Text {
+                    text: "OPERATION TUNNEL MODE";
+                    font-size: 8.5px;
+                    font-weight: 800;
+                    color: #475569;
+                    letter-spacing: 1.2px;
+                    horizontal-alignment: center;
+                }
+
+                HorizontalLayout {
+                    spacing: 8px;
+                    alignment: center;
+
+                    // Tab 1: DNS Only
+                    Rectangle {
+                        width: 140px;
+                        height: 38px;
+                        background: root.warp_mode_doh_active ? rgba(16, 185, 129, 0.1) : rgba(30, 41, 59, 0.3);
+                        border-width: 1px;
+                        border-color: root.warp_mode_doh_active ? #10b981 : #1e293b;
+                        border-radius: 10px;
+                        
+                        Text {
+                            text: "DoH DNS Only";
+                            font-size: 10.5px;
+                            font-weight: 800;
+                            color: root.warp_mode_doh_active ? #10b981 : #64748b;
+                            horizontal-alignment: center;
+                            vertical-alignment: center;
+                        }
+                        
+                        TouchArea {
+                            clicked => {
+                                root.warp_mode_doh_active = true;
+                                root.warp_mode_clicked("doh");
+                            }
+                        }
+                    }
+
+                    // Tab 2: WARP+DoH Dual
+                    Rectangle {
+                        width: 140px;
+                        height: 38px;
+                        background: !root.warp_mode_doh_active ? rgba(16, 185, 129, 0.1) : rgba(30, 41, 59, 0.3);
+                        border-width: 1px;
+                        border-color: !root.warp_mode_doh_active ? #10b981 : #1e293b;
+                        border-radius: 10px;
+                        
+                        Text {
+                            text: "WARP+DoH Dual";
+                            font-size: 10.5px;
+                            font-weight: 800;
+                            color: !root.warp_mode_doh_active ? #10b981 : #64748b;
+                            horizontal-alignment: center;
+                            vertical-alignment: center;
+                        }
+                        
+                        TouchArea {
+                            clicked => {
+                                root.warp_mode_doh_active = false;
+                                root.warp_mode_clicked("warp+doh");
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // Lower Section: Logs Console & RPM button
+        VerticalLayout {
+            spacing: 12px;
+            alignment: end;
+            
+            // Action: Install daemon button
+            Rectangle {
+                height: 40px;
+                background: #1e293b;
+                border-width: 1px;
+                border-color: #334155;
+                border-radius: 12px;
+                
+                HorizontalLayout {
+                    spacing: 8px;
+                    alignment: center;
+                    Text { text: "📥"; font-size: 12px; vertical-alignment: center; }
+                    Text {
+                        text: "Install Daemon RPM via Polkit";
+                        font-size: 11.5px;
+                        font-weight: 800;
+                        color: #cbd5e1;
+                        vertical-alignment: center;
+                    }
+                }
+                
+                TouchArea {
+                    clicked => { root.install_rpm_clicked(); }
+                }
+            }
+
+            // Terminal Mini Log Output Dashboard
+            VerticalLayout {
+                spacing: 6px;
+                Text {
+                    text: "SYSTEM DIAGNOSTIC CONSOLE LOGS";
+                    font-size: 8.5px;
+                    font-weight: 800;
+                    color: #475569;
+                    letter-spacing: 1px;
+                }
+                Rectangle {
+                    height: 160px;
+                    background: #020617;
+                    border-width: 1px;
+                    border-color: #1e293b;
+                    border-radius: 12px;
+                    
+                    ScrollView {
+                        VerticalLayout {
+                            padding: 10px;
+                            spacing: 4px;
+                            alignment: start;
+                            for entry in root.console_logs: Text {
+                                text: entry;
+                                font-size: 9.5px;
+                                font-family: "JetBrains Mono";
+                                wrap: word-wrap;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

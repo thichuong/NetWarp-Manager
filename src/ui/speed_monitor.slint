@@ -1,0 +1,184 @@
+// Speed Monitor and Sparkline Chart Component
+
+import { NetworkSpeed } from "structs.slint";
+
+export component SpeedMonitorPanel inherits VerticalLayout {
+    in-out property <NetworkSpeed> speed_stats;
+    in-out property <[float]> download_history;
+    in-out property <[float]> upload_history;
+
+    spacing: 12px;
+    
+    // Dual Speed Cards Row
+    HorizontalLayout {
+        spacing: 16px;
+        
+        // Download card
+        Rectangle {
+            height: 68px;
+            background: rgba(15, 23, 42, 0.5);
+            border-width: 1px;
+            border-color: #1e293b;
+            border-radius: 16px;
+            
+            HorizontalLayout {
+                padding-left: 20px;
+                padding-right: 20px;
+                alignment: space-between;
+                
+                VerticalLayout {
+                    alignment: center;
+                    HorizontalLayout {
+                        spacing: 6px;
+                        Rectangle { width: 6px; height: 6px; border-radius: 3px; background: #10b981; y: 4px; }
+                        Text { text: "Download Speed"; font-size: 10px; font-weight: 800; color: #64748b; letter-spacing: 0.5px; }
+                    }
+                    Text { text: root.speed_stats.download_speed; font-size: 20px; font-weight: 900; color: #10b981; font-family: "JetBrains Mono"; }
+                }
+                
+                // Small indicator badge
+                Text { text: "▼"; font-size: 22px; color: rgba(16, 185, 129, 0.2); vertical-alignment: center; }
+            }
+        }
+
+        // Upload card
+        Rectangle {
+            height: 68px;
+            background: rgba(15, 23, 42, 0.5);
+            border-width: 1px;
+            border-color: #1e293b;
+            border-radius: 16px;
+            
+            HorizontalLayout {
+                padding-left: 20px;
+                padding-right: 20px;
+                alignment: space-between;
+                
+                VerticalLayout {
+                    alignment: center;
+                    HorizontalLayout {
+                        spacing: 6px;
+                        Rectangle { width: 6px; height: 6px; border-radius: 3px; background: #f59e0b; y: 4px; }
+                        Text { text: "Upload Speed"; font-size: 10px; font-weight: 800; color: #64748b; letter-spacing: 0.5px; }
+                    }
+                    Text { text: root.speed_stats.upload_speed; font-size: 20px; font-weight: 900; color: #f59e0b; font-family: "JetBrains Mono"; }
+                }
+                
+                // Small indicator badge
+                Text { text: "▲"; font-size: 22px; color: rgba(245, 158, 11, 0.2); vertical-alignment: center; }
+            }
+        }
+    }
+
+    // Cyber Waveform Sparkline Chart
+    Rectangle {
+        height: 250px;
+        background: #020617;
+        border-width: 1px;
+        border-color: #1e293b;
+        border-radius: 20px;
+        clip: true;
+        
+        // Vertical grid background ticks
+        HorizontalLayout {
+            padding: 10px;
+            alignment: space-between;
+            for i in [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]: Rectangle {
+                width: 1px;
+                background: rgba(51, 65, 85, 0.05);
+            }
+        }
+
+        // Horizontal status helper lines
+        VerticalLayout {
+            padding: 20px;
+            alignment: space-between;
+            for i in [1, 2, 3, 4]: Rectangle {
+                height: 1px;
+                background: rgba(51, 65, 85, 0.05);
+            }
+        }
+
+        // Real Dynamic Waveform Bars
+        HorizontalLayout {
+            padding-left: 15px;
+            padding-right: 15px;
+            padding-top: 15px;
+            padding-bottom: 15px;
+            spacing: 8px;
+            alignment: center;
+            
+            for download_pt in root.download_history: VerticalLayout {
+                alignment: end;
+                
+                // Cyber download volume rectangle
+                Rectangle {
+                    width: 12px;
+                    height: Math.min(220px, Math.max(4px, download_pt * 0.003px));
+                    border-radius: 3px;
+                    background: @linear-gradient(180deg, #10b981 0%, rgba(16, 185, 129, 0.2) 100%);
+                    
+                    animate height { duration: 250ms; easing: ease-out; }
+                }
+            }
+        }
+
+        // Title Overlay
+        Text {
+            x: 20px;
+            y: 15px;
+            text: "NETWORK WAVEFORM MONITOR (KB/S)";
+            font-size: 8.5px;
+            font-weight: 800;
+            color: rgba(148, 163, 184, 0.35);
+            letter-spacing: 1px;
+        }
+    }
+
+    // Session Speed Statistics Row
+    HorizontalLayout {
+        spacing: 16px;
+        Rectangle {
+            height: 38px;
+            background: rgba(15, 23, 42, 0.2);
+            border-width: 1px;
+            border-color: #1e293b;
+            border-radius: 10px;
+            HorizontalLayout {
+                padding-left: 12px;
+                padding-right: 12px;
+                alignment: center;
+                Text { text: "Peak Download: "; font-size: 10.5px; color: #64748b; vertical-alignment: center; }
+                Text { text: root.speed_stats.peak_download; font-size: 10.5px; font-weight: 800; color: #10b981; font-family: "JetBrains Mono"; vertical-alignment: center; }
+            }
+        }
+        Rectangle {
+            height: 38px;
+            background: rgba(15, 23, 42, 0.2);
+            border-width: 1px;
+            border-color: #1e293b;
+            border-radius: 10px;
+            HorizontalLayout {
+                padding-left: 12px;
+                padding-right: 12px;
+                alignment: center;
+                Text { text: "Peak Upload: "; font-size: 10.5px; color: #64748b; vertical-alignment: center; }
+                Text { text: root.speed_stats.peak_upload; font-size: 10.5px; font-weight: 800; color: #f59e0b; font-family: "JetBrains Mono"; vertical-alignment: center; }
+            }
+        }
+        Rectangle {
+            height: 38px;
+            background: rgba(15, 23, 42, 0.2);
+            border-width: 1px;
+            border-color: #1e293b;
+            border-radius: 10px;
+            HorizontalLayout {
+                padding-left: 12px;
+                padding-right: 12px;
+                alignment: center;
+                Text { text: "Total Data consumption: "; font-size: 10.5px; color: #64748b; vertical-alignment: center; }
+                Text { text: root.speed_stats.total_usage; font-size: 10.5px; font-weight: 800; color: #cbd5e1; font-family: "JetBrains Mono"; vertical-alignment: center; }
+            }
+        }
+    }
+}

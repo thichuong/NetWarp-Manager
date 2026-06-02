@@ -1,0 +1,252 @@
+// Collapsible Active Wifi Connection details component
+
+import { WifiNetwork } from "structs.slint";
+
+export component ActiveWifiPanel inherits Rectangle {
+    in-out property <WifiNetwork> active_wifi;
+    in-out property <bool> wifi_details_expanded;
+
+    callback toggle_wifi_details();
+    callback change_network_clicked();
+
+    background: rgba(15, 23, 42, 0.4);
+    border-width: 1px;
+    border-color: #1e293b;
+    border-radius: 24px;
+    
+    VerticalLayout {
+        padding: 16px;
+        spacing: 12px;
+
+        // Accordion Header block
+        HorizontalLayout {
+            alignment: space-between;
+            
+            HorizontalLayout {
+                spacing: 16px;
+                alignment: start;
+                
+                // Dynamic Wi-Fi signal icon block
+                Rectangle {
+                    width: 44px;
+                    height: 44px;
+                    background: rgba(16, 185, 129, 0.1);
+                    border-radius: 12px;
+                    border-width: 1px;
+                    border-color: rgba(16, 185, 129, 0.2);
+                    
+                    Text {
+                        text: "📡";
+                        font-size: 20px;
+                        horizontal-alignment: center;
+                        vertical-alignment: center;
+                    }
+                }
+
+                VerticalLayout {
+                    alignment: center;
+                    Text {
+                        text: "Active Wi-Fi Connection";
+                        font-size: 10px;
+                        font-weight: 800;
+                        color: #64748b;
+                        letter-spacing: 1px;
+                    }
+                    HorizontalLayout {
+                        spacing: 10px;
+                        alignment: start;
+                        Text {
+                            text: root.active_wifi.ssid;
+                            font-size: 17px;
+                            font-weight: 900;
+                            color: #f8fafc;
+                        }
+                        // Signal Strength Badge
+                        if (root.active_wifi.active) : Rectangle {
+                            background: rgba(16, 185, 129, 0.1);
+                            border-width: 1px;
+                            border-color: rgba(16, 185, 129, 0.2);
+                            border-radius: 8px;
+                            height: 22px;
+                            y: 2px;
+                            
+                            HorizontalLayout {
+                                padding-left: 8px;
+                                padding-right: 8px;
+                                spacing: 4px;
+                                alignment: center;
+                                Rectangle {
+                                    width: 6px;
+                                    height: 6px;
+                                    border-radius: 3px;
+                                    background: #10b981;
+                                }
+                                Text {
+                                    text: "Signal: " + root.active_wifi.signal + "%";
+                                    font-size: 10px;
+                                    font-weight: 800;
+                                    color: #10b981;
+                                    font-family: "JetBrains Mono";
+                                    vertical-alignment: center;
+                                }
+                            }
+                        }
+                        // Realtime rate link badge
+                        if (root.active_wifi.active) : Rectangle {
+                            background: rgba(59, 130, 246, 0.1);
+                            border-width: 1px;
+                            border-color: rgba(59, 130, 246, 0.2);
+                            border-radius: 8px;
+                            height: 22px;
+                            y: 2px;
+                            
+                            HorizontalLayout {
+                                padding-left: 8px;
+                                padding-right: 8px;
+                                spacing: 4px;
+                                alignment: center;
+                                Rectangle {
+                                    width: 6px;
+                                    height: 6px;
+                                    border-radius: 3px;
+                                    background: #3b82f6;
+                                }
+                                Text {
+                                    text: "Link Speed: " + root.active_wifi.rate;
+                                    font-size: 10px;
+                                    font-weight: 800;
+                                    color: #3b82f6;
+                                    font-family: "JetBrains Mono";
+                                    vertical-alignment: center;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Interactive controls
+            HorizontalLayout {
+                spacing: 12px;
+                alignment: end;
+                
+                // Expand toggle chevron
+                Rectangle {
+                    width: 32px;
+                    height: 32px;
+                    background: rgba(30, 41, 59, 0.6);
+                    border-radius: 8px;
+                    border-width: 1px;
+                    border-color: #334155;
+                    
+                    Text {
+                        text: root.wifi_details_expanded ? "▲" : "▼";
+                        font-size: 10px;
+                        font-weight: 900;
+                        color: #94a3b8;
+                        horizontal-alignment: center;
+                        vertical-alignment: center;
+                    }
+                    
+                    TouchArea {
+                        clicked => { root.toggle_wifi_details(); }
+                    }
+                }
+
+                // Change network action button
+                Rectangle {
+                    background: rgba(30, 41, 59, 0.6);
+                    border-radius: 8px;
+                    border-width: 1px;
+                    border-color: #334155;
+                    height: 32px;
+                    
+                    HorizontalLayout {
+                        padding-left: 12px;
+                        padding-right: 12px;
+                        alignment: center;
+                        Text {
+                            text: "Change Network ➔";
+                            font-size: 10px;
+                            font-weight: 900;
+                            color: #3b82f6;
+                            vertical-alignment: center;
+                        }
+                    }
+                    
+                    TouchArea {
+                        clicked => { root.change_network_clicked(); }
+                    }
+                }
+            }
+        }
+
+        // Collapsible Detailed Accordion Panel
+        if (root.wifi_details_expanded) : HorizontalLayout {
+            spacing: 32px;
+            padding-top: 12px;
+            
+            // Left Side parameters (Wi-Fi hardware details)
+            VerticalLayout {
+                spacing: 8px;
+                
+                Text {
+                    text: "🟢 Wi-Fi Hardware parameters";
+                    font-size: 10.5px;
+                    font-weight: 900;
+                    color: #10b981;
+                    letter-spacing: 0.5px;
+                }
+
+                HorizontalLayout {
+                    Text { text: "Security Type:"; color: #64748b; font-size: 11px; }
+                    Text { text: root.active_wifi.security; color: #e2e8f0; font-size: 11px; horizontal-alignment: right; font-family: "JetBrains Mono"; }
+                }
+                Rectangle { height: 1px; background: rgba(30, 41, 59, 0.4); }
+                HorizontalLayout {
+                    Text { text: "BSSID (Access Point MAC):"; color: #64748b; font-size: 11px; }
+                    Text { text: root.active_wifi.bssid; color: #cbd5e1; font-size: 11px; horizontal-alignment: right; font-family: "JetBrains Mono"; }
+                }
+                Rectangle { height: 1px; background: rgba(30, 41, 59, 0.4); }
+                HorizontalLayout {
+                    Text { text: "Wireless device Interface:"; color: #64748b; font-size: 11px; }
+                    Text { text: root.active_wifi.device; color: #cbd5e1; font-size: 11px; horizontal-alignment: right; font-family: "JetBrains Mono"; }
+                }
+            }
+
+            // Middle divider line
+            Rectangle {
+                width: 1px;
+                background: rgba(30, 41, 59, 0.6);
+            }
+
+            // Right Side parameters (IPv4/DNS configurations)
+            VerticalLayout {
+                spacing: 8px;
+                
+                Text {
+                    text: "🔵 IPv4 Protocol configurations";
+                    font-size: 10.5px;
+                    font-weight: 900;
+                    color: #3b82f6;
+                    letter-spacing: 0.5px;
+                }
+
+                HorizontalLayout {
+                    Text { text: "IP Address assigned:"; color: #64748b; font-size: 11px; }
+                    Text { text: root.active_wifi.ip_address; color: #f1f5f9; font-size: 11px; font-weight: 800; horizontal-alignment: right; font-family: "JetBrains Mono"; }
+                }
+                Rectangle { height: 1px; background: rgba(30, 41, 59, 0.4); }
+                HorizontalLayout {
+                    Text { text: "Default Gateway router:"; color: #64748b; font-size: 11px; }
+                    Text { text: root.active_wifi.gateway; color: #cbd5e1; font-size: 11px; horizontal-alignment: right; font-family: "JetBrains Mono"; }
+                }
+                Rectangle { height: 1px; background: rgba(30, 41, 59, 0.4); }
+                HorizontalLayout {
+                    Text { text: "Primary Nameserver DNS:"; color: #64748b; font-size: 11px; }
+                    Text { text: root.active_wifi.dns_primary; color: #cbd5e1; font-size: 11px; horizontal-alignment: right; font-family: "JetBrains Mono"; }
+                }
+            }
+        }
+    }
+}

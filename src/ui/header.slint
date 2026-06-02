@@ -1,0 +1,97 @@
+// Header Panel component for WiWarp
+
+export component HeaderPanel inherits Rectangle {
+    height: 70px;
+    background: rgba(15, 23, 42, 0.45);
+    border-radius: 20px;
+    border-width: 1px;
+    border-color: #1e293b;
+
+    HorizontalLayout {
+        padding-left: 24px;
+        padding-right: 24px;
+        alignment: space-between;
+
+        HorizontalLayout {
+            spacing: 16px;
+            alignment: start;
+            
+            // Logo Emblem (WiWarp Shield)
+            Image {
+                source: @image-url("../../assets/logo.svg");
+                width: 42px;
+                height: 42px;
+            }
+
+            VerticalLayout {
+                alignment: center;
+                Text {
+                    text: "WIWARP";
+                    font-size: 20px;
+                    font-weight: 900;
+                    color: #f8fafc;
+                    letter-spacing: 0.1px;
+                }
+                Text {
+                    text: "HIGH-FIDELITY NETWORK TERMINAL MANAGER";
+                    font-size: 9.5px;
+                    font-weight: 800;
+                    color: #64748b;
+                    letter-spacing: 1.5px;
+                }
+            }
+        }
+
+        // Header status info bar
+        HorizontalLayout {
+            spacing: 16px;
+            alignment: end;
+            
+            // Quick stats
+            VerticalLayout {
+                alignment: center;
+                Text {
+                    text: "OS PLATFORM";
+                    font-size: 8px;
+                    font-weight: 800;
+                    color: #64748b;
+                    letter-spacing: 1px;
+                    horizontal-alignment: right;
+                }
+                Text {
+                    text: "FEDORA LINUX";
+                    font-size: 11px;
+                    font-weight: 700;
+                    color: #cbd5e1;
+                    horizontal-alignment: right;
+                }
+            }
+
+            Rectangle {
+                width: 1px;
+                height: 30px;
+                background: #1e293b;
+            }
+
+            // System Engine Dot
+            HorizontalLayout {
+                spacing: 8px;
+                alignment: center;
+                
+                Rectangle {
+                    width: 8px;
+                    height: 8px;
+                    border-radius: 4px;
+                    background: #10b981;
+                }
+                Text {
+                    text: "ENGINE OK";
+                    font-size: 10px;
+                    font-weight: 900;
+                    color: #10b981;
+                    vertical-alignment: center;
+                }
+            }
+        }
+    }
+}
