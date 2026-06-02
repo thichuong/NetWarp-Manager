@@ -24,8 +24,6 @@ export component AppWindow inherits Window {
     default-font-family: "Outfit";
     default-font-size: 14px;
 
-    in-out property <bool> is_fullscreen: false;
-    callback toggle_fullscreen_clicked();
 
     forward-focus: main_focus;
 
@@ -108,13 +106,6 @@ export component AppWindow inherits Window {
     in-out property <string> pwd_input_val: "";
 
     main_focus := FocusScope {
-        KeyBinding {
-            keys: @keys(F11);
-            activated => {
-                root.toggle_fullscreen_clicked();
-            }
-        }
-
         // --- Layout ---
         // Background glow decoration orbs
         Rectangle {
@@ -141,10 +132,7 @@ export component AppWindow inherits Window {
             spacing: 16px;
 
             // 1. Header Area
-            HeaderPanel {
-                is_fullscreen: root.is_fullscreen;
-                toggle_fullscreen_clicked => { root.toggle_fullscreen_clicked(); }
-            }
+            HeaderPanel {}
 
             // 2. Main Workstation (Split 8/12 - 4/12 Grid simulation using HorizontalLayout)
             HorizontalLayout {

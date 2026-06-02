@@ -3,9 +3,6 @@
 import { Theme } from "theme.slint";
 
 export component HeaderPanel inherits Rectangle {
-    in-out property <bool> is_fullscreen: false;
-    callback toggle_fullscreen_clicked();
-
     height: 70px;
     background: Theme.card-bg;
     border-radius: 20px;
@@ -107,50 +104,7 @@ export component HeaderPanel inherits Rectangle {
                 }
             }
 
-            VerticalLayout {
-                alignment: center;
-                Rectangle {
-                    width: 1px;
-                    height: 30px;
-                    background: Theme.border;
-                }
-            }
 
-            // Fullscreen Toggle Button
-            VerticalLayout {
-                alignment: center;
-                Rectangle {
-                    background: root.is_fullscreen ? Theme.accent-bg-trans : Theme.card-bg.transparentize(15%);
-                    border-radius: 8px;
-                    border-width: 1px;
-                    border-color: root.is_fullscreen ? Theme.accent : Theme.border;
-                    height: 32px;
-                    
-                    HorizontalLayout {
-                        padding-left: 12px;
-                        padding-right: 12px;
-                        spacing: 6px;
-                        alignment: center;
-                        
-                        Text {
-                            text: root.is_fullscreen ? "🗖" : "🖥️";
-                            font-size: 12px;
-                            vertical-alignment: center;
-                        }
-                        Text {
-                            text: root.is_fullscreen ? "WINDOWED" : "FULLSCREEN";
-                            font-size: 12px;
-                            font-weight: 900;
-                            color: root.is_fullscreen ? Theme.accent : Theme.text-primary;
-                            vertical-alignment: center;
-                        }
-                    }
-                    
-                    TouchArea {
-                        clicked => { root.toggle_fullscreen_clicked(); }
-                    }
-                }
-            }
         }
     }
 }
