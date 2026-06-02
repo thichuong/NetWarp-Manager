@@ -56,4 +56,6 @@ src-tauri/.tauri
 *.tmp
 *.temp
 *~
+tauri-backup/
+
 
