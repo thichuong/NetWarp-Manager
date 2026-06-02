@@ -80,15 +80,6 @@ async fn main() -> Result<(), slint::PlatformError> {
 
     // 3. Register UI callbacks interacting with backend logic modules
 
-    // Toggle details accordion view
-    let ui_details_weak = ui_weak.clone();
-    ui.on_toggle_wifi_details(move || {
-        if let Some(ui) = ui_details_weak.upgrade() {
-            let expanded = ui.get_wifi_details_expanded();
-            ui.set_wifi_details_expanded(!expanded);
-        }
-    });
-
     // Close all modal overlays
     let ui_close_weak = ui_weak.clone();
     ui.on_close_modals(move || {

@@ -4,9 +4,7 @@ import { WifiNetwork } from "structs.slint";
 
 export component ActiveWifiPanel inherits Rectangle {
     in-out property <WifiNetwork> active_wifi;
-    in-out property <bool> wifi_details_expanded;
 
-    callback toggle_wifi_details();
     callback change_network_clicked();
 
     background: rgba(15, 23, 42, 0.4);
@@ -181,29 +179,6 @@ export component ActiveWifiPanel inherits Rectangle {
                     spacing: 12px;
                     alignment: end;
                     
-                    // Expand toggle chevron
-                    Rectangle {
-                        width: 32px;
-                        height: 32px;
-                        background: rgba(30, 41, 59, 0.6);
-                        border-radius: 8px;
-                        border-width: 1px;
-                        border-color: #334155;
-                        
-                        Text {
-                            text: root.wifi_details_expanded ? "▲" : "▼";
-                            font-size: 10px;
-                            font-weight: 900;
-                            color: #94a3b8;
-                            horizontal-alignment: center;
-                            vertical-alignment: center;
-                        }
-                        
-                        TouchArea {
-                            clicked => { root.toggle_wifi_details(); }
-                        }
-                    }
-
                     // Change network action button
                     Rectangle {
                         background: rgba(30, 41, 59, 0.6);
@@ -234,7 +209,7 @@ export component ActiveWifiPanel inherits Rectangle {
         }
 
         // Collapsible Detailed Accordion Panel
-        if (root.wifi_details_expanded) : HorizontalLayout {
+        HorizontalLayout {
             spacing: 32px;
             padding-top: 12px;
             

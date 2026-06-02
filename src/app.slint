@@ -77,7 +77,6 @@ export component AppWindow inherits Window {
     // Animation assistance variables
     in-out property <bool> pulse_led: false;
     in-out property <int> radar_step: 0;
-    in-out property <bool> wifi_details_expanded: true;
 
     // --- Callbacks handled by Rust ---
     callback change_network_clicked();
@@ -88,7 +87,6 @@ export component AppWindow inherits Window {
     callback warp_mode_clicked(string); // "doh" or "warp"
     callback install_rpm_clicked();
     callback close_modals();
-    callback toggle_wifi_details();
 
     // Password input bindings
     in-out property <string> pwd_input_val: "";
@@ -133,8 +131,6 @@ export component AppWindow inherits Window {
                 // Widget 1: Active Wifi connection detailed card (Accordion)
                 ActiveWifiPanel {
                     active_wifi: root.active_wifi;
-                    wifi_details_expanded: root.wifi_details_expanded;
-                    toggle_wifi_details => { root.toggle_wifi_details(); }
                     change_network_clicked => { root.change_network_clicked(); }
                 }
 
