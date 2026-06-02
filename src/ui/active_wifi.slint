@@ -128,17 +128,53 @@ export component ActiveWifiPanel inherits Rectangle {
                                     padding-right: 8px;
                                     spacing: 4px;
                                     alignment: center;
-                                    Rectangle {
-                                        width: 6px;
-                                        height: 6px;
-                                        border-radius: 3px;
-                                        background: Theme.success;
+                                    VerticalLayout {
+                                        alignment: center;
+                                        Rectangle {
+                                            width: 6px;
+                                            height: 6px;
+                                            border-radius: 3px;
+                                            background: Theme.success;
+                                        }
                                     }
                                     Text {
                                         text: "Signal: " + root.active_wifi.signal + "%";
                                         font-size: 12px;
                                         font-weight: 800;
                                         color: Theme.success;
+                                        font-family: "JetBrains Mono";
+                                        vertical-alignment: center;
+                                    }
+                                }
+                            }
+                            // Frequency / Channel Badge
+                            if (root.active_wifi.active) : Rectangle {
+                                background: Theme.warning-bg-trans;
+                                border-width: 1px;
+                                border-color: rgba(243, 156, 18, 0.25);
+                                border-radius: 8px;
+                                height: 22px;
+                                y: 2px;
+                                
+                                HorizontalLayout {
+                                    padding-left: 8px;
+                                    padding-right: 8px;
+                                    spacing: 4px;
+                                    alignment: center;
+                                    VerticalLayout {
+                                        alignment: center;
+                                        Rectangle {
+                                            width: 6px;
+                                            height: 6px;
+                                            border-radius: 3px;
+                                            background: Theme.warning;
+                                        }
+                                    }
+                                    Text {
+                                        text: "Channel: " + root.active_wifi.channel + " (" + root.active_wifi.frequency + ")";
+                                        font-size: 12px;
+                                        font-weight: 800;
+                                        color: Theme.warning;
                                         font-family: "JetBrains Mono";
                                         vertical-alignment: center;
                                     }
@@ -158,11 +194,14 @@ export component ActiveWifiPanel inherits Rectangle {
                                     padding-right: 8px;
                                     spacing: 4px;
                                     alignment: center;
-                                    Rectangle {
-                                        width: 6px;
-                                        height: 6px;
-                                        border-radius: 3px;
-                                        background: Theme.accent;
+                                    VerticalLayout {
+                                        alignment: center;
+                                        Rectangle {
+                                            width: 6px;
+                                            height: 6px;
+                                            border-radius: 3px;
+                                            background: Theme.accent;
+                                        }
                                     }
                                     Text {
                                         text: "Link Speed: " + root.active_wifi.rate;
