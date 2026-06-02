@@ -54,7 +54,7 @@
   <!-- Outer Tech Accents (Corner brackets / Tick marks) -->
   <path d="M 256 16 L 256 28 M 256 484 L 256 496 M 16 256 L 28 256 M 484 256 L 496 256" stroke="#475569" stroke-width="4" stroke-linecap="round" opacity="0.6" />
   
-  <g filter="url(#shadow)">
+  <g filter="url(#shadow)" transform="translate(0, -10)">
     <!-- 1. WARP Shield (Khiên bảo vệ xanh dương cách điệu) -->
     <path d="M 256 120 
              C 310 120, 360 100, 390 85 

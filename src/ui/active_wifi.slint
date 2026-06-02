@@ -22,102 +22,151 @@ export component ActiveWifiPanel inherits Rectangle {
         HorizontalLayout {
             alignment: space-between;
             
-            HorizontalLayout {
-                spacing: 16px;
-                alignment: start;
-                
-                // Dynamic Wi-Fi signal icon block
-                Rectangle {
-                    width: 44px;
-                    height: 44px;
-                    background: rgba(16, 185, 129, 0.1);
-                    border-radius: 12px;
-                    border-width: 1px;
-                    border-color: rgba(16, 185, 129, 0.2);
+            VerticalLayout {
+                alignment: center;
+                HorizontalLayout {
+                    spacing: 16px;
+                    alignment: start;
                     
-                    Text {
-                        text: "📡";
-                        font-size: 20px;
-                        horizontal-alignment: center;
-                        vertical-alignment: center;
-                    }
-                }
-
-                VerticalLayout {
-                    alignment: center;
-                    Text {
-                        text: "Active Wi-Fi Connection";
-                        font-size: 10px;
-                        font-weight: 800;
-                        color: #64748b;
-                        letter-spacing: 1px;
-                    }
-                    HorizontalLayout {
-                        spacing: 10px;
-                        alignment: start;
-                        Text {
-                            text: root.active_wifi.ssid;
-                            font-size: 17px;
-                            font-weight: 900;
-                            color: #f8fafc;
-                        }
-                        // Signal Strength Badge
-                        if (root.active_wifi.active) : Rectangle {
-                            background: rgba(16, 185, 129, 0.1);
+                    // Dynamic Wi-Fi signal icon block
+                    VerticalLayout {
+                        alignment: center;
+                        Rectangle {
+                            width: 44px;
+                            height: 44px;
+                            background: root.active_wifi.active ? rgba(16, 185, 129, 0.1) : rgba(148, 163, 184, 0.05);
+                            border-radius: 12px;
                             border-width: 1px;
-                            border-color: rgba(16, 185, 129, 0.2);
-                            border-radius: 8px;
-                            height: 22px;
-                            y: 2px;
+                            border-color: root.active_wifi.active ? rgba(16, 185, 129, 0.2) : rgba(148, 163, 184, 0.15);
                             
-                            HorizontalLayout {
-                                padding-left: 8px;
-                                padding-right: 8px;
-                                spacing: 4px;
+                            VerticalLayout {
                                 alignment: center;
-                                Rectangle {
-                                    width: 6px;
-                                    height: 6px;
-                                    border-radius: 3px;
-                                    background: #10b981;
-                                }
-                                Text {
-                                    text: "Signal: " + root.active_wifi.signal + "%";
-                                    font-size: 10px;
-                                    font-weight: 800;
-                                    color: #10b981;
-                                    font-family: "JetBrains Mono";
-                                    vertical-alignment: center;
+                                HorizontalLayout {
+                                    height: 24px;
+                                    spacing: 3px;
+                                    alignment: center;
+                                    
+                                    // Bar 1
+                                    VerticalLayout {
+                                        alignment: end;
+                                        Rectangle {
+                                            width: 4px;
+                                            height: 7px;
+                                            border-radius: 1px;
+                                            background: (root.active_wifi.active && root.active_wifi.signal >= 0) ? #10b981 : rgba(148, 163, 184, 0.3);
+                                        }
+                                    }
+                                    // Bar 2
+                                    VerticalLayout {
+                                        alignment: end;
+                                        Rectangle {
+                                            width: 4px;
+                                            height: 12px;
+                                            border-radius: 1px;
+                                            background: (root.active_wifi.active && root.active_wifi.signal >= 25) ? #10b981 : rgba(148, 163, 184, 0.3);
+                                        }
+                                    }
+                                    // Bar 3
+                                    VerticalLayout {
+                                        alignment: end;
+                                        Rectangle {
+                                            width: 4px;
+                                            height: 17px;
+                                            border-radius: 1px;
+                                            background: (root.active_wifi.active && root.active_wifi.signal >= 50) ? #10b981 : rgba(148, 163, 184, 0.3);
+                                        }
+                                    }
+                                    // Bar 4
+                                    VerticalLayout {
+                                        alignment: end;
+                                        Rectangle {
+                                            width: 4px;
+                                            height: 22px;
+                                            border-radius: 1px;
+                                            background: (root.active_wifi.active && root.active_wifi.signal >= 75) ? #10b981 : rgba(148, 163, 184, 0.3);
+                                        }
+                                    }
                                 }
                             }
                         }
-                        // Realtime rate link badge
-                        if (root.active_wifi.active) : Rectangle {
-                            background: rgba(59, 130, 246, 0.1);
-                            border-width: 1px;
-                            border-color: rgba(59, 130, 246, 0.2);
-                            border-radius: 8px;
-                            height: 22px;
-                            y: 2px;
-                            
-                            HorizontalLayout {
-                                padding-left: 8px;
-                                padding-right: 8px;
-                                spacing: 4px;
-                                alignment: center;
-                                Rectangle {
-                                    width: 6px;
-                                    height: 6px;
-                                    border-radius: 3px;
-                                    background: #3b82f6;
+                    }
+
+                    VerticalLayout {
+                        alignment: center;
+                        Text {
+                            text: "Active Wi-Fi Connection";
+                            font-size: 10px;
+                            font-weight: 800;
+                            color: #64748b;
+                            letter-spacing: 1px;
+                        }
+                        HorizontalLayout {
+                            spacing: 10px;
+                            alignment: start;
+                            Text {
+                                text: root.active_wifi.ssid;
+                                font-size: 17px;
+                                font-weight: 900;
+                                color: #f8fafc;
+                            }
+                            // Signal Strength Badge
+                            if (root.active_wifi.active) : Rectangle {
+                                background: rgba(16, 185, 129, 0.1);
+                                border-width: 1px;
+                                border-color: rgba(16, 185, 129, 0.2);
+                                border-radius: 8px;
+                                height: 22px;
+                                y: 2px;
+                                
+                                HorizontalLayout {
+                                    padding-left: 8px;
+                                    padding-right: 8px;
+                                    spacing: 4px;
+                                    alignment: center;
+                                    Rectangle {
+                                        width: 6px;
+                                        height: 6px;
+                                        border-radius: 3px;
+                                        background: #10b981;
+                                    }
+                                    Text {
+                                        text: "Signal: " + root.active_wifi.signal + "%";
+                                        font-size: 10px;
+                                        font-weight: 800;
+                                        color: #10b981;
+                                        font-family: "JetBrains Mono";
+                                        vertical-alignment: center;
+                                    }
                                 }
-                                Text {
-                                    text: "Link Speed: " + root.active_wifi.rate;
-                                    font-size: 10px;
-                                    font-weight: 800;
-                                    color: #3b82f6;
-                                    font-family: "JetBrains Mono";
-                                    vertical-alignment: center;
+                            }
+                            // Realtime rate link badge
+                            if (root.active_wifi.active) : Rectangle {
+                                background: rgba(59, 130, 246, 0.1);
+                                border-width: 1px;
+                                border-color: rgba(59, 130, 246, 0.2);
+                                border-radius: 8px;
+                                height: 22px;
+                                y: 2px;
+                                
+                                HorizontalLayout {
+                                    padding-left: 8px;
+                                    padding-right: 8px;
+                                    spacing: 4px;
+                                    alignment: center;
+                                    Rectangle {
+                                        width: 6px;
+                                        height: 6px;
+                                        border-radius: 3px;
+                                        background: #3b82f6;
+                                    }
+                                    Text {
+                                        text: "Link Speed: " + root.active_wifi.rate;
+                                        font-size: 10px;
+                                        font-weight: 800;
+                                        color: #3b82f6;
+                                        font-family: "JetBrains Mono";
+                                        vertical-alignment: center;
+                                    }
                                 }
                             }
                         }
@@ -126,56 +175,59 @@ export component ActiveWifiPanel inherits Rectangle {
             }
 
             // Interactive controls
-            HorizontalLayout {
-                spacing: 12px;
-                alignment: end;
-                
-                // Expand toggle chevron
-                Rectangle {
-                    width: 32px;
-                    height: 32px;
-                    background: rgba(30, 41, 59, 0.6);
-                    border-radius: 8px;
-                    border-width: 1px;
-                    border-color: #334155;
+            VerticalLayout {
+                alignment: center;
+                HorizontalLayout {
+                    spacing: 12px;
+                    alignment: end;
                     
-                    Text {
-                        text: root.wifi_details_expanded ? "▲" : "▼";
-                        font-size: 10px;
-                        font-weight: 900;
-                        color: #94a3b8;
-                        horizontal-alignment: center;
-                        vertical-alignment: center;
-                    }
-                    
-                    TouchArea {
-                        clicked => { root.toggle_wifi_details(); }
-                    }
-                }
-
-                // Change network action button
-                Rectangle {
-                    background: rgba(30, 41, 59, 0.6);
-                    border-radius: 8px;
-                    border-width: 1px;
-                    border-color: #334155;
-                    height: 32px;
-                    
-                    HorizontalLayout {
-                        padding-left: 12px;
-                        padding-right: 12px;
-                        alignment: center;
+                    // Expand toggle chevron
+                    Rectangle {
+                        width: 32px;
+                        height: 32px;
+                        background: rgba(30, 41, 59, 0.6);
+                        border-radius: 8px;
+                        border-width: 1px;
+                        border-color: #334155;
+                        
                         Text {
-                            text: "Change Network ➔";
+                            text: root.wifi_details_expanded ? "▲" : "▼";
                             font-size: 10px;
                             font-weight: 900;
-                            color: #3b82f6;
+                            color: #94a3b8;
+                            horizontal-alignment: center;
                             vertical-alignment: center;
                         }
+                        
+                        TouchArea {
+                            clicked => { root.toggle_wifi_details(); }
+                        }
                     }
-                    
-                    TouchArea {
-                        clicked => { root.change_network_clicked(); }
+
+                    // Change network action button
+                    Rectangle {
+                        background: rgba(30, 41, 59, 0.6);
+                        border-radius: 8px;
+                        border-width: 1px;
+                        border-color: #334155;
+                        height: 32px;
+                        
+                        HorizontalLayout {
+                            padding-left: 12px;
+                            padding-right: 12px;
+                            alignment: center;
+                            Text {
+                                text: "Change Network ➔";
+                                font-size: 10px;
+                                font-weight: 900;
+                                color: #3b82f6;
+                                vertical-alignment: center;
+                            }
+                        }
+                        
+                        TouchArea {
+                            clicked => { root.change_network_clicked(); }
+                        }
                     }
                 }
             }
