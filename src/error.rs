@@ -1,6 +1,6 @@
 use thiserror::Error;
 
-/// Custom Error enumeration for NetWarp-Manager backend operations.
+/// Custom Error enumeration for WiWarp backend operations.
 /// Consolidates all system, Wi-Fi, WARP client, network interface, and HTTP failures.
 #[derive(Error, Debug)]
 pub enum AppError {

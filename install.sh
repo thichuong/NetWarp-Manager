@@ -21,11 +21,11 @@ fi
 
 # Locate the compiled Slint binary
 PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-BINARY_SRC="$PROJECT_DIR/target/release/netwarp-manager"
+BINARY_SRC="$PROJECT_DIR/target/release/wiwarp"
 ICON_SRC="$PROJECT_DIR/assets/logo.svg"
 
 if [ ! -f "$BINARY_SRC" ]; then
-  echo -e "${RED}Error: NetWarp Slint binary not found at $BINARY_SRC${NC}"
+  echo -e "${RED}Error: WiWarp Slint binary not found at $BINARY_SRC${NC}"
   echo -e "Please ensure you have built the application using 'cargo build --release' first."
   exit 1
 fi
@@ -35,9 +35,9 @@ echo -e "${BLUE}Creating directory /opt/wiwarp...${NC}"
 mkdir -p /opt/wiwarp
 
 # 2. Copy binary and make it executable
-echo -e "${BLUE}Copying Slint binary to /opt/wiwarp/netwarp-manager...${NC}"
-cp "$BINARY_SRC" /opt/wiwarp/netwarp-manager
-chmod +x /opt/wiwarp/netwarp-manager
+echo -e "${BLUE}Copying Slint binary to /opt/wiwarp/wiwarp...${NC}"
+cp "$BINARY_SRC" /opt/wiwarp/wiwarp
+chmod +x /opt/wiwarp/wiwarp
 
 # 3. Copy application icon
 if [ -f "$ICON_SRC" ]; then
@@ -51,8 +51,8 @@ fi
 echo -e "${BLUE}Creating terminal command '/usr/local/bin/wiwarp'...${NC}"
 cat << 'EOF' > /usr/local/bin/wiwarp
 #!/bin/bash
-# Terminal wrapper for WiWarp (NetWarp Manager - Slint Engine)
-exec /opt/wiwarp/netwarp-manager "$@"
+# Terminal wrapper for WiWarp (Slint Engine)
+exec /opt/wiwarp/wiwarp "$@"
 EOF
 
 chmod +x /usr/local/bin/wiwarp
@@ -63,7 +63,7 @@ cat << EOF > /usr/share/applications/wiwarp.desktop
 [Desktop Entry]
 Name=WiWarp
 Comment=Manage Wi-Fi and Cloudflare WARP connections seamlessly (Slint Native UI)
-Exec=/opt/wiwarp/netwarp-manager
+Exec=/opt/wiwarp/wiwarp
 Icon=/opt/wiwarp/icon.svg
 Terminal=false
 Type=Application

@@ -2911,21 +2911,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "netwarp-manager"
-version = "0.2.0"
-dependencies = [
- "chrono",
- "glob",
- "reqwest",
- "serde",
- "serde_json",
- "slint",
- "slint-build",
- "thiserror 2.0.18",
- "tokio",
-]
-
-[[package]]
 name = "new_debug_unreachable"
 version = "1.0.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -6336,6 +6321,21 @@ dependencies = [
  "serde_json",
  "unicode-xid",
  "wasmparser",
+]
+
+[[package]]
+name = "wiwarp"
+version = "0.2.0"
+dependencies = [
+ "chrono",
+ "glob",
+ "reqwest",
+ "serde",
+ "serde_json",
+ "slint",
+ "slint-build",
+ "thiserror 2.0.18",
+ "tokio",
 ]
 
 [[package]]

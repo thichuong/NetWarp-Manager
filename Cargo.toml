@@ -1,5 +1,5 @@
 [package]
-name = "netwarp-manager"
+name = "wiwarp"
 version = "0.2.0"
 description = "A Slint-based GUI Manager for Wi-Fi and Cloudflare WARP on Linux"
 edition = "2024"

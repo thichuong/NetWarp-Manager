@@ -116,7 +116,7 @@ cargo build --release
 ### 4. Khởi chạy ứng dụng sau khi Build
 Sau khi build thành công, file thực thi duy nhất của bạn sẽ nằm trong thư mục `target/release/`. Bạn có thể chạy trực tiếp bằng lệnh:
 ```bash
-./target/release/netwarp-manager
+./target/release/wiwarp
 ```
 
 ---
@@ -126,7 +126,7 @@ Sau khi build thành công, file thực thi duy nhất của bạn sẽ nằm tr
 Mã nguồn dự án được tổ chức tối giản và phân rã thành các module nhỏ độc lập phía Backend nhằm nâng cao tính dễ đọc, dễ bảo trì và tối ưu hiệu suất:
 
 ```text
-NetWarp-Manager/
+wiwarp/
 ├── src/                          # Mã nguồn chính của ứng dụng
 │   ├── app.slint                 # Giao diện người dùng tập trung (Slint UI Declarative)
 │   ├── main.rs                   # Điểm khởi chạy tối giản (Bootstrap)

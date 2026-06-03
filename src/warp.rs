@@ -38,7 +38,7 @@ pub async fn install_warp() -> Result<String, AppError> {
     println!("[WARP Installer] Starting Cloudflare WARP interactive installer process...");
 
     let script_content = r#"#!/bin/bash
-# Interactive Cloudflare WARP installer wizard for NetWarp-Manager
+# Interactive Cloudflare WARP installer wizard for WiWarp
 
 # ANSI color escape codes for high-quality visual presentation
 RED='\033[0;31m'
@@ -66,7 +66,7 @@ trap on_interrupt INT TERM
 
 clear
 echo -e "${CYAN}============================================================${NC}"
-echo -e "${GREEN}${BOLD}      HƯỚNG DẪN CÀI ĐẶT CLOUDFLARE WARP (NETWARP-MANAGER)    ${NC}"
+echo -e "${GREEN}${BOLD}      HƯỚNG DẪN CÀI ĐẶT CLOUDFLARE WARP (WIWARP)    ${NC}"
 echo -e "${CYAN}============================================================${NC}"
 echo ""
 echo -e "Trình hướng dẫn này giúp bạn cài đặt Cloudflare WARP an toàn trên Fedora."
@@ -196,7 +196,7 @@ echo -e "${CYAN}============================================================${NC
 echo -e "${GREEN}${BOLD}               HOÀN THÀNH QUÁ TRÌNH CÀI ĐẶT!                  ${NC}"
 echo -e "${CYAN}============================================================${NC}"
 echo -e "Bạn đã hoàn tất hướng dẫn cài đặt Cloudflare WARP."
-echo -e "Hãy đóng cửa sổ này và quay lại giao diện đồ họa NetWarp-Manager."
+echo -e "Hãy đóng cửa sổ này và quay lại giao diện đồ họa WiWarp."
 echo ""
 echo -n "Nhấn ENTER để thoát cửa sổ này... "
 read -r
