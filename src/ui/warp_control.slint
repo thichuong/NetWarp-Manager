@@ -162,7 +162,7 @@ export component WarpControlPanel inherits Rectangle {
                         width: 44px;
                         height: 24px;
                         border-radius: 12px;
-                        background: root.warp_toggle_state ? Theme.accent : Theme.base-bg;
+                        background: root.warp_toggle_state ? (root.warp_mode_doh_active ? Theme.accent : Theme.warning) : Theme.base-bg;
                         y: 11px;
                         
                         // Inner toggle circular knob
@@ -234,16 +234,16 @@ export component WarpControlPanel inherits Rectangle {
                     Rectangle {
                         width: 140px;
                         height: 38px;
-                        background: !root.warp_mode_doh_active ? Theme.accent-bg-trans : Theme.card-bg-opaque.transparentize(60%);
+                        background: !root.warp_mode_doh_active ? Theme.warning-bg-trans : Theme.card-bg-opaque.transparentize(60%);
                         border-width: 1px;
-                        border-color: !root.warp_mode_doh_active ? Theme.accent : Theme.border;
+                        border-color: !root.warp_mode_doh_active ? Theme.warning : Theme.border;
                         border-radius: 10px;
                         
                         Text {
                             text: "WARP+DoH Dual";
                             font-size: 12px;
                             font-weight: 800;
-                            color: !root.warp_mode_doh_active ? Theme.accent : Theme.text-muted;
+                            color: !root.warp_mode_doh_active ? Theme.warning : Theme.text-muted;
                             horizontal-alignment: center;
                             vertical-alignment: center;
                         }
