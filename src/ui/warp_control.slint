@@ -11,7 +11,6 @@ import { Theme } from "theme.slint";
 
 export component WarpControlPanel inherits Rectangle {
     in-out property <string> warp_status_text;
-    in-out property <string> warp_status_color;
     in-out property <string> warp_network_text;
     in-out property <string> warp_mode_badge;
     in-out property <bool> warp_toggle_state;
@@ -91,7 +90,7 @@ export component WarpControlPanel inherits Rectangle {
                     text: "Cloudflare WARP Tunnel";
                     font-size: 15px;
                     font-weight: 800;
-                    color: #f8fafc;
+                    color: Theme.text-heading;
                     horizontal-alignment: center;
                 }
                 Text {
@@ -106,7 +105,7 @@ export component WarpControlPanel inherits Rectangle {
                 Text {
                     text: root.warp_network_text;
                     font-size: 12px;
-                    color: #64748b;
+                    color: Theme.text-label;
                     horizontal-alignment: center;
                     wrap: word-wrap;
                     width: 280px;
@@ -129,7 +128,7 @@ export component WarpControlPanel inherits Rectangle {
                                 text: root.warp_mode_badge;
                                 font-size: 12px;
                                 font-weight: 800;
-                                color: #cbd5e1;
+                                color: Theme.text-secondary;
                                 vertical-alignment: center;
                             }
                         }
@@ -172,7 +171,7 @@ export component WarpControlPanel inherits Rectangle {
                             width: 20px;
                             height: 20px;
                             border-radius: 10px;
-                            background: #ffffff;
+                            background: Theme.toggle-knob;
                             
                             animate x { duration: 200ms; easing: ease-in-out; }
                         }
@@ -196,7 +195,7 @@ export component WarpControlPanel inherits Rectangle {
                     text: "OPERATION TUNNEL MODE";
                     font-size: 12px;
                     font-weight: 800;
-                    color: #475569;
+                    color: Theme.text-section;
                     letter-spacing: 1.2px;
                     horizontal-alignment: center;
                 }
@@ -280,7 +279,7 @@ export component WarpControlPanel inherits Rectangle {
                         text: "Install Daemon RPM via Polkit";
                         font-size: 14px;
                         font-weight: 800;
-                        color: #cbd5e1;
+                        color: Theme.text-secondary;
                         vertical-alignment: center;
                     }
                 }
@@ -297,7 +296,7 @@ export component WarpControlPanel inherits Rectangle {
                     text: "SYSTEM DIAGNOSTIC CONSOLE LOGS";
                     font-size: 12px;
                     font-weight: 800;
-                    color: #475569;
+                    color: Theme.text-section;
                     letter-spacing: 1px;
                 }
                 Rectangle {

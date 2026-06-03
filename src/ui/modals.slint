@@ -49,8 +49,8 @@ export component WifiScanModal inherits Rectangle {
                     }
                     VerticalLayout {
                         alignment: center;
-                        Text { text: "Available Wi-Fi Networks"; font-size: 14px; font-weight: 800; color: #f8fafc; }
-                        Text { text: "Select a wireless network below"; font-size: 12px; color: #64748b; }
+                        Text { text: "Available Wi-Fi Networks"; font-size: 14px; font-weight: 800; color: Theme.text-heading; }
+                        Text { text: "Select a wireless network below"; font-size: 12px; color: Theme.text-label; }
                     }
                 }
 
@@ -60,7 +60,7 @@ export component WifiScanModal inherits Rectangle {
                     height: 28px;
                     background: Theme.card-bg-opaque.transparentize(40%);
                     border-radius: 6px;
-                    Text { text: "✖"; font-size: 12px; color: #94a3b8; horizontal-alignment: center; vertical-alignment: center; }
+                    Text { text: "✖"; font-size: 12px; color: Theme.text-subtle; horizontal-alignment: center; vertical-alignment: center; }
                     TouchArea {
                         clicked => { root.close_modals(); }
                     }
@@ -106,7 +106,7 @@ export component WifiScanModal inherits Rectangle {
                         if (root.wifi_list.length == 0 && !root.is_scanning) : Text {
                             text: "No Wi-Fi systems discovered. Trigger a rescan.";
                             font-size: 12px;
-                            color: #64748b;
+                            color: Theme.text-label;
                             horizontal-alignment: center;
                         }
                         
@@ -152,7 +152,7 @@ export component WifiScanModal inherits Rectangle {
                                     Text {
                                         text: net.signal + "% signal";
                                         font-size: 12px;
-                                        color: #64748b;
+                                        color: Theme.text-label;
                                         font-family: "JetBrains Mono";
                                         vertical-alignment: center;
                                     }
@@ -171,7 +171,7 @@ export component WifiScanModal inherits Rectangle {
                                                 text: net.band;
                                                 font-size: 12px;
                                                 font-weight: 800;
-                                                color: #cbd5e1;
+                                                color: Theme.text-secondary;
                                                 vertical-alignment: center;
                                             }
                                         }
@@ -195,7 +195,7 @@ export component WifiScanModal inherits Rectangle {
                 Text {
                     text: "Found: " + root.wifi_list.length + " networks";
                     font-size: 12px;
-                    color: #64748b;
+                    color: Theme.text-label;
                     vertical-alignment: center;
                 }
                 
@@ -259,19 +259,19 @@ export component PasswordModal inherits Rectangle {
                     text: "🔒 Wi-Fi Credentials Required";
                     font-size: 14px;
                     font-weight: 800;
-                    color: #f8fafc;
+                    color: Theme.text-heading;
                 }
                 Text {
                     text: "Connect to: " + root.selected_wifi_ssid;
                     font-size: 12px;
-                    color: #94a3b8;
+                    color: Theme.text-subtle;
                 }
             }
 
             // Password input
             VerticalLayout {
                 spacing: 6px;
-                Text { text: "WPA/WPA2 PASSWORD KEY"; font-size: 12px; font-weight: 800; color: #64748b; }
+                Text { text: "WPA/WPA2 PASSWORD KEY"; font-size: 12px; font-weight: 800; color: Theme.text-label; }
                 
                 // Slint LineEdit input box
                 LineEdit {
@@ -300,7 +300,7 @@ export component PasswordModal inherits Rectangle {
                         text: "✓";
                         font-size: 12px;
                         font-weight: 900;
-                        color: #ffffff;
+                        color: Theme.toggle-knob;
                         horizontal-alignment: center;
                         vertical-alignment: center;
                     }
@@ -313,7 +313,7 @@ export component PasswordModal inherits Rectangle {
                 Text {
                     text: "Lock BSSID (Fix connection profile to this exact MAC)";
                     font-size: 12px;
-                    color: #94a3b8;
+                    color: Theme.text-subtle;
                     vertical-alignment: center;
                 }
             }
@@ -336,7 +336,7 @@ export component PasswordModal inherits Rectangle {
                         text: "Cancel";
                         font-size: 12px;
                         font-weight: 800;
-                        color: #94a3b8;
+                        color: Theme.text-subtle;
                         horizontal-alignment: center;
                         vertical-alignment: center;
                     }

@@ -75,6 +75,6 @@ Linked in `src/callbacks.rs` inside `register_callbacks`:
 ### 6.2 State Properties (Rust ➔ UI Updates)
 Updated via background loops in `src/polling.rs`:
 - Loop 1 ➔ `speed_stats`, `download_history`, `upload_history`, dynamic SVG chart paths.
-- Loop 2 ➔ `active_wifi`, `warp_status_text`, `warp_status_color`, `warp_network_text`, `warp_toggle_state`.
+- Loop 2 ➔ `active_wifi`, `warp_status_text`, `warp_network_text`, `warp_toggle_state`.
 - Loop 3 ➔ `ping1`, `ping2`.
 - Loop 4 ➔ `geo_info` details.

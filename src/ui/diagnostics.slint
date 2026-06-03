@@ -25,7 +25,7 @@ export component DiagnosticsPanel inherits HorizontalLayout {
             text: "⚡ PING LATENCY chẩn đoán";
             font-size: 12px;
             font-weight: 800;
-            color: #64748b;
+            color: Theme.text-label;
             letter-spacing: 1px;
         }
 
@@ -46,7 +46,7 @@ export component DiagnosticsPanel inherits HorizontalLayout {
                     HorizontalLayout {
                         spacing: 6px;
                         Rectangle { width: 5px; height: 5px; border-radius: 2.5px; background: Theme.success; y: 4px; }
-                        Text { text: "Cloudflare (1.1.1.1)"; font-size: 12px; font-weight: 700; color: #cbd5e1; font-family: "JetBrains Mono"; }
+                        Text { text: "Cloudflare (1.1.1.1)"; font-size: 12px; font-weight: 700; color: Theme.text-secondary; font-family: "JetBrains Mono"; }
                     }
                     Text {
                         text: root.ping1.status == "Online" ? Math.round(root.ping1.latency) + " ms" : "Offline";
@@ -91,7 +91,7 @@ export component DiagnosticsPanel inherits HorizontalLayout {
                     HorizontalLayout {
                         spacing: 6px;
                         Rectangle { width: 5px; height: 5px; border-radius: 2.5px; background: Theme.accent; y: 4px; }
-                        Text { text: "Google (8.8.8.8)"; font-size: 12px; font-weight: 700; color: #cbd5e1; font-family: "JetBrains Mono"; }
+                        Text { text: "Google (8.8.8.8)"; font-size: 12px; font-weight: 700; color: Theme.text-secondary; font-family: "JetBrains Mono"; }
                     }
                     Text {
                         text: root.ping2.status == "Online" ? Math.round(root.ping2.latency) + " ms" : "Offline";
@@ -130,7 +130,7 @@ export component DiagnosticsPanel inherits HorizontalLayout {
                 text: "🌍 PUBLIC IP GEOLOCATION";
                 font-size: 12px;
                 font-weight: 800;
-                color: #64748b;
+                color: Theme.text-label;
                 letter-spacing: 1px;
             }
             
@@ -173,11 +173,11 @@ export component DiagnosticsPanel inherits HorizontalLayout {
                 // Row 1
                 Row {
                     VerticalLayout {
-                        Text { text: "IP Address"; color: #64748b; font-size: 12px; font-weight: 800; letter-spacing: 0.5px; }
+                        Text { text: "IP Address"; color: Theme.text-label; font-size: 12px; font-weight: 800; letter-spacing: 0.5px; }
                         Text { text: root.geo_info.ip; color: Theme.text-primary; font-size: 13px; font-weight: 700; font-family: "JetBrains Mono"; }
                     }
                     VerticalLayout {
-                        Text { text: "Location"; color: #64748b; font-size: 12px; font-weight: 800; letter-spacing: 0.5px; }
+                        Text { text: "Location"; color: Theme.text-label; font-size: 12px; font-weight: 800; letter-spacing: 0.5px; }
                         Text { text: root.geo_info.location; color: Theme.text-primary; font-size: 13px; font-weight: 700; }
                     }
                 }
@@ -185,12 +185,12 @@ export component DiagnosticsPanel inherits HorizontalLayout {
                 // Row 2
                 Row {
                     VerticalLayout {
-                        Text { text: "ISP Provider"; color: #64748b; font-size: 12px; font-weight: 800; letter-spacing: 0.5px; }
-                        Text { text: root.geo_info.isp; color: #cbd5e1; font-size: 13px; font-weight: 700; }
+                        Text { text: "ISP Provider"; color: Theme.text-label; font-size: 12px; font-weight: 800; letter-spacing: 0.5px; }
+                        Text { text: root.geo_info.isp; color: Theme.text-secondary; font-size: 13px; font-weight: 700; }
                     }
                     VerticalLayout {
-                        Text { text: "Coordinates"; color: #64748b; font-size: 12px; font-weight: 800; letter-spacing: 0.5px; }
-                        Text { text: root.geo_info.coordinates; color: #cbd5e1; font-size: 13px; font-weight: 700; font-family: "JetBrains Mono"; }
+                        Text { text: "Coordinates"; color: Theme.text-label; font-size: 12px; font-weight: 800; letter-spacing: 0.5px; }
+                        Text { text: root.geo_info.coordinates; color: Theme.text-secondary; font-size: 13px; font-weight: 700; font-family: "JetBrains Mono"; }
                     }
                 }
             }

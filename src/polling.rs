@@ -286,17 +286,14 @@ pub fn start_polling_loops(
                 ui.set_warp_status_text(warp_status);
 
                 if is_connected {
-                    ui.set_warp_status_color("#10b981".into()); // Green
                     ui.set_warp_network_text(
                         "Your network traffic is encrypted & protected.".into(),
                     );
                     ui.set_warp_toggle_state(true);
                 } else if is_connecting {
-                    ui.set_warp_status_color("#f59e0b".into()); // Orange pulse
                     ui.set_warp_network_text("Establishing secure Cloudflare tunnel...".into());
                     ui.set_warp_toggle_state(true);
                 } else {
-                    ui.set_warp_status_color("#f43f5e".into()); // Red
                     ui.set_warp_network_text(
                         "Your network traffic is direct & unprotected.".into(),
                     );

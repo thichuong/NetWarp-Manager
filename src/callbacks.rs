@@ -238,7 +238,6 @@ pub fn register_callbacks(ui: &AppWindow) {
             };
             helpers::append_log(&ui, &format!("[WARP] Triggering client {}...", state_str));
             ui.set_warp_status_text("Connecting...".into());
-            ui.set_warp_status_color("#f59e0b".into()); // Orange pulse
 
             let ui_inner_weak = ui.as_weak();
             tokio::spawn(async move {
@@ -255,7 +254,6 @@ pub fn register_callbacks(ui: &AppWindow) {
                         let _ = ui_inner_weak.upgrade_in_event_loop(move |ui| {
                             helpers::append_log(&ui, &format!("[WARP] Operation failed: {}", e));
                             ui.set_warp_status_text("Error".into());
-                            ui.set_warp_status_color("#f43f5e".into()); // Red error
                         });
                     }
                 }

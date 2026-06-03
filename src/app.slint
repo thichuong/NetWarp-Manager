@@ -86,7 +86,6 @@ export component AppWindow inherits Window {
     };
 
     in-out property <string> warp_status_text: "Disconnected";
-    in-out property <string> warp_status_color: "#f43f5e"; // Red indicator
     in-out property <string> warp_network_text: "Your network traffic is direct & unprotected.";
     in-out property <string> warp_mode_badge: "Mode: DoH DNS Only";
     in-out property <bool> warp_toggle_state: false;
@@ -175,7 +174,6 @@ export component AppWindow inherits Window {
                 WarpControlPanel {
                     horizontal-stretch: 1;
                     warp_status_text: root.warp_status_text;
-                    warp_status_color: root.warp_status_color;
                     warp_network_text: root.warp_network_text;
                     warp_mode_badge: root.warp_mode_badge;
                     warp_toggle_state: root.warp_toggle_state;

@@ -102,7 +102,7 @@ export component ActiveWifiPanel inherits Rectangle {
                             text: "Active Wi-Fi Connection";
                             font-size: 12px;
                             font-weight: 800;
-                            color: #64748b;
+                            color: Theme.text-label;
                             letter-spacing: 1px;
                         }
                         HorizontalLayout {
@@ -112,7 +112,7 @@ export component ActiveWifiPanel inherits Rectangle {
                                 text: root.active_wifi.ssid;
                                 font-size: 17px;
                                 font-weight: 900;
-                                color: #f8fafc;
+                                color: Theme.text-heading;
                             }
                             // Signal Strength Badge
                             if (root.active_wifi.active) : Rectangle {
@@ -272,18 +272,18 @@ export component ActiveWifiPanel inherits Rectangle {
                 }
 
                 HorizontalLayout {
-                    Text { text: "Security Type:"; color: #64748b; font-size: 12px; }
-                    Text { text: root.active_wifi.security; color: #cbd5e1; font-size: 12px; horizontal-alignment: right; font-family: "JetBrains Mono"; }
+                    Text { text: "Security Type:"; color: Theme.text-label; font-size: 12px; }
+                    Text { text: root.active_wifi.security; color: Theme.text-secondary; font-size: 12px; horizontal-alignment: right; font-family: "JetBrains Mono"; }
                 }
                 Rectangle { height: 1px; background: Theme.border-trans; }
                 HorizontalLayout {
-                    Text { text: "BSSID (Access Point MAC):"; color: #64748b; font-size: 12px; }
-                    Text { text: root.active_wifi.bssid; color: #cbd5e1; font-size: 12px; horizontal-alignment: right; font-family: "JetBrains Mono"; }
+                    Text { text: "BSSID (Access Point MAC):"; color: Theme.text-label; font-size: 12px; }
+                    Text { text: root.active_wifi.bssid; color: Theme.text-secondary; font-size: 12px; horizontal-alignment: right; font-family: "JetBrains Mono"; }
                 }
                 Rectangle { height: 1px; background: Theme.border-trans; }
                 HorizontalLayout {
-                    Text { text: "Wireless device Interface:"; color: #64748b; font-size: 12px; }
-                    Text { text: root.active_wifi.device; color: #cbd5e1; font-size: 12px; horizontal-alignment: right; font-family: "JetBrains Mono"; }
+                    Text { text: "Wireless device Interface:"; color: Theme.text-label; font-size: 12px; }
+                    Text { text: root.active_wifi.device; color: Theme.text-secondary; font-size: 12px; horizontal-alignment: right; font-family: "JetBrains Mono"; }
                 }
             }
 
@@ -306,18 +306,18 @@ export component ActiveWifiPanel inherits Rectangle {
                 }
 
                 HorizontalLayout {
-                    Text { text: "IP Address assigned:"; color: #64748b; font-size: 12px; }
+                    Text { text: "IP Address assigned:"; color: Theme.text-label; font-size: 12px; }
                     Text { text: root.active_wifi.ip_address; color: Theme.text-primary; font-size: 12px; font-weight: 800; horizontal-alignment: right; font-family: "JetBrains Mono"; }
                 }
                 Rectangle { height: 1px; background: Theme.border-trans; }
                 HorizontalLayout {
-                    Text { text: "Default Gateway router:"; color: #64748b; font-size: 12px; }
-                    Text { text: root.active_wifi.gateway; color: #cbd5e1; font-size: 12px; horizontal-alignment: right; font-family: "JetBrains Mono"; }
+                    Text { text: "Default Gateway router:"; color: Theme.text-label; font-size: 12px; }
+                    Text { text: root.active_wifi.gateway; color: Theme.text-secondary; font-size: 12px; horizontal-alignment: right; font-family: "JetBrains Mono"; }
                 }
                 Rectangle { height: 1px; background: Theme.border-trans; }
                 HorizontalLayout {
-                    Text { text: "Primary Nameserver DNS:"; color: #64748b; font-size: 12px; }
-                    Text { text: root.active_wifi.dns_primary; color: #cbd5e1; font-size: 12px; horizontal-alignment: right; font-family: "JetBrains Mono"; }
+                    Text { text: "Primary Nameserver DNS:"; color: Theme.text-label; font-size: 12px; }
+                    Text { text: root.active_wifi.dns_primary; color: Theme.text-secondary; font-size: 12px; horizontal-alignment: right; font-family: "JetBrains Mono"; }
                 }
             }
         }

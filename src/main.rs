@@ -56,15 +56,12 @@ async fn main() -> Result<(), slint::PlatformError> {
 
     ui.set_warp_status_text(slint::SharedString::from(&initial_warp_status));
     if init_connected {
-        ui.set_warp_status_color("#10b981".into()); // Green
         ui.set_warp_network_text("Your network traffic is encrypted & protected.".into());
         ui.set_warp_toggle_state(true);
     } else if init_connecting {
-        ui.set_warp_status_color("#f59e0b".into()); // Orange
         ui.set_warp_network_text("Establishing secure Cloudflare tunnel...".into());
         ui.set_warp_toggle_state(true);
     } else {
-        ui.set_warp_status_color("#f43f5e".into()); // Red
         ui.set_warp_network_text("Your network traffic is direct & unprotected.".into());
         ui.set_warp_toggle_state(false);
     }
