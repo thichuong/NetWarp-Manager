@@ -21,12 +21,17 @@ fi
 
 # Locate the compiled Slint binary
 PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-BINARY_SRC="$PROJECT_DIR/target/release/wiwarp"
-ICON_SRC="$PROJECT_DIR/assets/logo.svg"
 
-if [ ! -f "$BINARY_SRC" ]; then
-  echo -e "${RED}Error: WiWarp Slint binary not found at $BINARY_SRC${NC}"
-  echo -e "Please ensure you have built the application using 'cargo build --release' first."
+# Check if running from developer workspace or unpacked release archive
+if [ -f "$PROJECT_DIR/wiwarp" ]; then
+  BINARY_SRC="$PROJECT_DIR/wiwarp"
+  ICON_SRC="$PROJECT_DIR/assets/logo.svg"
+elif [ -f "$PROJECT_DIR/target/release/wiwarp" ]; then
+  BINARY_SRC="$PROJECT_DIR/target/release/wiwarp"
+  ICON_SRC="$PROJECT_DIR/assets/logo.svg"
+else
+  echo -e "${RED}Error: WiWarp Slint binary not found!${NC}"
+  echo -e "Please ensure you have built the application using 'cargo build --release' or downloaded a valid release package."
   exit 1
 fi
 

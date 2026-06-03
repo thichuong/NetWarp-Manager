@@ -1,0 +1,909 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>WiWarp - Quản lý Wi-Fi & Cloudflare WARP trên Fedora Linux</title>
+  <meta name="description" content="WiWarp là ứng dụng Desktop cao cấp xây dựng bằng Slint UI & Rust giúp quản lý Wi-Fi và Cloudflare WARP trên Fedora Linux, giải quyết lỗi thiếu thư viện webkit2gtk3.">
+  <link rel="icon" type="image/svg+xml" href="assets/logo.svg">
+  
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+  
+  <style>
+    /* Reset & Base Styles */
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    
+    :root {
+      --bg-dark: #030712;
+      --bg-card: rgba(17, 24, 39, 0.55);
+      --border-color: rgba(255, 255, 255, 0.08);
+      --border-color-glow: rgba(6, 182, 212, 0.3);
+      --text-main: #f3f4f6;
+      --text-muted: #9ca3af;
+      --accent-cyan: #06b6d4;
+      --accent-blue: #3b82f6;
+      --accent-purple: #8b5cf6;
+      --accent-magenta: #d946ef;
+      --font-outfit: 'Outfit', sans-serif;
+      --font-inter: 'Inter', sans-serif;
+      --font-mono: 'Fira Code', monospace;
+    }
+    
+    body {
+      background-color: var(--bg-dark);
+      background-image: 
+        radial-gradient(at 0% 0%, rgba(99, 102, 241, 0.15) 0px, transparent 50%),
+        radial-gradient(at 100% 0%, rgba(6, 182, 212, 0.12) 0px, transparent 50%),
+        radial-gradient(at 50% 100%, rgba(139, 92, 246, 0.1) 0px, transparent 50%);
+      background-attachment: fixed;
+      color: var(--text-main);
+      font-family: var(--font-inter);
+      line-height: 1.6;
+      overflow-x: hidden;
+      -webkit-font-smoothing: antialiased;
+    }
+    
+    /* Layout Utilities */
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 0 2rem;
+    }
+    
+    /* Header / Navbar */
+    header {
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border-color);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: rgba(3, 7, 18, 0.7);
+    }
+    
+    .nav-container {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      height: 80px;
+    }
+    
+    .logo-area {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      text-decoration: none;
+    }
+    
+    .logo-img {
+      width: 42px;
+      height: 42px;
+      filter: drop-shadow(0 0 8px rgba(6, 182, 212, 0.5));
+      transition: transform 0.3s ease;
+    }
+    
+    .logo-area:hover .logo-img {
+      transform: rotate(10deg) scale(1.05);
+    }
+    
+    .logo-text {
+      font-family: var(--font-outfit);
+      font-weight: 800;
+      font-size: 1.6rem;
+      background: linear-gradient(135deg, #fff 30%, var(--accent-cyan) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      letter-spacing: -0.5px;
+    }
+    
+    .github-link {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      color: var(--text-main);
+      text-decoration: none;
+      font-weight: 500;
+      font-size: 0.95rem;
+      padding: 0.5rem 1rem;
+      border-radius: 9999px;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--border-color);
+      transition: all 0.3s ease;
+    }
+    
+    .github-link:hover {
+      background: rgba(255, 255, 255, 0.1);
+      border-color: rgba(255, 255, 255, 0.2);
+      transform: translateY(-1px);
+    }
+    
+    .github-link svg {
+      width: 18px;
+      height: 18px;
+      fill: currentColor;
+    }
+    
+    /* Hero Section */
+    .hero-section {
+      padding: 6rem 0 4rem;
+      text-align: center;
+      position: relative;
+    }
+    
+    .badge-container {
+      display: flex;
+      justify-content: center;
+      gap: 0.75rem;
+      margin-bottom: 2rem;
+      flex-wrap: wrap;
+    }
+    
+    .badge {
+      font-size: 0.8rem;
+      font-weight: 600;
+      padding: 0.35rem 0.85rem;
+      border-radius: 9999px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    
+    .badge-fedora {
+      background: rgba(60, 110, 180, 0.15);
+      color: #76a2ed;
+      border-color: rgba(60, 110, 180, 0.3);
+    }
+    
+    .badge-rust {
+      background: rgba(217, 119, 6, 0.15);
+      color: #fbbf24;
+      border-color: rgba(217, 119, 6, 0.3);
+    }
+    
+    .badge-slint {
+      background: rgba(6, 182, 212, 0.15);
+      color: #22d3ee;
+      border-color: rgba(6, 182, 212, 0.3);
+    }
+    
+    .hero-title {
+      font-family: var(--font-outfit);
+      font-weight: 800;
+      font-size: clamp(2.5rem, 6vw, 4.2rem);
+      line-height: 1.1;
+      margin-bottom: 1.5rem;
+      letter-spacing: -1.5px;
+      background: linear-gradient(to right, #ffffff, #e2e8f0 30%, var(--accent-cyan) 70%, var(--accent-purple) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    
+    .hero-subtitle {
+      font-size: clamp(1.05rem, 2vw, 1.3rem);
+      color: var(--text-muted);
+      max-width: 800px;
+      margin: 0 auto 3rem;
+      font-weight: 400;
+    }
+    
+    .cta-area {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 1rem;
+      margin-bottom: 4rem;
+    }
+    
+    .download-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 1.1rem 2.5rem;
+      font-family: var(--font-outfit);
+      font-size: 1.2rem;
+      font-weight: 700;
+      color: #fff;
+      text-decoration: none;
+      border-radius: 12px;
+      background: linear-gradient(135deg, var(--accent-cyan) 0%, var(--accent-blue) 50%, var(--accent-purple) 100%);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      box-shadow: 0 4px 20px rgba(6, 182, 212, 0.25);
+      transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+      animation: pulse-glow-btn 2.5s infinite;
+      cursor: pointer;
+    }
+    
+    .download-btn:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 12px 30px rgba(6, 182, 212, 0.5), 0 0 15px rgba(139, 92, 246, 0.3);
+      border-color: rgba(255, 255, 255, 0.2);
+    }
+    
+    .download-btn svg {
+      width: 24px;
+      height: 24px;
+      transition: transform 0.3s ease;
+    }
+    
+    .download-btn:hover svg {
+      transform: translateY(2px);
+    }
+    
+    @keyframes pulse-glow-btn {
+      0% {
+        box-shadow: 0 4px 20px rgba(6, 182, 212, 0.25);
+      }
+      50% {
+        box-shadow: 0 4px 30px rgba(6, 182, 212, 0.45), 0 0 15px rgba(139, 92, 246, 0.2);
+      }
+      100% {
+        box-shadow: 0 4px 20px rgba(6, 182, 212, 0.25);
+      }
+    }
+    
+    .download-meta {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+    
+    .download-meta span {
+      display: flex;
+      align-items: center;
+      gap: 0.25rem;
+    }
+    
+    /* Features Grid */
+    .features-section {
+      padding: 4rem 0;
+    }
+    
+    .section-title {
+      font-family: var(--font-outfit);
+      font-size: 2.2rem;
+      font-weight: 800;
+      text-align: center;
+      margin-bottom: 3rem;
+      letter-spacing: -0.5px;
+      background: linear-gradient(to right, #fff, #9ca3af);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 1.5rem;
+    }
+    
+    .feature-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 16px;
+      padding: 2.2rem 2rem;
+      transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+      position: relative;
+      overflow: hidden;
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+    }
+    
+    .feature-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(135deg, rgba(6, 182, 212, 0.1), transparent 40%);
+      opacity: 0;
+      transition: opacity 0.4s ease;
+      pointer-events: none;
+    }
+    
+    .feature-card:hover {
+      transform: translateY(-6px);
+      border-color: rgba(6, 182, 212, 0.25);
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2), inset 0 1px 1px rgba(255, 255, 255, 0.05);
+    }
+    
+    .feature-card:hover::before {
+      opacity: 1;
+    }
+    
+    .feature-icon-wrapper {
+      width: 48px;
+      height: 48px;
+      border-radius: 10px;
+      background: rgba(6, 182, 212, 0.1);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 1.5rem;
+      color: var(--accent-cyan);
+      border: 1px solid rgba(6, 182, 212, 0.2);
+      transition: all 0.3s ease;
+    }
+    
+    .feature-card:hover .feature-icon-wrapper {
+      background: rgba(6, 182, 212, 0.2);
+      color: #fff;
+      box-shadow: 0 0 15px rgba(6, 182, 212, 0.3);
+      transform: scale(1.05);
+    }
+    
+    .feature-icon-wrapper svg {
+      width: 24px;
+      height: 24px;
+    }
+    
+    .feature-title {
+      font-family: var(--font-outfit);
+      font-size: 1.25rem;
+      font-weight: 700;
+      margin-bottom: 0.75rem;
+      color: #fff;
+    }
+    
+    .feature-desc {
+      color: var(--text-muted);
+      font-size: 0.95rem;
+      line-height: 1.6;
+    }
+    
+    /* Installation Guide Section */
+    .install-section {
+      padding: 5rem 0;
+    }
+    
+    .install-container {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 20px;
+      padding: 3rem;
+      max-width: 900px;
+      margin: 0 auto;
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+    }
+    
+    .install-steps {
+      display: flex;
+      flex-direction: column;
+      gap: 2.5rem;
+    }
+    
+    .step-item {
+      display: flex;
+      gap: 1.5rem;
+    }
+    
+    .step-number {
+      font-family: var(--font-outfit);
+      font-size: 1.3rem;
+      font-weight: 800;
+      width: 36px;
+      height: 36px;
+      background: linear-gradient(135deg, var(--accent-cyan), var(--accent-blue));
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #fff;
+      flex-shrink: 0;
+      box-shadow: 0 0 10px rgba(6, 182, 212, 0.3);
+    }
+    
+    .step-content {
+      flex-grow: 1;
+    }
+    
+    .step-title {
+      font-family: var(--font-outfit);
+      font-size: 1.2rem;
+      font-weight: 700;
+      margin-bottom: 0.5rem;
+      color: #fff;
+    }
+    
+    .step-desc {
+      color: var(--text-muted);
+      font-size: 0.95rem;
+      margin-bottom: 1rem;
+    }
+    
+    /* Code Terminal Style */
+    .terminal-box {
+      background: #080d16;
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      border-radius: 10px;
+      overflow: hidden;
+      margin-top: 0.75rem;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+    }
+    
+    .terminal-header {
+      background: rgba(255, 255, 255, 0.03);
+      padding: 0.6rem 1rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    }
+    
+    .terminal-dots {
+      display: flex;
+      gap: 0.35rem;
+    }
+    
+    .dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+    }
+    
+    .dot-red { background: #ef4444; }
+    .dot-yellow { background: #f59e0b; }
+    .dot-green { background: #10b981; }
+    
+    .terminal-lang {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      font-family: var(--font-mono);
+      text-transform: uppercase;
+    }
+    
+    .copy-btn {
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.08);
+      color: var(--text-muted);
+      padding: 0.25rem 0.6rem;
+      border-radius: 4px;
+      font-size: 0.75rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 0.3rem;
+      transition: all 0.2s ease;
+      font-family: var(--font-inter);
+    }
+    
+    .copy-btn:hover {
+      background: rgba(255,255,255,0.1);
+      color: #fff;
+    }
+    
+    .terminal-body {
+      padding: 1.1rem;
+      font-family: var(--font-mono);
+      font-size: 0.9rem;
+      overflow-x: auto;
+      white-space: pre;
+      color: #38bdf8;
+    }
+    
+    .terminal-body span.comment {
+      color: #6b7280;
+    }
+    .terminal-body span.prompt {
+      color: #f43f5e;
+      user-select: none;
+    }
+    .terminal-body span.cmd {
+      color: #e2e8f0;
+    }
+    
+    /* Requirements Section */
+    .req-section {
+      padding: 3rem 0 6rem;
+    }
+    
+    .req-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 1.5rem;
+      max-width: 800px;
+      margin: 0 auto;
+    }
+    
+    .req-card {
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 1.5rem;
+    }
+    
+    .req-title {
+      font-family: var(--font-outfit);
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: #fff;
+      margin-bottom: 0.75rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    
+    .req-title svg {
+      width: 18px;
+      height: 18px;
+      color: var(--accent-cyan);
+    }
+    
+    .req-list {
+      list-style-type: none;
+      font-size: 0.9rem;
+      color: var(--text-muted);
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+    
+    .req-list li {
+      position: relative;
+      padding-left: 1.1rem;
+    }
+    
+    .req-list li::before {
+      content: '•';
+      color: var(--accent-cyan);
+      position: absolute;
+      left: 0;
+      font-weight: bold;
+    }
+    
+    /* Footer */
+    footer {
+      border-top: 1px solid var(--border-color);
+      padding: 3rem 0;
+      text-align: center;
+      background: rgba(3, 7, 18, 0.9);
+      color: var(--text-muted);
+      font-size: 0.9rem;
+    }
+    
+    .footer-links {
+      display: flex;
+      justify-content: center;
+      gap: 1.5rem;
+      margin-top: 1rem;
+    }
+    
+    .footer-link {
+      color: var(--text-muted);
+      text-decoration: none;
+      transition: color 0.2s ease;
+    }
+    
+    .footer-link:hover {
+      color: var(--accent-cyan);
+    }
+    
+    /* Toast Notification */
+    .toast {
+      position: fixed;
+      bottom: 2rem;
+      right: 2rem;
+      background: #090d16;
+      border: 1px solid var(--accent-cyan);
+      color: #fff;
+      padding: 0.75rem 1.5rem;
+      border-radius: 8px;
+      box-shadow: 0 4px 20px rgba(6, 182, 212, 0.3);
+      font-size: 0.9rem;
+      font-weight: 500;
+      z-index: 1000;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      transform: translateY(150%);
+      transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    
+    .toast.show {
+      transform: translateY(0);
+    }
+    
+    .toast svg {
+      width: 18px;
+      height: 18px;
+      color: #10b981;
+    }
+    
+    /* Responsiveness */
+    @media (max-width: 768px) {
+      .install-container {
+        padding: 1.5rem;
+      }
+      .nav-container {
+        height: 70px;
+      }
+      .hero-section {
+        padding: 4rem 0 3rem;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Header / Navbar -->
+  <header>
+    <div class="container nav-container">
+      <a href="#" class="logo-area" id="nav-logo">
+        <img src="assets/logo.svg" alt="WiWarp Logo" class="logo-img">
+        <span class="logo-text">WiWarp</span>
+      </a>
+      <a href="https://github.com/thichuong/NetWarp-Manager" target="_blank" class="github-link" id="btn-github-nav" aria-label="Xem mã nguồn trên GitHub">
+        <svg viewBox="0 0 24 24">
+          <path d="M12 2C6.477 2 2 6.477 2 12c0 4.42 2.865 8.166 6.839 9.489.5.092.682-.217.682-.482 0-.237-.008-.866-.013-1.7-2.782.603-3.369-1.34-3.369-1.34-.454-1.156-1.11-1.464-1.11-1.464-.908-.62.069-.608.069-.608 1.003.07 1.531 1.03 1.531 1.03.892 1.529 2.341 1.087 2.91.831.092-.646.35-1.086.636-1.336-2.22-.253-4.555-1.11-4.555-4.943 0-1.091.39-1.984 1.029-2.683-.103-.253-.446-1.27.098-2.647 0 0 .84-.269 2.75 1.025A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.294 2.747-1.025 2.747-1.025.546 1.377.203 2.394.1 2.647.64.699 1.028 1.592 1.028 2.683 0 3.842-2.339 4.687-4.566 4.935.359.309.678.919.678 1.852 0 1.336-.012 2.415-.012 2.743 0 .267.18.579.688.481C19.137 20.162 22 16.418 22 12c0-5.523-4.477-10-10-10z"/>
+        </svg>
+        <span>GitHub</span>
+      </a>
+    </div>
+  </header>
+
+  <!-- Hero Section -->
+  <main>
+    <section class="hero-section">
+      <div class="container">
+        <div class="badge-container">
+          <span class="badge badge-fedora">Fedora Linux</span>
+          <span class="badge badge-rust">Rust Backend</span>
+          <span class="badge badge-slint">Slint UI</span>
+        </div>
+        
+        <h1 class="hero-title">Quản lý Wi-Fi & WARP<br>Theo Phong Cách Mới</h1>
+        <p class="hero-subtitle">Ứng dụng Desktop cao cấp, siêu mượt bằng Rust và Slint. Tự động khắc phục lỗi thư viện đồ họa lỗi thời và hỗ trợ cấu hình nâng cao chỉ với vài thao tác trực quan.</p>
+        
+        <div class="cta-area">
+          <a href="wiwarp-linux-amd64.tar.gz" class="download-btn" id="btn-download-hero">
+            <svg fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" viewBox="0 0 24 24">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"></path>
+            </svg>
+            Tải bản Build (.tar.gz)
+          </a>
+          <div class="download-meta">
+            <span>Dành cho Fedora 39/40/41+ (x86_64)</span>
+            <span>•</span>
+            <span>Kích thước: ~4.6 MB</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Features Section -->
+    <section class="features-section" id="features">
+      <div class="container">
+        <h2 class="section-title">Tính Năng Nổi Bật</h2>
+        
+        <div class="features-grid">
+          <!-- Card 1 -->
+          <div class="feature-card">
+            <div class="feature-icon-wrapper">
+              <svg fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24">
+                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+              </svg>
+            </div>
+            <h3 class="feature-title">Vượt qua webkit2gtk3</h3>
+            <p class="feature-desc">Khắc phục triệt để lỗi thiếu thư viện Webkit cũ trên Fedora. Tải và cài đặt Cloudflare WARP chính thức một cách an sau thông qua Terminal wizard tự động.</p>
+          </div>
+          
+          <!-- Card 2 -->
+          <div class="feature-card">
+            <div class="feature-icon-wrapper">
+              <svg fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24">
+                <path d="M5 12.55a11 11 0 0 1 14.08 0M1.42 9a16 16 0 0 1 21.16 0M8.53 16.11a6 6 0 0 1 6.95 0M12 20h.01"></path>
+              </svg>
+            </div>
+            <h3 class="feature-title">Khóa mạng Wi-Fi BSSID</h3>
+            <p class="feature-desc">Ép kết nối cố định vào một địa chỉ MAC (BSSID) cụ thể. Hỗ trợ đầy đủ Wi-Fi 6/6E (băng tần 6 GHz), loại bỏ hoàn toàn hiện tượng tự động nhảy trạm thu phát sóng (Mesh roaming).</p>
+          </div>
+          
+          <!-- Card 3 -->
+          <div class="feature-card">
+            <div class="feature-icon-wrapper">
+              <svg fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24">
+                <path d="M22 12h-4l-3 9L9 3l-3 9H2"></path>
+              </svg>
+            </div>
+            <h3 class="feature-title">Đo lường thời gian thực</h3>
+            <p class="feature-desc">Theo dõi sát sao tốc độ Download/Upload thực tế của card mạng thông qua procfs của Linux. Tự động kiểm tra độ trễ Ping liên tục tới Google và Cloudflare.</p>
+          </div>
+          
+          <!-- Card 4 -->
+          <div class="feature-card">
+            <div class="feature-icon-wrapper">
+              <svg fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24">
+                <path d="M12 20h9M3 20v-8a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v8M11 20V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v16"></path>
+              </svg>
+            </div>
+            <h3 class="feature-title">Console Logs & Toasts</h3>
+            <p class="feature-desc">Bảng nhật ký thu nhỏ tích hợp trực tiếp, giúp theo dõi chi tiết quá trình chạy lệnh ngầm. Hệ thống Toast Notification mượt mà thông báo trạng thái kết nối.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Installation Guide Section -->
+    <section class="install-section" id="installation">
+      <div class="container">
+        <h2 class="section-title">Hướng Dẫn Cài Đặt</h2>
+        
+        <div class="install-container">
+          <div class="install-steps">
+            <!-- Bước 1 -->
+            <div class="step-item">
+              <div class="step-number">1</div>
+              <div class="step-content">
+                <h3 class="step-title">Tải về và giải nén</h3>
+                <p class="step-desc">Tải gói cài đặt nén `.tar.gz` từ nút Download ở trên, hoặc dùng lệnh sau để tải và giải nén trực tiếp trong terminal:</p>
+                <div class="terminal-box">
+                  <div class="terminal-header">
+                    <div class="terminal-dots">
+                      <div class="dot dot-red"></div>
+                      <div class="dot dot-yellow"></div>
+                      <div class="dot dot-green"></div>
+                    </div>
+                    <span class="terminal-lang">bash</span>
+                    <button class="copy-btn" id="btn-copy-step1" onclick="copyCommand('cmd-step1', 'btn-copy-step1')">
+                      <svg width="12" height="12" fill="currentColor" viewBox="0 0 16 16"><path d="M4 1.5H3a2 2 0 0 0-2 2V14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V3.5a2 2 0 0 0-2-2h-1v1h1a1 1 0 0 1 1 1V14a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V3.5a1 1 0 0 1 1-1h1v-1z"/><path d="M9.5 1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5.5h-3a.5.5 0 0 1-.5-.5v-1a.5.5 0 0 1 .5-.5h3zm-3-1A1.5 1.5 0 0 0 5 1.5v1A1.5 1.5 0 0 0 6.5 4h3A1.5 1.5 0 0 0 11 2.5v-1A1.5 1.5 0 0 0 9.5 0h-3z"/></svg>
+                      Sao chép
+                    </button>
+                  </div>
+                  <div class="terminal-body" id="cmd-step1"><span class="comment"># Tải gói cài đặt và giải nén</span>
+<span class="prompt">$</span> <span class="cmd">wget -qO- https://thichuong.github.io/NetWarp-Manager/wiwarp-linux-amd64.tar.gz | tar -xz</span>
+<span class="prompt">$</span> <span class="cmd">cd wiwarp-release</span></div>
+                </div>
+              </div>
+            </div>
+            
+            <!-- Bước 2 -->
+            <div class="step-item">
+              <div class="step-number">2</div>
+              <div class="step-content">
+                <h3 class="step-title">Chạy trình cài đặt</h3>
+                <p class="step-desc">Khởi chạy script cài đặt bằng quyền quản trị `sudo`. Script sẽ cài đặt file thực thi vào thư mục `/opt/wiwarp`, tạo wrapper và biểu tượng launcher trên menu ứng dụng:</p>
+                <div class="terminal-box">
+                  <div class="terminal-header">
+                    <div class="terminal-dots">
+                      <div class="dot dot-red"></div>
+                      <div class="dot dot-yellow"></div>
+                      <div class="dot dot-green"></div>
+                    </div>
+                    <span class="terminal-lang">bash</span>
+                    <button class="copy-btn" id="btn-copy-step2" onclick="copyCommand('cmd-step2', 'btn-copy-step2')">
+                      <svg width="12" height="12" fill="currentColor" viewBox="0 0 16 16"><path d="M4 1.5H3a2 2 0 0 0-2 2V14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V3.5a2 2 0 0 0-2-2h-1v1h1a1 1 0 0 1 1 1V14a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V3.5a1 1 0 0 1 1-1h1v-1z"/><path d="M9.5 1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5.5h-3a.5.5 0 0 1-.5-.5v-1a.5.5 0 0 1 .5-.5h3zm-3-1A1.5 1.5 0 0 0 5 1.5v1A1.5 1.5 0 0 0 6.5 4h3A1.5 1.5 0 0 0 11 2.5v-1A1.5 1.5 0 0 0 9.5 0h-3z"/></svg>
+                      Sao chép
+                    </button>
+                  </div>
+                  <div class="terminal-body" id="cmd-step2"><span class="comment"># Cấp quyền thực thi và chạy script install</span>
+<span class="prompt">$</span> <span class="cmd">sudo chmod +x install.sh && sudo ./install.sh</span></div>
+                </div>
+              </div>
+            </div>
+            
+            <!-- Bước 3 -->
+            <div class="step-item">
+              <div class="step-number">3</div>
+              <div class="step-content">
+                <h3 class="step-title">Mở ứng dụng</h3>
+                <p class="step-desc">Sau khi cài đặt thành công, bạn có thể tìm kiếm ứng dụng **WiWarp** trong App Menu của hệ điều hành Fedora hoặc khởi chạy bằng cách gọi trực tiếp lệnh từ terminal:</p>
+                <div class="terminal-box">
+                  <div class="terminal-header">
+                    <div class="terminal-dots">
+                      <div class="dot dot-red"></div>
+                      <div class="dot dot-yellow"></div>
+                      <div class="dot dot-green"></div>
+                    </div>
+                    <span class="terminal-lang">bash</span>
+                    <button class="copy-btn" id="btn-copy-step3" onclick="copyCommand('cmd-step3', 'btn-copy-step3')">
+                      <svg width="12" height="12" fill="currentColor" viewBox="0 0 16 16"><path d="M4 1.5H3a2 2 0 0 0-2 2V14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V3.5a2 2 0 0 0-2-2h-1v1h1a1 1 0 0 1 1 1V14a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V3.5a1 1 0 0 1 1-1h1v-1z"/><path d="M9.5 1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5.5h-3a.5.5 0 0 1-.5-.5v-1a.5.5 0 0 1 .5-.5h3zm-3-1A1.5 1.5 0 0 0 5 1.5v1A1.5 1.5 0 0 0 6.5 4h3A1.5 1.5 0 0 0 11 2.5v-1A1.5 1.5 0 0 0 9.5 0h-3z"/></svg>
+                      Sao chép
+                    </button>
+                  </div>
+                  <div class="terminal-body" id="cmd-step3"><span class="comment"># Khởi chạy WiWarp</span>
+<span class="prompt">$</span> <span class="cmd">wiwarp</span></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- System Requirements Section -->
+    <section class="req-section">
+      <div class="container">
+        <h2 class="section-title">Yêu Cầu Hệ Thống</h2>
+        <div class="req-grid">
+          <!-- Card 1 -->
+          <div class="req-card">
+            <h3 class="req-title">
+              <svg fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 1-10 10A10 10 0 0 1 12 2m0 6v4m0 4h.01"/></svg>
+              Hệ điều hành tương thích
+            </h3>
+            <ul class="req-list">
+              <li>Fedora Workstation 39 / 40 / 41 trở lên.</li>
+              <li>Các bản phân phối dựa trên RPM (cấu hình NetworkManager & nmcli).</li>
+            </ul>
+          </div>
+          
+          <!-- Card 2 -->
+          <div class="req-card">
+            <h3 class="req-title">
+              <svg fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" viewBox="0 0 24 24"><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2M7 9l5-5 5 5M12 4v12"/></svg>
+              Thư viện đồ họa & Tiện ích
+            </h3>
+            <ul class="req-list">
+              <li>Yêu cầu NetworkManager và công cụ `nmcli` để quản lý Wi-Fi.</li>
+              <li>`fontconfig` và `openssl` (được cài đặt mặc định trên Fedora).</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Footer -->
+  <footer>
+    <div class="container">
+      <p>© 2026 WiWarp. Được viết bằng sự đam mê cùng Rust & Slint UI.</p>
+      <div class="footer-links">
+        <a href="https://github.com/thichuong/NetWarp-Manager" target="_blank" class="footer-link" id="link-github-footer">GitHub Repo</a>
+        <span>•</span>
+        <a href="https://github.com/thichuong/NetWarp-Manager/blob/main/LICENSE" target="_blank" class="footer-link" id="link-license-footer">MIT License</a>
+      </div>
+    </div>
+  </footer>
+
+  <!-- Toast Notification -->
+  <div class="toast" id="toast-notify">
+    <svg fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14M22 4L12 14.01l-3-3"/></svg>
+    <span>Đã sao chép câu lệnh vào bộ nhớ tạm!</span>
+  </div>
+
+  <script>
+    // Copy Command to Clipboard
+    function copyCommand(elementId, buttonId) {
+      const element = document.getElementById(elementId);
+      // Get only the command text, ignoring comments and prompt signs
+      const cmds = element.querySelectorAll('span.cmd');
+      let textToCopy = '';
+      
+      if (cmds.length > 0) {
+        textToCopy = Array.from(cmds).map(span => span.textContent.trim()).join('\n');
+      } else {
+        textToCopy = element.innerText;
+      }
+      
+      navigator.clipboard.writeText(textToCopy).then(() => {
+        // Change button style temporarily
+        const btn = document.getElementById(buttonId);
+        const originalHTML = btn.innerHTML;
+        
+        btn.innerHTML = `<svg width="12" height="12" fill="#10b981" viewBox="0 0 16 16"><path d="M12.736 3.97a.733.733 0 0 1 1.047 0c.286.289.29.756.01 1.05L7.88 12.01a.733.733 0 0 1-1.065.02L3.217 8.384a.757.757 0 0 1 0-1.06.733.733 0 0 1 1.047 0l3.052 3.093 5.4-6.425a.247.247 0 0 1 .02-.022z"/></svg> Đã chép`;
+        
+        // Show Toast
+        const toast = document.getElementById('toast-notify');
+        toast.classList.add('show');
+        
+        setTimeout(() => {
+          btn.innerHTML = originalHTML;
+          toast.classList.remove('show');
+        }, 2000);
+      }).catch(err => {
+        console.error('Lỗi khi sao chép: ', err);
+      });
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,75 @@
+name: CI/CD & GitHub Pages
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+# Grant permissions required for GitHub Pages deployment
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+# Prevent concurrent deployments, but do not cancel in-progress runs
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  build-and-deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install system dependencies for Slint UI
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libxkbcommon-dev libfontconfig1-dev pkg-config
+
+      - name: Setup Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache Cargo registry and target
+        uses: Swatinem/rust-cache@v2
+
+      - name: Build release binary
+        run: cargo build --release
+
+      - name: Package release and website assets
+        run: |
+          # 1. Create public directory structure for GitHub Pages
+          mkdir -p public/assets
+          
+          # 2. Copy website files and logo asset
+          cp assets/logo.svg public/assets/
+          
+          # 3. Create the release archive with standard folder structure
+          mkdir -p wiwarp-release/assets
+          cp target/release/wiwarp wiwarp-release/
+          cp install.sh wiwarp-release/
+          cp assets/logo.svg wiwarp-release/assets/
+          
+          # 4. Compress to tar.gz and save in public folder
+          tar -czf public/wiwarp-linux-amd64.tar.gz wiwarp-release
+          
+          # 5. Clean up temporary directory
+          rm -rf wiwarp-release
+
+      - name: Setup GitHub Pages
+        uses: actions/configure-pages@v4
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: 'public'
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
