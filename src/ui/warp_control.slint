@@ -53,7 +53,7 @@ export component WarpControlPanel inherits Rectangle {
                 }
 
                 // Glowing Shield Circle
-                Rectangle {
+                shield-container := Rectangle {
                     width: 84px;
                     height: 84px;
                     border-radius: 42px;
@@ -61,11 +61,13 @@ export component WarpControlPanel inherits Rectangle {
                     border-width: 1px;
                     border-color: root.warp_status_text == "Connected" ? Theme.success : (root.warp_status_text == "Connecting..." ? Theme.warning : Theme.danger);
                     
-                    Text {
-                        text: "🛡️";
-                        font-size: 38px;
-                        horizontal-alignment: center;
-                        vertical-alignment: center;
+                    Image {
+                        source: @image-url("../../assets/shield.svg");
+                        width: 38px;
+                        height: 38px;
+                        colorize: root.warp_status_text == "Connected" ? Theme.success : (root.warp_status_text == "Connecting..." ? Theme.warning : Theme.danger);
+                        x: (shield-container.width - self.width) / 2;
+                        y: (shield-container.height - self.height) / 2;
                     }
 
                     // Led dynamic dot inside shield corner

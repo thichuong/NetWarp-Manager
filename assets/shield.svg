@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="none">
+  <!-- Outer Shield -->
+  <path d="M 256 60 
+           C 320 60, 380 43, 415 25 
+           C 415 140, 415 260, 362 355
+           C 318 425, 280 448, 256 460 
+           C 232 448, 194 425, 150 355
+           C 97 260, 97 140, 97 25
+           C 132 43, 192 60, 256 60 Z" 
+        stroke="currentColor" 
+        stroke-width="28" 
+        stroke-linejoin="round"
+        stroke-linecap="round" />
+  <!-- Inner Shield (Solid) -->
+  <path d="M 256 120 
+           C 295 120, 335 108, 360 95 
+           C 360 170, 360 250, 325 315
+           C 295 365, 272 382, 256 392 
+           C 240 392, 217 365, 187 315
+           C 152 250, 152 170, 152 95
+           C 177 108, 217 120, 256 120 Z" 
+        fill="currentColor" />
+</svg>
