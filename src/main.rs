@@ -43,15 +43,23 @@ async fn main() -> Result<(), slint::PlatformError> {
     callbacks::register_callbacks(&ui);
 
     // 4. Fetch initial states before starting window and loops
-    let initial_warp_mode = warp::get_warp_mode()
-        .await
-        .unwrap_or_else(|_| "DoH".to_string());
+    let warp_mode_handle = tokio::spawn(warp::get_warp_mode());
+    let warp_status_handle = tokio::spawn(warp::get_warp_status());
+    let wifi_handle = tokio::spawn(wifi::get_active_wifi(true));
+
+    let (mode_res, status_res, wifi_res) = tokio::join!(warp_mode_handle, warp_status_handle, wifi_handle);
+
+    let initial_warp_mode = match mode_res {
+        Ok(Ok(mode)) => mode,
+        _ => "DoH".to_string(),
+    };
     ui.set_warp_mode_badge(format!("Mode: {}", initial_warp_mode).into());
     ui.set_warp_mode_doh_active(!initial_warp_mode.to_lowercase().contains("warp"));
 
-    let initial_warp_status = warp::get_warp_status()
-        .await
-        .unwrap_or_else(|_| "Disconnected".to_string());
+    let initial_warp_status = match status_res {
+        Ok(Ok(status)) => status,
+        _ => "Disconnected".to_string(),
+    };
     let init_lower = initial_warp_status.to_lowercase();
     let init_connected = init_lower.contains("connected");
     let init_connecting = init_lower.contains("connecting");
@@ -72,7 +80,7 @@ async fn main() -> Result<(), slint::PlatformError> {
     let mut wifi_ssid = slint::SharedString::new();
     let mut wifi_cache: Option<WifiNetwork> = None;
 
-    if let Ok(Some(active_full)) = wifi::get_active_wifi(true).await {
+    if let Ok(Ok(Some(active_full))) = wifi_res {
         let slint_active = WifiNetwork {
             bssid: active_full.bssid.into(),
             ssid: active_full.ssid.into(),
