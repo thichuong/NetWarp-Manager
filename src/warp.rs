@@ -120,7 +120,7 @@ if [ "$OS_TYPE" = "fedora" ]; then
     echo -e "Lệnh: ${BLUE}curl -fsSL https://pkg.cloudflareclient.com/cloudflare-warp-ascii.repo | sudo tee /etc/yum.repos.d/cloudflare-warp.repo${NC}"
 else
     echo -e "Lệnh 1 (Tải GPG key): ${BLUE}curl -fsSL https://pkg.cloudflareclient.com/pubkey.gpg | sudo gpg --yes --dearmor --output /usr/share/keyrings/cloudflare-warp-archive-keyring.gpg${NC}"
-    echo -e "Lệnh 2 (Thêm kho lưu trữ): ${BLUE}echo \"deb [signed-by=/usr/share/keyrings/cloudflare-warp-archive-keyring.gpg] https://pkg.cloudflareclient.com/ \$CODENAME main\" | sudo tee /etc/apt/sources.list.d/cloudflare-client.list${NC}"
+    echo -e "Lệnh 2 (Thêm kho lưu trữ): ${BLUE}echo \"deb [signed-by=/usr/share/keyrings/cloudflare-warp-archive-keyring.gpg] https://pkg.cloudflareclient.com/ \$(lsb_release -cs) main\" | sudo tee /etc/apt/sources.list.d/cloudflare-client.list${NC}"
 fi
 
 echo -n "Nhấn ENTER để bắt đầu thực hiện bước 1 (hoặc Ctrl+C để hủy)... "
@@ -134,7 +134,7 @@ if [ "$OS_TYPE" = "fedora" ]; then
 else
     sudo mkdir -p /usr/share/keyrings
     if curl -fsSL https://pkg.cloudflareclient.com/pubkey.gpg | sudo gpg --yes --dearmor --output /usr/share/keyrings/cloudflare-warp-archive-keyring.gpg && \
-       echo "deb [signed-by=/usr/share/keyrings/cloudflare-warp-archive-keyring.gpg] https://pkg.cloudflareclient.com/ $CODENAME main" | sudo tee /etc/apt/sources.list.d/cloudflare-client.list; then
+       echo "deb [signed-by=/usr/share/keyrings/cloudflare-warp-archive-keyring.gpg] https://pkg.cloudflareclient.com/ $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/cloudflare-client.list; then
         STEP1_SUCCESS=true
     fi
 fi
