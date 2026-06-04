@@ -23,10 +23,10 @@ import { WifiScanModal, PasswordModal } from "ui/modals.slint";
 export component AppWindow inherits Window {
     title: "WiWarp - Wi-Fi & Cloudflare WARP Manager";
     icon: @image-url("../assets/logo.svg");
-    preferred-width: 1600px;
-    preferred-height: 900px;
-    min-width: 1280px;
-    min-height: 720px;
+    preferred-width: 1280px;
+    preferred-height: 768px;
+    min-width: 1024px;
+    min-height: 600px;
     background: Theme.base-bg;
     default-font-family: "Outfit";
     default-font-size: 14px;
@@ -131,8 +131,8 @@ export component AppWindow inherits Window {
 
         // Main App Container
         VerticalLayout {
-            padding: 24px;
-            spacing: 16px;
+            padding: 16px;
+            spacing: 12px;
 
             // 1. Header Area
             HeaderPanel {
@@ -141,12 +141,12 @@ export component AppWindow inherits Window {
 
             // 2. Main Workstation (Split 8/12 - 4/12 Grid simulation using HorizontalLayout)
             HorizontalLayout {
-                spacing: 24px;
+                spacing: 16px;
                 
                 // COLUMN 1: Network Diagnoser & Speedometer (8/12)
                 VerticalLayout {
                     horizontal-stretch: 2;
-                    spacing: 16px;
+                    spacing: 12px;
                     
                     // Widget 1: Active Wifi connection detailed card (Accordion)
                     ActiveWifiPanel {
@@ -156,6 +156,7 @@ export component AppWindow inherits Window {
 
                     // Widget 2: Realtime Speed cards & Cyber Sparkline Chart
                     speed_panel := SpeedMonitorPanel {
+                        vertical-stretch: 1;
                         speed_stats: root.speed_stats;
                         download_history: root.download_history;
                         upload_history: root.upload_history;

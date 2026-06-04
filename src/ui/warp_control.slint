@@ -27,25 +27,25 @@ export component WarpControlPanel inherits Rectangle {
     border-radius: 24px;
     
     VerticalLayout {
-        padding: 24px;
-        spacing: 20px;
+        padding: 16px;
+        spacing: 12px;
         alignment: space-between;
         
         // Upper Section: Shield emblem and connection toggle
         VerticalLayout {
-            spacing: 16px;
+            spacing: 10px;
             alignment: start;
             
             // Shield Graphics Center
             Rectangle {
-                height: 160px;
+                height: 110px;
                 background: transparent;
                 
                 // Static status halo
                 Rectangle {
-                    width: 110px;
-                    height: 110px;
-                    border-radius: 55px;
+                    width: 90px;
+                    height: 90px;
+                    border-radius: 45px;
                     background: transparent;
                     border-width: 1.5px;
                     border-color: root.warp_status_text == "Connected" ? Theme.success.transparentize(90%) : (root.warp_status_text == "Connecting..." ? Theme.warning.transparentize(90%) : Theme.danger.transparentize(90%));
@@ -53,17 +53,17 @@ export component WarpControlPanel inherits Rectangle {
 
                 // Glowing Shield Circle
                 shield-container := Rectangle {
-                    width: 84px;
-                    height: 84px;
-                    border-radius: 42px;
+                    width: 70px;
+                    height: 70px;
+                    border-radius: 35px;
                     background: Theme.interior-bg;
                     border-width: 1px;
                     border-color: root.warp_status_text == "Connected" ? Theme.success : (root.warp_status_text == "Connecting..." ? Theme.warning : Theme.danger);
                     
                     Image {
                         source: @image-url("../../assets/shield.svg");
-                        width: 38px;
-                        height: 38px;
+                        width: 32px;
+                        height: 32px;
                         colorize: root.warp_status_text == "Connected" ? Theme.success : (root.warp_status_text == "Connecting..." ? Theme.warning : Theme.danger);
                         x: (shield-container.width - self.width) / 2;
                         y: (shield-container.height - self.height) / 2;
@@ -71,11 +71,11 @@ export component WarpControlPanel inherits Rectangle {
 
                     // Led dynamic dot inside shield corner
                     Rectangle {
-                        x: 58px;
-                        y: 6px;
-                        width: 12px;
-                        height: 12px;
-                        border-radius: 6px;
+                        x: 48px;
+                        y: 4px;
+                        width: 10px;
+                        height: 10px;
+                        border-radius: 5px;
                         background: root.warp_status_text == "Connected" ? Theme.success : (root.warp_status_text == "Connecting..." ? Theme.warning : Theme.danger);
                         border-width: 2px;
                         border-color: Theme.interior-bg;
@@ -137,11 +137,11 @@ export component WarpControlPanel inherits Rectangle {
             }
                       // iOS styled Toggle connected switch
             Rectangle {
-                height: 48px;
+                height: 40px;
                 background: Theme.interior-bg.transparentize(30%);
                 border-width: 1px;
                 border-color: Theme.border;
-                border-radius: 14px;
+                border-radius: 12px;
                 
                 HorizontalLayout {
                     padding-left: 16px;
@@ -162,7 +162,7 @@ export component WarpControlPanel inherits Rectangle {
                         height: 24px;
                         border-radius: 12px;
                         background: root.warp_toggle_state ? (root.warp_mode_doh_active ? Theme.accent : Theme.warning) : Theme.base-bg;
-                        y: 11px;
+                        y: 8px;
                         
                         // Inner toggle circular knob
                         Rectangle {
@@ -189,7 +189,7 @@ export component WarpControlPanel inherits Rectangle {
             // WARP mode selection tabs
             VerticalLayout {
                 spacing: 8px;
-                padding-top: 8px;
+                padding-top: 4px;
                 
                 Text {
                     text: "OPERATION TUNNEL MODE";
@@ -205,8 +205,8 @@ export component WarpControlPanel inherits Rectangle {
                     alignment: center;
                     // Tab 1: DNS Only
                     Rectangle {
-                        width: 140px;
-                        height: 38px;
+                        width: 130px;
+                        height: 32px;
                         background: root.warp_mode_doh_active ? Theme.accent-bg-trans : Theme.card-bg-opaque.transparentize(60%);
                         border-width: 1px;
                         border-color: root.warp_mode_doh_active ? Theme.accent : Theme.border;
@@ -231,8 +231,8 @@ export component WarpControlPanel inherits Rectangle {
  
                     // Tab 2: WARP+DoH Dual
                     Rectangle {
-                        width: 140px;
-                        height: 38px;
+                        width: 130px;
+                        height: 32px;
                         background: !root.warp_mode_doh_active ? Theme.warning-bg-trans : Theme.card-bg-opaque.transparentize(60%);
                         border-width: 1px;
                         border-color: !root.warp_mode_doh_active ? Theme.warning : Theme.border;
@@ -260,16 +260,16 @@ export component WarpControlPanel inherits Rectangle {
 
         // Lower Section: Logs Console & RPM button
         VerticalLayout {
-            spacing: 12px;
+            spacing: 8px;
             alignment: end;
             
             // Action: Install daemon button
             Rectangle {
-                height: 40px;
+                height: 32px;
                 background: Theme.card-bg-opaque;
                 border-width: 1px;
                 border-color: Theme.border;
-                border-radius: 12px;
+                border-radius: 10px;
                 
                 HorizontalLayout {
                     spacing: 8px;
@@ -277,7 +277,7 @@ export component WarpControlPanel inherits Rectangle {
                     Text { text: "📥"; font-size: 12px; vertical-alignment: center; }
                     Text {
                         text: "Install WARP Daemon via Polkit";
-                        font-size: 14px;
+                        font-size: 13px;
                         font-weight: 800;
                         color: Theme.text-secondary;
                         vertical-alignment: center;
@@ -291,24 +291,24 @@ export component WarpControlPanel inherits Rectangle {
 
             // Terminal Mini Log Output Dashboard
             VerticalLayout {
-                spacing: 6px;
+                spacing: 4px;
                 Text {
                     text: "SYSTEM DIAGNOSTIC CONSOLE LOGS";
-                    font-size: 12px;
+                    font-size: 11px;
                     font-weight: 800;
                     color: Theme.text-section;
                     letter-spacing: 1px;
                 }
                 Rectangle {
-                    height: 160px;
+                    height: 120px;
                     background: Theme.interior-bg;
                     border-width: 1px;
                     border-color: Theme.border;
-                    border-radius: 12px;
+                    border-radius: 10px;
                     
                     ScrollView {
                         VerticalLayout {
-                            padding: 10px;
+                            padding: 8px;
                             spacing: 4px;
                             alignment: start;
                             for entry in root.console_logs: Text {

@@ -9,7 +9,7 @@
 import { NetworkSpeed } from "structs.slint";
 import { Theme } from "theme.slint";
 
-export component SpeedMonitorPanel inherits VerticalLayout {
+export component SpeedMonitorPanel inherits HorizontalLayout {
     in-out property <NetworkSpeed> speed_stats;
     in-out property <[float]> download_history;
     in-out property <[float]> upload_history;
@@ -20,125 +20,154 @@ export component SpeedMonitorPanel inherits VerticalLayout {
     in-out property <float> chart_width: speed_chart.width / 1px;
     in-out property <float> chart_height: speed_chart.height / 1px;
 
-    spacing: 12px;
+    spacing: 16px;
     
-    // Dual Speed Cards Row
-    HorizontalLayout {
-        spacing: 16px;
+    // LEFT COLUMN: Speed cards and data consumption
+    VerticalLayout {
+        width: 430px;
+        spacing: 12px;
+        alignment: center;
         
-        // Download card
-        Rectangle {
-            height: 68px;
-            background: Theme.card-bg;
-            border-width: 1px;
-            border-color: Theme.border;
-            border-radius: 16px;
+        // Row 1: Dual Speed Cards Row
+        HorizontalLayout {
+            spacing: 8px;
             
-            HorizontalLayout {
-                padding-left: 20px;
-                padding-right: 20px;
-                alignment: space-between;
+            // Download card
+            Rectangle {
+                background: Theme.card-bg;
+                border-width: 1px;
+                border-color: Theme.border;
+                border-radius: 12px;
+                height: 100px;
                 
-                VerticalLayout {
-                    alignment: center;
-                    HorizontalLayout {
-                        spacing: 6px;
-                        Rectangle { width: 6px; height: 6px; border-radius: 3px; background: Theme.success; y: 4px; }
-                        Text { text: "Download Speed"; font-size: 12px; font-weight: 800; color: Theme.text-label; letter-spacing: 0.5px; }
+                HorizontalLayout {
+                    padding-left: 12px;
+                    padding-right: 12px;
+                    alignment: space-between;
+                    
+                    VerticalLayout {
+                        alignment: center;
+                        spacing: 2px;
+                        HorizontalLayout {
+                            spacing: 4px;
+                            Rectangle { width: 5px; height: 5px; border-radius: 2.5px; background: Theme.success; y: 4px; }
+                            Text { text: "Download"; font-size: 13px; font-weight: 800; color: Theme.text-label; letter-spacing: 0.5px; }
+                        }
+                        Text { text: root.speed_stats.download_speed; font-size: 22px; font-weight: 900; color: Theme.success; font-family: "JetBrains Mono"; }
+                        HorizontalLayout {
+                            spacing: 4px;
+                            Text { text: "Peak:"; font-size: 11px; color: Theme.text-muted; }
+                            Text { text: root.speed_stats.peak_download; font-size: 11px; font-weight: 800; color: Theme.success.transparentize(20%); font-family: "JetBrains Mono"; }
+                        }
                     }
-                    Text { text: root.speed_stats.download_speed; font-size: 20px; font-weight: 900; color: Theme.success; font-family: "JetBrains Mono"; }
+                    
+                    // Small indicator badge
+                    Text { text: "▼"; font-size: 18px; color: Theme.success-bg-trans; vertical-alignment: center; }
                 }
+            }
+
+            // Upload card
+            Rectangle {
+                background: Theme.card-bg;
+                border-width: 1px;
+                border-color: Theme.border;
+                border-radius: 12px;
+                height: 100px;
                 
-                // Small indicator badge
-                Text { text: "▼"; font-size: 22px; color: Theme.success-bg-trans; vertical-alignment: center; }
+                HorizontalLayout {
+                    padding-left: 12px;
+                    padding-right: 12px;
+                    alignment: space-between;
+                    
+                    VerticalLayout {
+                        alignment: center;
+                        spacing: 2px;
+                        HorizontalLayout {
+                            spacing: 4px;
+                            Rectangle { width: 5px; height: 5px; border-radius: 2.5px; background: Theme.warning; y: 4px; }
+                            Text { text: "Upload"; font-size: 13px; font-weight: 800; color: Theme.text-label; letter-spacing: 0.5px; }
+                        }
+                        Text { text: root.speed_stats.upload_speed; font-size: 22px; font-weight: 900; color: Theme.warning; font-family: "JetBrains Mono"; }
+                        HorizontalLayout {
+                            spacing: 4px;
+                            Text { text: "Peak:"; font-size: 11px; color: Theme.text-muted; }
+                            Text { text: root.speed_stats.peak_upload; font-size: 11px; font-weight: 800; color: Theme.warning.transparentize(20%); font-family: "JetBrains Mono"; }
+                        }
+                    }
+                    
+                    // Small indicator badge
+                    Text { text: "▲"; font-size: 18px; color: Theme.warning-bg-trans; vertical-alignment: center; }
+                }
             }
         }
 
-        // Upload card
+        // Row 2: Total Data consumption
         Rectangle {
-            height: 68px;
-            background: Theme.card-bg;
+            background: Theme.card-bg.transparentize(30%);
             border-width: 1px;
             border-color: Theme.border;
-            border-radius: 16px;
+            border-radius: 10px;
+            height: 48px;
             
             HorizontalLayout {
-                padding-left: 20px;
-                padding-right: 20px;
+                padding-left: 12px;
+                padding-right: 12px;
                 alignment: space-between;
                 
-                VerticalLayout {
-                    alignment: center;
-                    HorizontalLayout {
-                        spacing: 6px;
-                        Rectangle { width: 6px; height: 6px; border-radius: 3px; background: Theme.warning; y: 4px; }
-                        Text { text: "Upload Speed"; font-size: 12px; font-weight: 800; color: Theme.text-label; letter-spacing: 0.5px; }
-                    }
-                    Text { text: root.speed_stats.upload_speed; font-size: 20px; font-weight: 900; color: Theme.warning; font-family: "JetBrains Mono"; }
-                }
-                
-                // Small indicator badge
-                Text { text: "▲"; font-size: 22px; color: Theme.warning-bg-trans; vertical-alignment: center; }
+                Text { text: "Total Data consumption:"; font-size: 13px; color: Theme.text-label; vertical-alignment: center; }
+                Text { text: root.speed_stats.total_usage; font-size: 14px; font-weight: 800; color: Theme.text-primary; font-family: "JetBrains Mono"; vertical-alignment: center; }
             }
         }
     }
 
-    // Cyber Waveform Sparkline Chart
+    // RIGHT COLUMN: Cyber Waveform Sparkline Chart
     Rectangle {
-        height: 250px;
+        horizontal-stretch: 2;
+        min-height: 160px;
+        preferred-height: 200px;
+        vertical-stretch: 1;
         background: Theme.interior-bg;
         border-width: 1px;
         border-color: Theme.border;
-        border-radius: 20px;
+        border-radius: 16px;
         clip: true;
         
-        // Vertical grid background ticks (Sci-fi scanning lines)
+        // Vertical grid background ticks
         HorizontalLayout {
-            padding-left: 20px;
-            padding-right: 20px;
-            padding-top: 10px;
-            padding-bottom: 10px;
+            padding-left: 16px;
+            padding-right: 16px;
+            padding-top: 8px;
+            padding-bottom: 8px;
             alignment: space-between;
-            for i in [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]: Rectangle {
+            for i in [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]: Rectangle {
                 width: 1px;
                 background: Theme.text-primary.transparentize(97%);
             }
         }
 
-        // Horizontal measurement grid lines (0%, 25%, 50%, 75% height)
-        // 25% height grid line (representing 75% of Max Speed)
+        // Horizontal measurement grid lines
         Rectangle {
-            y: 75px;
+            y: parent.height * 0.33;
             height: 1px;
-            width: parent.width - 40px;
-            x: 20px;
+            width: parent.width - 32px;
+            x: 16px;
             background: Theme.text-primary.transparentize(96%);
         }
 
-        // 50% height grid line (representing 50% of Max Speed)
         Rectangle {
-            y: 125px;
+            y: parent.height * 0.66;
             height: 1px;
-            width: parent.width - 40px;
-            x: 20px;
-            background: Theme.text-primary.transparentize(96%);
-        }
-
-        // 75% height grid line (representing 25% of Max Speed)
-        Rectangle {
-            y: 175px;
-            height: 1px;
-            width: parent.width - 40px;
-            x: 20px;
+            width: parent.width - 32px;
+            x: 16px;
             background: Theme.text-primary.transparentize(96%);
         }
 
         // Single Axis Dynamic Graph Area
         speed_chart := Rectangle {
-            x: 20px;
-            y: 35px;
-            width: parent.width - 40px;
-            height: parent.height - 50px;
+            x: 16px;
+            y: 30px;
+            width: parent.width - 32px;
+            height: parent.height - 42px;
             
             // 1. Download Area Gradient
             Path {
@@ -167,7 +196,7 @@ export component SpeedMonitorPanel inherits VerticalLayout {
                 viewbox-width: root.chart_width;
                 viewbox-height: root.chart_height;
                 stroke: Theme.success;
-                stroke-width: 3px;
+                stroke-width: 2.5px;
                 commands: root.download_line_path;
             }
 
@@ -178,86 +207,39 @@ export component SpeedMonitorPanel inherits VerticalLayout {
                 viewbox-width: root.chart_width;
                 viewbox-height: root.chart_height;
                 stroke: Theme.warning;
-                stroke-width: 3px;
+                stroke-width: 2.5px;
                 commands: root.upload_line_path;
             }
         }
 
-        // Left Side Channel Legends
+        // Top Channel Legends
         HorizontalLayout {
-            x: 20px;
-            y: 15px;
-            spacing: 12px;
+            x: 16px;
+            y: 10px;
+            spacing: 8px;
             
             Text {
-                text: "NETWORK WAVEFORM MONITOR (DYNAMIC LINE CHART)";
-                font-size: 11px;
+                text: "WAVEFORM MONITOR";
+                font-size: 9px;
                 font-weight: 800;
                 color: rgba(148, 163, 184, 0.4);
-                letter-spacing: 0.8px;
+                letter-spacing: 0.5px;
             }
             
             // Download Legend badge
             Rectangle {
-                width: 10px; height: 10px; border-radius: 5px; background: Theme.success; y: 2px;
+                width: 8px; height: 8px; border-radius: 4px; background: Theme.success; y: 1px;
             }
             Text {
-                text: "DL (RX)"; font-size: 10px; font-weight: 900; color: Theme.success.transparentize(20%);
+                text: "DL"; font-size: 8.5px; font-weight: 900; color: Theme.success.transparentize(20%);
             }
             
             // Upload Legend badge
             Rectangle {
-                width: 10px; height: 10px; border-radius: 5px; background: Theme.warning; y: 2px;
+                width: 8px; height: 8px; border-radius: 4px; background: Theme.warning; y: 1px;
             }
             Text {
-                text: "UL (TX)"; font-size: 10px; font-weight: 900; color: Theme.warning.transparentize(20%);
-            }
-        }
-    }
-
-    // Session Speed Statistics Row
-    HorizontalLayout {
-        spacing: 16px;
-        Rectangle {
-            height: 38px;
-            background: Theme.card-bg.transparentize(30%);
-            border-width: 1px;
-            border-color: Theme.border;
-            border-radius: 10px;
-            HorizontalLayout {
-                padding-left: 12px;
-                padding-right: 12px;
-                alignment: center;
-                Text { text: "Peak Download: "; font-size: 12px; color: Theme.text-label; vertical-alignment: center; }
-                Text { text: root.speed_stats.peak_download; font-size: 12px; font-weight: 800; color: Theme.success; font-family: "JetBrains Mono"; vertical-alignment: center; }
-            }
-        }
-        Rectangle {
-            height: 38px;
-            background: Theme.card-bg.transparentize(30%);
-            border-width: 1px;
-            border-color: Theme.border;
-            border-radius: 10px;
-            HorizontalLayout {
-                padding-left: 12px;
-                padding-right: 12px;
-                alignment: center;
-                Text { text: "Peak Upload: "; font-size: 12px; color: Theme.text-label; vertical-alignment: center; }
-                Text { text: root.speed_stats.peak_upload; font-size: 12px; font-weight: 800; color: Theme.warning; font-family: "JetBrains Mono"; vertical-alignment: center; }
-            }
-        }
-        Rectangle {
-            height: 38px;
-            background: Theme.card-bg.transparentize(30%);
-            border-width: 1px;
-            border-color: Theme.border;
-            border-radius: 10px;
-            HorizontalLayout {
-                padding-left: 12px;
-                padding-right: 12px;
-                alignment: center;
-                Text { text: "Total Data consumption: "; font-size: 12px; color: Theme.text-label; vertical-alignment: center; }
-                Text { text: root.speed_stats.total_usage; font-size: 12px; font-weight: 800; color: Theme.text-primary; font-family: "JetBrains Mono"; vertical-alignment: center; }
+                text: "UL"; font-size: 8.5px; font-weight: 900; color: Theme.warning.transparentize(20%);
             }
         }
     }

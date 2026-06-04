@@ -14,12 +14,12 @@ export component DiagnosticsPanel inherits HorizontalLayout {
     in-out property <PingResult> ping2;
     in-out property <IPGeolocatorInfo> geo_info;
 
-    spacing: 24px;
+    spacing: 16px;
     
     // Left widget: Ping latencies (Google & Cloudflare)
     VerticalLayout {
         width: 320px;
-        spacing: 12px;
+        spacing: 8px;
         
         Text {
             text: "⚡ PING LATENCY chẩn đoán";
@@ -122,7 +122,7 @@ export component DiagnosticsPanel inherits HorizontalLayout {
 
     // Right widget: IP Geolocation details (Public coordinates & ISP)
     VerticalLayout {
-        spacing: 12px;
+        spacing: 8px;
         
         HorizontalLayout {
             alignment: space-between;
@@ -162,13 +162,13 @@ export component DiagnosticsPanel inherits HorizontalLayout {
             background: Theme.card-bg;
             border-width: 1px;
             border-color: Theme.border;
-            border-radius: 16px;
-            height: 132px;
+            border-radius: 12px;
+            height: 120px;
             
             GridLayout {
-                padding-left: 20px;
-                padding-right: 20px;
-                spacing: 14px;
+                padding-left: 16px;
+                padding-right: 16px;
+                spacing: 10px;
                 
                 // Row 1
                 Row {

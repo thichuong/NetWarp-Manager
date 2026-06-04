@@ -18,10 +18,11 @@ export component ActiveWifiPanel inherits Rectangle {
     border-width: 1px;
     border-color: Theme.border;
     border-radius: 24px;
+    height: 225px;
     
     VerticalLayout {
-        padding: 16px;
-        spacing: 12px;
+        padding: 12px;
+        spacing: 8px;
 
         // Accordion Header block
         HorizontalLayout {
@@ -256,8 +257,8 @@ export component ActiveWifiPanel inherits Rectangle {
 
         // Collapsible Detailed Accordion Panel
         HorizontalLayout {
-            spacing: 32px;
-            padding-top: 12px;
+            spacing: 16px;
+            padding-top: 8px;
             
             // Left Side parameters (Wi-Fi hardware details)
             VerticalLayout {
