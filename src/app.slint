@@ -91,6 +91,7 @@ export component AppWindow inherits Window {
     in-out property <bool> warp_toggle_state: false;
     in-out property <bool> warp_mode_doh_active: true;
     in-out property <[string]> console_logs: ["[System] Engine initialized. Awaiting user input commands."];
+    in property <string> os_platform: "LINUX SYSTEM";
 
     // Animation assistance variables
 
@@ -134,7 +135,9 @@ export component AppWindow inherits Window {
             spacing: 16px;
 
             // 1. Header Area
-            HeaderPanel {}
+            HeaderPanel {
+                os_platform: root.os_platform;
+            }
 
             // 2. Main Workstation (Split 8/12 - 4/12 Grid simulation using HorizontalLayout)
             HorizontalLayout {
@@ -204,7 +207,7 @@ export component AppWindow inherits Window {
                     vertical-alignment: center;
                 }
                 Text {
-                    text: "© 2026 WiWarp. Under MIT License. Made for Fedora Workstation.";
+                    text: "© 2026 WiWarp. Under MIT License. High-Fidelity Linux Network Manager.";
                     font-size: 12px;
                     font-weight: 700;
                     color: Theme.text-muted;

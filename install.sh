@@ -10,7 +10,7 @@ NC='\033[0m' # No Color
 BLUE='\033[0;34m'
 BOLD='\033[1m'
 
-echo -e "${BLUE}${BOLD}=== WiWarp Fedora Installer ===${NC}"
+echo -e "${BLUE}${BOLD}=== WiWarp Linux Installer (Fedora/Ubuntu/Debian) ===${NC}"
 
 # Check if run as root
 if [ "$EUID" -ne 0 ]; then

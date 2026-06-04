@@ -179,3 +179,18 @@ pub async fn refresh_ping(ui_weak: slint::Weak<AppWindow>) {
         });
     }
 }
+
+/// Dynamically detects the host OS name from `/etc/os-release`.
+/// Returns the name in uppercase (e.g., "FEDORA LINUX" or "UBUNTU"),
+/// defaulting to "LINUX SYSTEM" on failure.
+pub fn detect_os_name() -> String {
+    if let Ok(content) = std::fs::read_to_string("/etc/os-release") {
+        for line in content.lines() {
+            if line.starts_with("NAME=") {
+                let name = line.replace("NAME=", "").trim_matches('"').to_string();
+                return name.to_uppercase();
+            }
+        }
+    }
+    "LINUX SYSTEM".to_string()
+}

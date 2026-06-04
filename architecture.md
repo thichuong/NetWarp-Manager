@@ -46,8 +46,8 @@ graph TD
 - **5s00**: Probe Cloudflare (`1.1.1.1`) and Google (`8.8.8.8`) ping latencies.
 - **Startup**: One-shot startup GeoIP sync after 1.5s delay.
 
-### 4.2 Polkit RPM Daemon Installer
-- Locates matching local terminal, spawns script `/tmp/install_warp_wizard_{PID}.sh` with owner-only `0o700` permissions. Bypasses GUI deps via `rpm -Uvh --nodeps`, uses shell `trap` for cleanup on EXIT.
+### 4.2 Polkit Daemon Installer
+- Locates matching local terminal, spawns script `/tmp/install_warp_wizard_{PID}.sh` with owner-only `0o700` permissions. Bypasses GUI dependencies (such as WebKit libraries) via `rpm -Uvh --nodeps` (on Fedora/RPM) or `dpkg -i --force-depends` (on Debian/Ubuntu/DEB), and uses shell `trap` for cleanup on EXIT.
 
 ---
 
@@ -70,7 +70,7 @@ Linked in `src/callbacks.rs` inside `register_callbacks`:
 - `connect_wifi_clicked(...)` ➔ Connect to network.
 - `warp_toggle_clicked(bool)` ➔ Toggle WARP connection status.
 - `warp_mode_clicked(string)` ➔ Set WARP tunnel mode (DNS or Dual).
-- `install_rpm_clicked()` ➔ Spawn Polkit wizard installer.
+- `install_rpm_clicked()` ➔ Spawn Polkit wizard installer for Fedora/Ubuntu/Debian.
 
 ### 6.2 State Properties (Rust ➔ UI Updates)
 Updated via background loops in `src/polling.rs`:

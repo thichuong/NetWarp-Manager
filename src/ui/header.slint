@@ -9,6 +9,8 @@
 import { Theme } from "theme.slint";
 
 export component HeaderPanel inherits Rectangle {
+    in property <string> os_platform: "LINUX SYSTEM";
+
     height: 70px;
     background: Theme.card-bg;
     border-radius: 20px;
@@ -70,7 +72,7 @@ export component HeaderPanel inherits Rectangle {
                     horizontal-alignment: right;
                 }
                 Text {
-                    text: "FEDORA LINUX";
+                    text: root.os_platform;
                     font-size: 12px;
                     font-weight: 700;
                     color: Theme.text-primary;

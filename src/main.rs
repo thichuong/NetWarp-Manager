@@ -26,6 +26,9 @@ async fn main() -> Result<(), slint::PlatformError> {
     // 1. Initialize the main Slint UI Application Window
     let ui = AppWindow::new()?;
 
+    // Set the detected OS Platform name for UI display
+    ui.set_os_platform(helpers::detect_os_name().into());
+
     // 2. Setup Vector Models to handle dynamic arrays on Slint UI
     let wifi_list_model = Rc::new(slint::VecModel::<WifiNetwork>::default());
     ui.set_wifi_list(wifi_list_model.into());
