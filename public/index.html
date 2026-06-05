@@ -580,8 +580,13 @@
       font-family: var(--font-mono);
       font-size: 0.9rem;
       overflow-x: auto;
-      white-space: pre;
       color: #38bdf8;
+    }
+
+    .terminal-line {
+      display: block;
+      line-height: 1.6;
+      white-space: pre;
     }
 
     .terminal-body span.comment {
@@ -835,9 +840,11 @@
                         Copy
                       </button>
                     </div>
-                    <div class="terminal-body" id="cmd-step1"><span class="comment"># Download and extract the release package</span>
-<span class="prompt">$</span> <span class="cmd">wget -qO- https://thichuong.github.io/WiWarp/wiwarp-linux-amd64.tar.gz | tar -xz</span>
-<span class="prompt">$</span> <span class="cmd">cd wiwarp-release</span></div>
+                    <div class="terminal-body" id="cmd-step1">
+                      <div class="terminal-line"><span class="comment"># Download and extract the release package</span></div>
+                      <div class="terminal-line"><span class="prompt">$</span> <span class="cmd">wget -qO- https://thichuong.github.io/WiWarp/wiwarp-linux-amd64.tar.gz | tar -xz</span></div>
+                      <div class="terminal-line"><span class="prompt">$</span> <span class="cmd">cd wiwarp-release</span></div>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -867,8 +874,10 @@
                         Copy
                       </button>
                     </div>
-                    <div class="terminal-body" id="cmd-step2"><span class="comment"># Grant execution permissions and run the installer</span>
-<span class="prompt">$</span> <span class="cmd">sudo chmod +x install.sh && sudo ./install.sh</span></div>
+                    <div class="terminal-body" id="cmd-step2">
+                      <div class="terminal-line"><span class="comment"># Grant execution permissions and run the installer</span></div>
+                      <div class="terminal-line"><span class="prompt">$</span> <span class="cmd">sudo chmod +x install.sh && sudo ./install.sh</span></div>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -898,8 +907,10 @@
                         Copy
                       </button>
                     </div>
-                    <div class="terminal-body" id="cmd-step3"><span class="comment"># Launch WiWarp</span>
-<span class="prompt">$</span> <span class="cmd">wiwarp</span></div>
+                    <div class="terminal-body" id="cmd-step3">
+                      <div class="terminal-line"><span class="comment"># Launch WiWarp</span></div>
+                      <div class="terminal-line"><span class="prompt">$</span> <span class="cmd">wiwarp</span></div>
+                    </div>
                   </div>
                 </div>
               </div>
