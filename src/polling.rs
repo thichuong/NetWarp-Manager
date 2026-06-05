@@ -14,13 +14,107 @@ const HISTORY_SIZE: usize = 25;
 /// Starts all background polling loop engines for network status, speeds, and pings.
 // Developer Warning: Refer to architecture.md Section 6 for full Slint-Rust
 // synchronization rules before modifying state polling loops here!
-pub fn start_polling_loops(
-    ui: &AppWindow,
-    mut last_warp_state: slint::SharedString,
-    mut last_wifi_ssid: slint::SharedString,
-    mut cached_wifi_details: Option<WifiNetwork>,
-) {
+pub fn start_polling_loops(ui: &AppWindow) {
     let ui_weak = ui.as_weak();
+
+    let (tx, rx) = tokio::sync::oneshot::channel::<(
+        slint::SharedString,
+        slint::SharedString,
+        Option<WifiNetwork>,
+    )>();
+
+    // Spawn task to fetch initial states concurrently and hydrate UI
+    let ui_init = ui_weak.clone();
+    tokio::spawn(async move {
+        let (mode_res, status_res, wifi_res) = tokio::join!(
+            warp::get_warp_mode(),
+            warp::get_warp_status(),
+            wifi::get_active_wifi(true),
+        );
+
+        let initial_warp_mode = mode_res.unwrap_or_else(|e| {
+            eprintln!("[WARN] Failed to get WARP mode: {e}");
+            "DoH".to_string()
+        });
+
+        let initial_warp_status = status_res.unwrap_or_else(|e| {
+            eprintln!("[WARN] Failed to get WARP status: {e}");
+            "Disconnected".to_string()
+        });
+        let init_lower = initial_warp_status.to_lowercase();
+        let init_connected = init_lower.contains("connected");
+        let init_connecting = init_lower.contains("connecting");
+        let warp_state = slint::SharedString::from(&initial_warp_status);
+
+        let mut wifi_ssid = slint::SharedString::new();
+        let mut wifi_cache: Option<WifiNetwork> = None;
+
+        if let Ok(Some(active_full)) = wifi_res {
+            let slint_active = WifiNetwork {
+                bssid: active_full.bssid.into(),
+                ssid: active_full.ssid.into(),
+                channel: active_full.channel,
+                frequency: active_full.frequency.into(),
+                band: active_full.band.into(),
+                signal: active_full.signal,
+                security: active_full.security.into(),
+                active: active_full.active,
+                rate: active_full.rate.unwrap_or_default().into(),
+                device: active_full.device.unwrap_or_default().into(),
+                mac: active_full.mac.unwrap_or_default().into(),
+                ip_address: active_full.ip_address.unwrap_or_default().into(),
+                gateway: active_full.gateway.unwrap_or_default().into(),
+                dns_primary: active_full.dns_primary.unwrap_or_default().into(),
+                dns_secondary: active_full.dns_secondary.unwrap_or_default().into(),
+            };
+            wifi_ssid = slint_active.ssid.clone();
+            wifi_cache = Some(slint_active);
+        }
+
+        let warp_state_ui = warp_state.clone();
+        let wifi_cache_ui = wifi_cache.clone();
+
+        let _ = ui_init.upgrade_in_event_loop(move |ui| {
+            ui.set_warp_mode_badge(format!("Mode: {}", initial_warp_mode).into());
+            ui.set_warp_mode_doh_active(!initial_warp_mode.to_lowercase().contains("warp"));
+
+            ui.set_warp_status_text(warp_state_ui);
+            if init_connected {
+                ui.set_warp_network_text("Your network traffic is encrypted & protected.".into());
+                ui.set_warp_toggle_state(true);
+            } else if init_connecting {
+                ui.set_warp_network_text("Establishing secure Cloudflare tunnel...".into());
+                ui.set_warp_toggle_state(true);
+            } else {
+                ui.set_warp_network_text("Your network traffic is direct & unprotected.".into());
+                ui.set_warp_toggle_state(false);
+            }
+
+            if let Some(active) = wifi_cache_ui {
+                ui.set_active_wifi(active);
+            } else {
+                ui.set_active_wifi(WifiNetwork {
+                    ssid: "Not Connected".into(),
+                    active: false,
+                    signal: 0,
+                    bssid: "--".into(),
+                    security: "--".into(),
+                    mac: "--".into(),
+                    device: "--".into(),
+                    ip_address: "--".into(),
+                    gateway: "--".into(),
+                    dns_primary: "--".into(),
+                    dns_secondary: "--".into(),
+                    rate: "--".into(),
+                    band: "--".into(),
+                    channel: 0,
+                    frequency: "--".into(),
+                });
+            }
+        });
+
+        let _ = tx.send((warp_state, wifi_ssid, wifi_cache));
+    });
 
     // Loop 1: Network Bandwidth IO speed monitoring
     let ui_speed_weak = ui_weak.clone();
@@ -144,7 +238,14 @@ pub fn start_polling_loops(
     tokio::spawn(async move {
         let mut geo_cooldown_counter = 0;
 
+        let (mut last_warp_state, mut last_wifi_ssid, mut cached_wifi_details) = match rx.await {
+            Ok(states) => states,
+            Err(_) => (slint::SharedString::new(), slint::SharedString::new(), None),
+        };
+
         loop {
+            tokio::time::sleep(std::time::Duration::from_millis(STATUS_POLL_MS)).await;
+
             let mut current_wifi_ssid = slint::SharedString::new();
             let mut active_wifi_to_set = None;
             let mut should_update_wifi_ui = false;
@@ -319,8 +420,6 @@ pub fn start_polling_loops(
                     });
                 }
             });
-
-            tokio::time::sleep(std::time::Duration::from_millis(STATUS_POLL_MS)).await;
         }
     });
 
