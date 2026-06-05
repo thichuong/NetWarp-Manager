@@ -568,8 +568,15 @@ async fn get_active_device_details() -> ActiveDeviceDetails {
     }
 
     // 3. Query real-time link bitrate via iw command
+    details.realtime_rate = get_realtime_bitrate(&interface).await;
+
+    details
+}
+
+/// Retrieves the real-time link bitrate for a specific network interface via iw link command.
+pub async fn get_realtime_bitrate(interface: &str) -> Option<String> {
     if let Ok(iw_output) = Command::new("iw")
-        .args(["dev", &interface, "link"])
+        .args(["dev", interface, "link"])
         .output()
         .await
         && iw_output.status.success()
@@ -583,15 +590,14 @@ async fn get_active_device_details() -> ActiveDeviceDetails {
                     if words.len() >= 2 {
                         let speed = words.first().unwrap_or(&"");
                         let unit = words.get(1).unwrap_or(&"");
-                        details.realtime_rate = Some(format!("{} {}", speed, unit));
+                        return Some(format!("{} {}", speed, unit));
                     }
                 }
                 break;
             }
         }
     }
-
-    details
+    None
 }
 
 /// Retrieves the details of the currently active Wi-Fi connection.

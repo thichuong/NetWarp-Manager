@@ -1,7 +1,110 @@
-use crate::{AppWindow, NetworkSpeed, PingResult, WifiNetwork, helpers, net_utils, warp, wifi};
+use crate::{
+    AppWindow, IPGeolocatorInfo, NetworkSpeed, PingResult, WifiNetwork, helpers, net_utils, warp,
+    wifi,
+};
 use slint::ComponentHandle;
 use std::rc::Rc;
 use std::time::Instant;
+
+async fn fetch_and_hydrate_state(
+    ui_weak: &slint::Weak<AppWindow>,
+) -> (
+    slint::SharedString,
+    slint::SharedString,
+    Option<WifiNetwork>,
+    String,
+    Option<wifi::WifiNetwork>,
+    Option<helpers::CachedGeoInfo>,
+) {
+    let (mode_res, status_res, wifi_res, geo_res) = tokio::join!(
+        warp::get_warp_mode(),
+        warp::get_warp_status(),
+        wifi::get_active_wifi(true),
+        helpers::query_geoip(),
+    );
+
+    let initial_warp_mode = mode_res.unwrap_or_else(|e| {
+        eprintln!("[WARN] Failed to get WARP mode: {e}");
+        "DoH".to_string()
+    });
+
+    let initial_warp_status = status_res.unwrap_or_else(|e| {
+        eprintln!("[WARN] Failed to get WARP status: {e}");
+        "Disconnected".to_string()
+    });
+    let init_lower = initial_warp_status.to_lowercase();
+    let init_connected = init_lower.contains("connected");
+    let init_connecting = init_lower.contains("connecting");
+    let warp_state = slint::SharedString::from(&initial_warp_status);
+
+    let mut wifi_ssid = slint::SharedString::new();
+    let mut wifi_cache: Option<WifiNetwork> = None;
+    let mut active_wifi_raw: Option<wifi::WifiNetwork> = None;
+
+    if let Ok(Some(active_full)) = wifi_res {
+        active_wifi_raw = Some(active_full.clone());
+        let slint_active = helpers::to_slint_wifi(active_full);
+        wifi_ssid = slint_active.ssid.clone();
+        wifi_cache = Some(slint_active);
+    }
+
+    let mut geo_cache = None;
+    if let Ok(geo_info) = geo_res {
+        geo_cache = Some(geo_info);
+    }
+
+    let warp_state_ui = warp_state.clone();
+    let wifi_cache_ui = wifi_cache.clone();
+    let geo_cache_ui = geo_cache.clone();
+    let initial_warp_mode_clone = initial_warp_mode.clone();
+
+    let _ = ui_weak.upgrade_in_event_loop(move |ui| {
+        ui.set_warp_mode_badge(format!("Mode: {}", initial_warp_mode_clone).into());
+        ui.set_warp_mode_doh_active(!initial_warp_mode_clone.to_lowercase().contains("warp"));
+
+        ui.set_warp_status_text(warp_state_ui);
+        if init_connected {
+            ui.set_warp_network_text("Your network traffic is encrypted & protected.".into());
+            ui.set_warp_toggle_state(true);
+        } else if init_connecting {
+            ui.set_warp_network_text("Establishing secure Cloudflare tunnel...".into());
+            ui.set_warp_toggle_state(true);
+        } else {
+            ui.set_warp_network_text("Your network traffic is direct & unprotected.".into());
+            ui.set_warp_toggle_state(false);
+        }
+
+        if let Some(active) = wifi_cache_ui {
+            ui.set_active_wifi(active);
+        } else {
+            ui.set_active_wifi(helpers::disconnected_wifi());
+        }
+
+        if let Some(ref geo) = geo_cache_ui {
+            ui.set_geo_info(IPGeolocatorInfo {
+                ip: geo.ip.clone().into(),
+                isp: geo.isp.clone().into(),
+                location: geo.location.clone().into(),
+                coordinates: geo.coordinates.clone().into(),
+                warp_badge: geo.warp_badge.clone().into(),
+            });
+            let log_message = format!(
+                "[GeoIP] Coordinates synced. IP: {} | ISP: {} ({})",
+                geo.ip, geo.isp, geo.warp_badge
+            );
+            helpers::append_log(&ui, &log_message);
+        }
+    });
+
+    (
+        warp_state,
+        wifi_ssid,
+        wifi_cache,
+        initial_warp_mode,
+        active_wifi_raw,
+        geo_cache,
+    )
+}
 
 // Interval and size constants for background polling engines
 const SPEED_POLL_MS: u64 = 1000;
@@ -15,6 +118,44 @@ const HISTORY_SIZE: usize = 25;
 pub fn start_polling_loops(ui: &AppWindow, shutdown_rx: tokio::sync::watch::Receiver<bool>) {
     let ui_weak = ui.as_weak();
 
+    // Synchronously load cached state (if any) and hydrate UI immediately on startup
+    if let Some(cache) = crate::cache::load_state_cache() {
+        let init_lower = cache.warp_status.to_lowercase();
+        let init_connected = init_lower.contains("connected");
+        let init_connecting = init_lower.contains("connecting");
+
+        ui.set_warp_mode_badge(format!("Mode: {}", cache.warp_mode).into());
+        ui.set_warp_mode_doh_active(!cache.warp_mode.to_lowercase().contains("warp"));
+
+        ui.set_warp_status_text(cache.warp_status.into());
+        if init_connected {
+            ui.set_warp_network_text("Your network traffic is encrypted & protected.".into());
+            ui.set_warp_toggle_state(true);
+        } else if init_connecting {
+            ui.set_warp_network_text("Establishing secure Cloudflare tunnel...".into());
+            ui.set_warp_toggle_state(true);
+        } else {
+            ui.set_warp_network_text("Your network traffic is direct & unprotected.".into());
+            ui.set_warp_toggle_state(false);
+        }
+
+        if let Some(active) = cache.wifi_network {
+            ui.set_active_wifi(helpers::to_slint_wifi(active));
+        } else {
+            ui.set_active_wifi(helpers::disconnected_wifi());
+        }
+
+        if let Some(geo) = cache.geo_info {
+            ui.set_geo_info(IPGeolocatorInfo {
+                ip: geo.ip.into(),
+                isp: geo.isp.into(),
+                location: geo.location.into(),
+                coordinates: geo.coordinates.into(),
+                warp_badge: geo.warp_badge.into(),
+            });
+        }
+    }
+
     let (tx, rx) = tokio::sync::oneshot::channel::<(
         slint::SharedString,
         slint::SharedString,
@@ -24,61 +165,7 @@ pub fn start_polling_loops(ui: &AppWindow, shutdown_rx: tokio::sync::watch::Rece
     // Spawn task to fetch initial states concurrently and hydrate UI
     let ui_init = ui_weak.clone();
     tokio::spawn(async move {
-        let (mode_res, status_res, wifi_res, _) = tokio::join!(
-            warp::get_warp_mode(),
-            warp::get_warp_status(),
-            wifi::get_active_wifi(true),
-            helpers::refresh_geoip(ui_init.clone()),
-        );
-
-        let initial_warp_mode = mode_res.unwrap_or_else(|e| {
-            eprintln!("[WARN] Failed to get WARP mode: {e}");
-            "DoH".to_string()
-        });
-
-        let initial_warp_status = status_res.unwrap_or_else(|e| {
-            eprintln!("[WARN] Failed to get WARP status: {e}");
-            "Disconnected".to_string()
-        });
-        let init_lower = initial_warp_status.to_lowercase();
-        let init_connected = init_lower.contains("connected");
-        let init_connecting = init_lower.contains("connecting");
-        let warp_state = slint::SharedString::from(&initial_warp_status);
-
-        let mut wifi_ssid = slint::SharedString::new();
-        let mut wifi_cache: Option<WifiNetwork> = None;
-
-        if let Ok(Some(active_full)) = wifi_res {
-            let slint_active = helpers::to_slint_wifi(active_full);
-            wifi_ssid = slint_active.ssid.clone();
-            wifi_cache = Some(slint_active);
-        }
-
-        let warp_state_ui = warp_state.clone();
-        let wifi_cache_ui = wifi_cache.clone();
-
-        let _ = ui_init.upgrade_in_event_loop(move |ui| {
-            ui.set_warp_mode_badge(format!("Mode: {}", initial_warp_mode).into());
-            ui.set_warp_mode_doh_active(!initial_warp_mode.to_lowercase().contains("warp"));
-
-            ui.set_warp_status_text(warp_state_ui);
-            if init_connected {
-                ui.set_warp_network_text("Your network traffic is encrypted & protected.".into());
-                ui.set_warp_toggle_state(true);
-            } else if init_connecting {
-                ui.set_warp_network_text("Establishing secure Cloudflare tunnel...".into());
-                ui.set_warp_toggle_state(true);
-            } else {
-                ui.set_warp_network_text("Your network traffic is direct & unprotected.".into());
-                ui.set_warp_toggle_state(false);
-            }
-
-            if let Some(active) = wifi_cache_ui {
-                ui.set_active_wifi(active);
-            } else {
-                ui.set_active_wifi(helpers::disconnected_wifi());
-            }
-        });
+        let (warp_state, wifi_ssid, wifi_cache, _, _, _) = fetch_and_hydrate_state(&ui_init).await;
 
         let _ = tx.send((warp_state, wifi_ssid, wifi_cache));
     });
@@ -242,19 +329,20 @@ pub fn start_polling_loops(ui: &AppWindow, shutdown_rx: tokio::sync::watch::Rece
                     if matches_last && has_cache {
                         // Apply cached static details (MAC, IP, Gateway, DNS) from Slint cache to save CPU process forks
                         if let Some(ref mut cache) = cached_wifi_details {
-                            let new_rate = active.rate.unwrap_or_default();
+                            let new_rate = if !cache.device.is_empty() {
+                                wifi::get_realtime_bitrate(cache.device.as_str())
+                                    .await
+                                    .unwrap_or_else(|| {
+                                        active.rate.as_deref().unwrap_or("").to_string()
+                                    })
+                            } else {
+                                active.rate.as_deref().unwrap_or("").to_string()
+                            };
                             let rate_changed = cache.rate.as_str() != new_rate.as_str();
                             let signal_changed = cache.signal != active.signal;
 
                             if rate_changed || signal_changed {
-                                cache.bssid = active.bssid.into();
-                                cache.ssid = active.ssid.into();
-                                cache.channel = active.channel;
-                                cache.frequency = active.frequency.into();
-                                cache.band = active.band.into();
                                 cache.signal = active.signal;
-                                cache.security = active.security.into();
-                                cache.active = active.active;
                                 cache.rate = new_rate.into();
 
                                 active_wifi_to_set = Some(cache.clone());
@@ -339,26 +427,47 @@ pub fn start_polling_loops(ui: &AppWindow, shutdown_rx: tokio::sync::watch::Rece
                     );
                     ui.set_warp_toggle_state(false);
                 }
+            });
 
-                // Immediate trigger Geolocation curl fetch and WARP mode refresh if state toggled
-                if state_changed {
-                    let ui_geo_trigger = ui.as_weak();
-                    tokio::spawn(helpers::refresh_geoip(ui_geo_trigger));
+            // Immediate trigger Geolocation refresh and WARP mode check
+            if state_changed {
+                let ui_upgrade = ui_status_weak.clone();
 
-                    // Asynchronously fetch current operating mode and update UI badge to stay in sync
-                    let ui_mode_trigger = ui.as_weak();
-                    tokio::spawn(async move {
-                        if let Ok(warp_mode) = warp::get_warp_mode().await {
-                            let _ = ui_mode_trigger.upgrade_in_event_loop(move |ui| {
-                                ui.set_warp_mode_badge(format!("Mode: {}", warp_mode).into());
-                                ui.set_warp_mode_doh_active(
-                                    !warp_mode.to_lowercase().contains("warp"),
-                                );
+                tokio::spawn(async move {
+                    // Fetch updated operating mode and GeoIP concurrently
+                    let (mode_res, geo_res) =
+                        tokio::join!(warp::get_warp_mode(), helpers::query_geoip(),);
+
+                    let new_warp_mode = mode_res.unwrap_or_else(|e| {
+                        eprintln!("[WARN] Failed to get WARP mode on change: {e}");
+                        "DoH".to_string()
+                    });
+
+                    // Update UI with newly fetched mode and GeoIP
+                    let warp_mode_ui = new_warp_mode.clone();
+                    let geo_ui = geo_res.ok();
+
+                    let _ = ui_upgrade.upgrade_in_event_loop(move |ui| {
+                        ui.set_warp_mode_badge(format!("Mode: {}", warp_mode_ui).into());
+                        ui.set_warp_mode_doh_active(!warp_mode_ui.to_lowercase().contains("warp"));
+
+                        if let Some(ref geo) = geo_ui {
+                            ui.set_geo_info(IPGeolocatorInfo {
+                                ip: geo.ip.clone().into(),
+                                isp: geo.isp.clone().into(),
+                                location: geo.location.clone().into(),
+                                coordinates: geo.coordinates.clone().into(),
+                                warp_badge: geo.warp_badge.clone().into(),
                             });
+                            let log_message = format!(
+                                "[GeoIP] Coordinates synced. IP: {} | ISP: {} ({})",
+                                geo.ip, geo.isp, geo.warp_badge
+                            );
+                            helpers::append_log(&ui, &log_message);
                         }
                     });
-                }
-            });
+                });
+            }
         }
     });
 

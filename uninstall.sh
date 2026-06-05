@@ -37,5 +37,17 @@ if [ -d /opt/wiwarp ]; then
   rm -rf /opt/wiwarp
 fi
 
+# 4. Remove local state cache for the user
+if [ -n "$SUDO_USER" ]; then
+  USER_HOME=$(getent passwd "$SUDO_USER" | cut -d: -f6)
+else
+  USER_HOME="$HOME"
+fi
+
+if [ -n "$USER_HOME" ] && [ -d "$USER_HOME/.cache/netwarp-manager" ]; then
+  echo -e "${BLUE}Removing user state cache at '$USER_HOME/.cache/netwarp-manager'...${NC}"
+  rm -rf "$USER_HOME/.cache/netwarp-manager"
+fi
+
 echo -e "${GREEN}${BOLD}✔ WiWarp has been successfully uninstalled!${NC}"
 echo -e "--------------------------------------------------"

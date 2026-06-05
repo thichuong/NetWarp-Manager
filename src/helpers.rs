@@ -124,76 +124,99 @@ pub fn append_log(ui: &AppWindow, message: &str) {
     }
 }
 
+#[derive(serde::Serialize, serde::Deserialize, Clone, Debug)]
+pub struct CachedGeoInfo {
+    pub ip: String,
+    pub isp: String,
+    pub location: String,
+    pub coordinates: String,
+    pub warp_badge: String,
+}
+
+/// Queries the public IP and Geolocation details asynchronously.
+pub async fn query_geoip() -> Result<CachedGeoInfo, crate::AppError> {
+    let raw_json = net_utils::trace_ip().await?;
+    let parsed: serde_json::Value = serde_json::from_str(&raw_json)
+        .map_err(|e| crate::AppError::GeoIp(format!("Failed to parse geo response: {}", e)))?;
+
+    let ip = parsed
+        .get("ip")
+        .or_else(|| parsed.get("query"))
+        .and_then(|v| v.as_str())
+        .unwrap_or("Unknown")
+        .to_string();
+
+    let isp = parsed
+        .get("connection")
+        .and_then(|c| c.get("isp"))
+        .or_else(|| parsed.get("org"))
+        .or_else(|| parsed.get("isp"))
+        .and_then(|v| v.as_str())
+        .unwrap_or("Unknown")
+        .to_string();
+
+    let city = parsed
+        .get("city")
+        .or_else(|| parsed.get("cityName"))
+        .and_then(|v| v.as_str())
+        .unwrap_or("")
+        .to_string();
+
+    let country = parsed
+        .get("country")
+        .or_else(|| parsed.get("country_name"))
+        .or_else(|| parsed.get("countryName"))
+        .and_then(|v| v.as_str())
+        .unwrap_or("")
+        .to_string();
+
+    let location = if city.is_empty() {
+        country.clone()
+    } else {
+        format!("{}, {}", city, country)
+    };
+
+    let lat = parsed
+        .get("latitude")
+        .or_else(|| parsed.get("lat"))
+        .and_then(|v| v.as_f64())
+        .unwrap_or(0.0);
+
+    let lon = parsed
+        .get("longitude")
+        .or_else(|| parsed.get("lon"))
+        .and_then(|v| v.as_f64())
+        .unwrap_or(0.0);
+    let coords = format!("{:.4}, {:.4}", lat, lon);
+
+    let is_warp = isp.to_lowercase().contains("cloudflare");
+    let badge = if is_warp { "WARP" } else { "DIRECT" }.to_string();
+
+    Ok(CachedGeoInfo {
+        ip,
+        isp,
+        location,
+        coordinates: coords,
+        warp_badge: badge,
+    })
+}
+
 /// Fetches the public IP and Geolocation details asynchronously and updates the UI.
 /// This single function consolidates geolocation updates throughout the application.
 pub async fn refresh_geoip(ui_weak: slint::Weak<AppWindow>) {
-    if let Ok(raw_json) = net_utils::trace_ip().await
-        && let Ok(parsed) = serde_json::from_str::<serde_json::Value>(&raw_json)
-    {
-        let ip = parsed
-            .get("ip")
-            .or_else(|| parsed.get("query"))
-            .and_then(|v| v.as_str())
-            .unwrap_or("Unknown")
-            .to_string();
-
-        let isp = parsed
-            .get("connection")
-            .and_then(|c| c.get("isp"))
-            .or_else(|| parsed.get("org"))
-            .or_else(|| parsed.get("isp"))
-            .and_then(|v| v.as_str())
-            .unwrap_or("Unknown")
-            .to_string();
-
-        let city = parsed
-            .get("city")
-            .or_else(|| parsed.get("cityName"))
-            .and_then(|v| v.as_str())
-            .unwrap_or("")
-            .to_string();
-
-        let country = parsed
-            .get("country")
-            .or_else(|| parsed.get("country_name"))
-            .or_else(|| parsed.get("countryName"))
-            .and_then(|v| v.as_str())
-            .unwrap_or("")
-            .to_string();
-
-        let location = if city.is_empty() {
-            country.clone()
-        } else {
-            format!("{}, {}", city, country)
+    if let Ok(info) = query_geoip().await {
+        let slint_geo = IPGeolocatorInfo {
+            ip: info.ip.clone().into(),
+            isp: info.isp.clone().into(),
+            location: info.location.clone().into(),
+            coordinates: info.coordinates.clone().into(),
+            warp_badge: info.warp_badge.clone().into(),
         };
 
-        let lat = parsed
-            .get("latitude")
-            .or_else(|| parsed.get("lat"))
-            .and_then(|v| v.as_f64())
-            .unwrap_or(0.0);
-
-        let lon = parsed
-            .get("longitude")
-            .or_else(|| parsed.get("lon"))
-            .and_then(|v| v.as_f64())
-            .unwrap_or(0.0);
-        let coords = format!("{:.4}, {:.4}", lat, lon);
-
-        let is_warp = isp.to_lowercase().contains("cloudflare");
-        let badge = if is_warp { "WARP" } else { "DIRECT" };
         let log_message = format!(
             "[GeoIP] Coordinates synced. IP: {} | ISP: {} ({})",
-            ip, isp, badge
+            info.ip, info.isp, info.warp_badge
         );
-
-        let slint_geo = IPGeolocatorInfo {
-            ip: ip.into(),
-            isp: isp.into(),
-            location: location.into(),
-            coordinates: coords.into(),
-            warp_badge: badge.into(),
-        };
 
         let _ = ui_weak.upgrade_in_event_loop(move |ui| {
             ui.set_geo_info(slint_geo);

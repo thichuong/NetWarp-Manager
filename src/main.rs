@@ -1,5 +1,6 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
+pub mod cache;
 mod callbacks;
 pub mod error;
 mod helpers;
@@ -60,6 +61,9 @@ async fn main() -> Result<(), slint::PlatformError> {
 
     // 6. Run the Slint Event Loop (This blocks until the window is closed)
     let run_result = ui.run();
+
+    // Save UI states to local JSON cache on exit
+    cache::save_cache_from_ui(&ui);
 
     // Send shutdown signal to terminate background worker tasks
     let _ = shutdown_tx.send(true);
