@@ -7,8 +7,6 @@ use std::time::Instant;
 const SPEED_POLL_MS: u64 = 1000;
 const STATUS_POLL_MS: u64 = 1500;
 const PING_POLL_MS: u64 = 1500;
-const INITIAL_GEO_DELAY_MS: u64 = 1500;
-const GEO_COOLDOWN_CYCLES: i32 = 10;
 const HISTORY_SIZE: usize = 25;
 
 /// Starts all background polling loop engines for network status, speeds, and pings.
@@ -26,10 +24,11 @@ pub fn start_polling_loops(ui: &AppWindow) {
     // Spawn task to fetch initial states concurrently and hydrate UI
     let ui_init = ui_weak.clone();
     tokio::spawn(async move {
-        let (mode_res, status_res, wifi_res) = tokio::join!(
+        let (mode_res, status_res, wifi_res, _) = tokio::join!(
             warp::get_warp_mode(),
             warp::get_warp_status(),
             wifi::get_active_wifi(true),
+            helpers::refresh_geoip(ui_init.clone()),
         );
 
         let initial_warp_mode = mode_res.unwrap_or_else(|e| {
@@ -236,8 +235,6 @@ pub fn start_polling_loops(ui: &AppWindow) {
     // Loop 2: Wi-Fi active interface, Cloudflare WARP Daemon status and Mode
     let ui_status_weak = ui_weak.clone();
     tokio::spawn(async move {
-        let mut geo_cooldown_counter = 0;
-
         let (mut last_warp_state, mut last_wifi_ssid, mut cached_wifi_details) = match rx.await {
             Ok(states) => states,
             Err(_) => (slint::SharedString::new(), slint::SharedString::new(), None),
@@ -259,19 +256,25 @@ pub fn start_polling_loops(ui: &AppWindow) {
                     if matches_last && has_cache {
                         // Apply cached static details (MAC, IP, Gateway, DNS) from Slint cache to save CPU process forks
                         if let Some(ref mut cache) = cached_wifi_details {
-                            cache.bssid = active.bssid.into();
-                            cache.ssid = active.ssid.into();
-                            cache.channel = active.channel;
-                            cache.frequency = active.frequency.into();
-                            cache.band = active.band.into();
-                            cache.signal = active.signal;
-                            cache.security = active.security.into();
-                            cache.active = active.active;
-                            cache.rate = active.rate.unwrap_or_default().into();
+                            let new_rate = active.rate.unwrap_or_default();
+                            let rate_changed = cache.rate.as_str() != new_rate.as_str();
+                            let signal_changed = cache.signal != active.signal;
 
+                            if rate_changed || signal_changed {
+                                cache.bssid = active.bssid.into();
+                                cache.ssid = active.ssid.into();
+                                cache.channel = active.channel;
+                                cache.frequency = active.frequency.into();
+                                cache.band = active.band.into();
+                                cache.signal = active.signal;
+                                cache.security = active.security.into();
+                                cache.active = active.active;
+                                cache.rate = new_rate.into();
+
+                                active_wifi_to_set = Some(cache.clone());
+                                should_update_wifi_ui = true;
+                            }
                             current_wifi_ssid = cache.ssid.clone();
-                            active_wifi_to_set = Some(cache.clone());
-                            should_update_wifi_ui = true;
                         }
                     } else {
                         // SSID changed or cache is empty, fetch full details with CLI forks
@@ -324,9 +327,11 @@ pub fn start_polling_loops(ui: &AppWindow) {
                     }
                 }
                 Ok(None) => {
-                    cached_wifi_details = None;
-                    last_wifi_ssid = slint::SharedString::new();
-                    should_update_wifi_ui = true; // Set to "Not Connected"
+                    if cached_wifi_details.is_some() {
+                        cached_wifi_details = None;
+                        last_wifi_ssid = slint::SharedString::new();
+                        should_update_wifi_ui = true; // Set to "Not Connected"
+                    }
                 }
                 Err(_) => {}
             }
@@ -340,15 +345,11 @@ pub fn start_polling_loops(ui: &AppWindow) {
 
             // Detect if connection state or wifi SSID changed to trigger immediate Geo IP refresh
             let state_changed = warp_status != last_warp_state
-                || current_wifi_ssid != last_wifi_ssid
-                || geo_cooldown_counter >= GEO_COOLDOWN_CYCLES;
+                || current_wifi_ssid != last_wifi_ssid;
 
             if state_changed {
                 last_warp_state = warp_status.clone();
                 last_wifi_ssid = current_wifi_ssid.clone();
-                geo_cooldown_counter = 0;
-            } else {
-                geo_cooldown_counter += 1;
             }
 
             // Precompute lowering and status booleans to avoid overhead inside the event loop closure
@@ -451,10 +452,4 @@ pub fn start_polling_loops(ui: &AppWindow) {
         }
     });
 
-    // Loop 4: Initial Geolocation sync on application launch
-    let ui_init_weak = ui_weak.clone();
-    tokio::spawn(async move {
-        tokio::time::sleep(std::time::Duration::from_millis(INITIAL_GEO_DELAY_MS)).await;
-        helpers::refresh_geoip(ui_init_weak).await;
-    });
 }

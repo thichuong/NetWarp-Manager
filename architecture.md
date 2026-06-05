@@ -40,11 +40,10 @@ graph TD
 ## 4. Operational Engines
 
 ### 4.1 Multi-Interval Polling Loops (`polling.rs`)
-- **Initial Sync**: One-shot startup hydration → fetches WARP mode, WARP status, and active Wi-Fi immediately on launch. Forwards cached state to Loop 2 via `tokio::sync::oneshot` channel.
+- **Initial Sync**: One-shot startup hydration → fetches WARP mode, WARP status, active Wi-Fi, and public Geolocation concurrently on launch. Forwards cached state to Loop 2 via `tokio::sync::oneshot` channel.
 - **1s00**: Compute network RX/TX IO rates, plot SVG chart paths.
-- **3s00**: Poll WiFi SSID and WARP tunnel status (receives initial state from startup sync). Auto-trigger GeoIP update on state change.
-- **5s00**: Probe Cloudflare (`1.1.1.1`) and Google (`8.8.8.8`) ping latencies.
-- **Startup**: One-shot startup GeoIP sync after 1.5s delay.
+- **1s50**: Poll WiFi SSID and WARP tunnel status (receives initial state from startup sync). Auto-trigger GeoIP update only on state change (SSID or WARP status changed).
+- **1s50**: Probe Cloudflare (`1.1.1.1`) and Google (`8.8.8.8`) ping latencies.
 
 ### 4.2 Polkit Daemon Installer
 - Locates matching local terminal, spawns script `/tmp/install_warp_wizard_{PID}.sh` with owner-only `0o700` permissions. Bypasses GUI dependencies (such as WebKit libraries) via `rpm -Uvh --nodeps` (on Fedora/RPM) or `dpkg -i --force-depends` (on Debian/Ubuntu/DEB), and uses shell `trap` for cleanup on EXIT.
