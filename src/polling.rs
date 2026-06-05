@@ -344,8 +344,8 @@ pub fn start_polling_loops(ui: &AppWindow) {
             );
 
             // Detect if connection state or wifi SSID changed to trigger immediate Geo IP refresh
-            let state_changed = warp_status != last_warp_state
-                || current_wifi_ssid != last_wifi_ssid;
+            let state_changed =
+                warp_status != last_warp_state || current_wifi_ssid != last_wifi_ssid;
 
             if state_changed {
                 last_warp_state = warp_status.clone();
@@ -451,5 +451,4 @@ pub fn start_polling_loops(ui: &AppWindow) {
             tokio::time::sleep(std::time::Duration::from_millis(PING_POLL_MS)).await;
         }
     });
-
 }
