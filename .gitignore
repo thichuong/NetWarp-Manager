@@ -1,11 +1,7 @@
-# Node / Frontend dependencies & build outputs
-node_modules/
-dist/
-dist-ssr/
-
-# Rust / Tauri build artifacts & generated schemas
-src-tauri/target/
-src-tauri/gen/schemas/
+# Cargo build artifacts
+target/
+**/target/
+Cargo.bak
 **/*.rs.bk
 
 # Environment variables & secrets
@@ -14,13 +10,7 @@ src-tauri/gen/schemas/
 !.env.example
 
 # Logs
-logs/
 *.log
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-pnpm-debug.log*
-lerna-debug.log*
 
 # System & OS Files
 .DS_Store
@@ -31,31 +21,10 @@ desktop.ini
 .vscode/*
 !.vscode/extensions.json
 .idea/
-*.suo
-*.ntvs*
-*.njsproj
-*.sln
-*.sw?
+*.swp
+*~
 
-# Rust / Cargo additional ignores
-**/target/
-Cargo.bak
-**/*.rs.bk
-
-# Tauri local dev files
-src-tauri/.tauri
-
-# Linter and compiler caches
-.cache/
-.parcel-cache/
-.eslintcache
-.stylelintcache
-
-# Local backup & temporary files
+# Temporary files
 *.bak
 *.tmp
 *.temp
-*~
-tauri-backup/
-
-

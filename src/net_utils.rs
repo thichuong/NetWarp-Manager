@@ -1,6 +1,4 @@
 use crate::AppError;
-use std::fs::File;
-use std::io::{BufRead, BufReader};
 use std::time::Instant;
 use tokio::process::Command;
 
@@ -59,12 +57,13 @@ pub async fn ping_target(target: Option<&str>) -> Result<String, AppError> {
 pub async fn trace_ip() -> Result<String, AppError> {
     let client = reqwest::Client::builder()
         .timeout(std::time::Duration::from_secs(3))
+        .user_agent("wiwarp/0.2.0")
         .build()
         .map_err(|e| AppError::GeoIp(format!("Failed to build HTTP client: {}", e)))?;
 
     let mut last_err = None;
     for attempt in 1..=4 {
-        match client.get("http://ip-api.com/json/").send().await {
+        match client.get("https://ipwho.is/").send().await {
             Ok(res) => {
                 let body = res.text().await.map_err(|e| {
                     AppError::GeoIp(format!("Failed to read geo response body: {}", e))
@@ -87,40 +86,39 @@ pub async fn trace_ip() -> Result<String, AppError> {
 }
 
 /// Fetches the accumulated download (rx) and upload (tx) bytes across active interfaces.
-/// Reads directly from `/proc/net/dev` on Linux systems.
+/// Reads directly from `/proc/net/dev` on Linux systems asynchronously.
 pub async fn get_network_io() -> Result<NetworkIO, AppError> {
-    let file = File::open("/proc/net/dev")?;
-    let reader = BufReader::new(file);
+    let content = tokio::fs::read_to_string("/proc/net/dev")
+        .await
+        .map_err(|e| AppError::NetworkIO(format!("Failed to read /proc/net/dev: {}", e)))?;
 
     let mut total_rx = 0;
     let mut total_tx = 0;
 
-    for (idx, line) in reader.lines().enumerate() {
+    for (idx, line) in content.lines().enumerate() {
         if idx < 2 {
             continue; // Skip the header lines
         }
-        if let Ok(l) = line {
-            let parts: Vec<&str> = l.split_whitespace().collect();
-            if parts.len() >= 10 {
-                if let Some(interface_str) = parts.first() {
-                    let interface = interface_str.trim_end_matches(':');
-                    if interface == "lo" {
-                        continue; // Skip loopback
-                    }
+        let parts: Vec<&str> = line.split_whitespace().collect();
+        if parts.len() >= 10 {
+            if let Some(interface_str) = parts.first() {
+                let interface = interface_str.trim_end_matches(':');
+                if interface == "lo" {
+                    continue; // Skip loopback
                 }
+            }
 
-                // Index 1 contains bytes received (rx_bytes)
-                // Index 9 contains bytes transmitted (tx_bytes)
-                if let Some(rx_str) = parts.get(1)
-                    && let Ok(rx) = rx_str.parse::<u64>()
-                {
-                    total_rx += rx;
-                }
-                if let Some(tx_str) = parts.get(9)
-                    && let Ok(tx) = tx_str.parse::<u64>()
-                {
-                    total_tx += tx;
-                }
+            // Index 1 contains bytes received (rx_bytes)
+            // Index 9 contains bytes transmitted (tx_bytes)
+            if let Some(rx_str) = parts.get(1)
+                && let Ok(rx) = rx_str.parse::<u64>()
+            {
+                total_rx += rx;
+            }
+            if let Some(tx_str) = parts.get(9)
+                && let Ok(tx) = tx_str.parse::<u64>()
+            {
+                total_tx += tx;
             }
         }
     }

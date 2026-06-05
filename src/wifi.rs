@@ -697,3 +697,32 @@ pub async fn get_active_wifi(full_details: bool) -> Result<Option<WifiNetwork>, 
 
     Ok(None)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_split_terse_line() {
+        assert_eq!(
+            split_terse_line("part1:part2:part3"),
+            vec![
+                "part1".to_string(),
+                "part2".to_string(),
+                "part3".to_string()
+            ]
+        );
+        assert_eq!(
+            split_terse_line("part1\\:escaped:part2"),
+            vec!["part1:escaped".to_string(), "part2".to_string()]
+        );
+    }
+
+    #[test]
+    fn test_get_wifi_band() {
+        assert_eq!(get_wifi_band("2412 MHz"), "2.4 GHz");
+        assert_eq!(get_wifi_band("5180 MHz"), "5 GHz");
+        assert_eq!(get_wifi_band("6105 MHz"), "6 GHz");
+        assert_eq!(get_wifi_band("invalid"), "Unknown");
+    }
+}

@@ -1,4 +1,4 @@
-use crate::{AppWindow, IPGeolocatorInfo, PingResult, net_utils};
+use crate::{AppWindow, IPGeolocatorInfo, PingResult, WifiNetwork, net_utils, wifi};
 use slint::Model;
 use std::rc::Rc;
 
@@ -27,16 +27,17 @@ pub fn generate_svg_path(
     let estimated_capacity = history.len() * 24 + 32;
     let mut commands = String::with_capacity(estimated_capacity);
 
+    let first_val = history.first().copied().unwrap_or(0.0);
     if is_area {
         // Start at bottom-left corner of the chart area in physical pixels
         let _ = write!(
             commands,
             "M 0.0 {:.2} L 0.0 {:.2} ",
             chart_h,
-            get_y(history[0])
+            get_y(first_val)
         );
     } else {
-        let _ = write!(commands, "M 0.0 {:.2} ", get_y(history[0]));
+        let _ = write!(commands, "M 0.0 {:.2} ", get_y(first_val));
     }
 
     for (i, &val) in history.iter().enumerate().skip(1) {
@@ -79,24 +80,48 @@ pub fn format_speed(kb_s: f64) -> String {
     }
 }
 
+use std::cell::RefCell;
+
+thread_local! {
+    static LOGS_MODEL: RefCell<Option<Rc<slint::VecModel<slint::SharedString>>>> = const { RefCell::new(None) };
+}
+
+/// Initializes the thread-local reference to the console logs model for O(1) logging.
+pub fn init_logs_model(model: Rc<slint::VecModel<slint::SharedString>>) {
+    LOGS_MODEL.with(|m| {
+        *m.borrow_mut() = Some(model);
+    });
+}
+
 /// Helper function to append a system log to the UI logs terminal
 pub fn append_log(ui: &AppWindow, message: &str) {
-    let logs_rc = ui.get_console_logs();
-    let mut logs: Vec<String> = logs_rc.iter().map(|s| s.to_string()).collect();
-
-    // Add timestamp prefix
     let local_time = chrono::Local::now();
     let time_str = local_time.format("[%H:%M:%S]").to_string();
-    logs.push(format!("{} {}", time_str, message));
+    let formatted_message = format!("{} {}", time_str, message);
 
-    // Maintain maximum 100 log lines to save memory
-    if logs.len() > 100 {
-        logs.remove(0);
+    let mut success = false;
+    LOGS_MODEL.with(|m| {
+        if let Some(model) = m.borrow().as_ref() {
+            model.push(formatted_message.clone().into());
+            if model.row_count() > 100 {
+                model.remove(0);
+            }
+            success = true;
+        }
+    });
+
+    if !success {
+        // Fallback for tests or uninitialized model - O(n) allocation
+        let logs_rc = ui.get_console_logs();
+        let mut logs: Vec<String> = logs_rc.iter().map(|s| s.to_string()).collect();
+        logs.push(formatted_message);
+        if logs.len() > 100 {
+            logs.remove(0);
+        }
+        let slint_logs: Vec<slint::SharedString> =
+            logs.into_iter().map(slint::SharedString::from).collect();
+        ui.set_console_logs(Rc::new(slint::VecModel::from(slint_logs)).into());
     }
-
-    let slint_logs: Vec<slint::SharedString> =
-        logs.into_iter().map(slint::SharedString::from).collect();
-    ui.set_console_logs(Rc::new(slint::VecModel::from(slint_logs)).into());
 }
 
 /// Fetches the public IP and Geolocation details asynchronously and updates the UI.
@@ -106,32 +131,53 @@ pub async fn refresh_geoip(ui_weak: slint::Weak<AppWindow>) {
         && let Ok(parsed) = serde_json::from_str::<serde_json::Value>(&raw_json)
     {
         let ip = parsed
-            .get("query")
+            .get("ip")
+            .or_else(|| parsed.get("query"))
             .and_then(|v| v.as_str())
             .unwrap_or("Unknown")
             .to_string();
+
         let isp = parsed
-            .get("isp")
+            .get("connection")
+            .and_then(|c| c.get("isp"))
+            .or_else(|| parsed.get("org"))
+            .or_else(|| parsed.get("isp"))
             .and_then(|v| v.as_str())
             .unwrap_or("Unknown")
             .to_string();
+
         let city = parsed
             .get("city")
+            .or_else(|| parsed.get("cityName"))
             .and_then(|v| v.as_str())
             .unwrap_or("")
             .to_string();
+
         let country = parsed
             .get("country")
+            .or_else(|| parsed.get("country_name"))
+            .or_else(|| parsed.get("countryName"))
             .and_then(|v| v.as_str())
             .unwrap_or("")
             .to_string();
+
         let location = if city.is_empty() {
-            country
+            country.clone()
         } else {
             format!("{}, {}", city, country)
         };
-        let lat = parsed.get("lat").and_then(|v| v.as_f64()).unwrap_or(0.0);
-        let lon = parsed.get("lon").and_then(|v| v.as_f64()).unwrap_or(0.0);
+
+        let lat = parsed
+            .get("latitude")
+            .or_else(|| parsed.get("lat"))
+            .and_then(|v| v.as_f64())
+            .unwrap_or(0.0);
+
+        let lon = parsed
+            .get("longitude")
+            .or_else(|| parsed.get("lon"))
+            .and_then(|v| v.as_f64())
+            .unwrap_or(0.0);
         let coords = format!("{:.4}, {:.4}", lat, lon);
 
         let is_warp = isp.to_lowercase().contains("cloudflare");
@@ -193,4 +239,82 @@ pub fn detect_os_name() -> String {
         }
     }
     "LINUX SYSTEM".to_string()
+}
+
+/// Converts a backend `wifi::WifiNetwork` to a Slint `WifiNetwork` UI struct.
+pub fn to_slint_wifi(net: wifi::WifiNetwork) -> WifiNetwork {
+    WifiNetwork {
+        bssid: net.bssid.into(),
+        ssid: net.ssid.into(),
+        channel: net.channel,
+        frequency: net.frequency.into(),
+        band: net.band.into(),
+        signal: net.signal,
+        security: net.security.into(),
+        active: net.active,
+        rate: net.rate.unwrap_or_else(|| "--".to_string()).into(),
+        device: net.device.unwrap_or_else(|| "--".to_string()).into(),
+        mac: net.mac.unwrap_or_else(|| "--".to_string()).into(),
+        ip_address: net.ip_address.unwrap_or_else(|| "--".to_string()).into(),
+        gateway: net.gateway.unwrap_or_else(|| "--".to_string()).into(),
+        dns_primary: net.dns_primary.unwrap_or_else(|| "--".to_string()).into(),
+        dns_secondary: net.dns_secondary.unwrap_or_else(|| "--".to_string()).into(),
+    }
+}
+
+/// Returns a default Slint `WifiNetwork` struct representing a disconnected state.
+pub fn disconnected_wifi() -> WifiNetwork {
+    WifiNetwork {
+        ssid: "Not Connected".into(),
+        active: false,
+        signal: 0,
+        bssid: "--".into(),
+        security: "--".into(),
+        mac: "--".into(),
+        device: "--".into(),
+        ip_address: "--".into(),
+        gateway: "--".into(),
+        dns_primary: "--".into(),
+        dns_secondary: "--".into(),
+        rate: "--".into(),
+        band: "--".into(),
+        channel: 0,
+        frequency: "--".into(),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_format_bytes() {
+        assert_eq!(format_bytes(0), "0 B");
+        assert_eq!(format_bytes(512), "512 B");
+        assert_eq!(format_bytes(1024), "1.00 KB");
+        assert_eq!(format_bytes(1024 * 1024), "1.00 MB");
+        assert_eq!(format_bytes(1024 * 1024 * 1024), "1.00 GB");
+        assert_eq!(format_bytes(1500 * 1024 * 1024), "1.46 GB");
+    }
+
+    #[test]
+    fn test_format_speed() {
+        assert_eq!(format_speed(0.0), "0.00 KB/s");
+        assert_eq!(format_speed(512.5), "512.50 KB/s");
+        assert_eq!(format_speed(1024.0), "1.00 MB/s");
+        assert_eq!(format_speed(1536.0), "1.50 MB/s");
+    }
+
+    #[test]
+    fn test_generate_svg_path() {
+        let history = vec![10.0, 20.0, 30.0];
+        let path_line = generate_svg_path(&history, 100.0, 200.0, 100.0, false);
+        assert!(!path_line.is_empty());
+        assert!(path_line.starts_with("M 0.0"));
+
+        let path_area = generate_svg_path(&history, 100.0, 200.0, 100.0, true);
+        assert!(!path_area.is_empty());
+        assert!(path_area.starts_with("M 0.0"));
+        assert!(path_area.ends_with('Z'));
+    }
 }

@@ -12,7 +12,7 @@ const HISTORY_SIZE: usize = 25;
 /// Starts all background polling loop engines for network status, speeds, and pings.
 // Developer Warning: Refer to architecture.md Section 6 for full Slint-Rust
 // synchronization rules before modifying state polling loops here!
-pub fn start_polling_loops(ui: &AppWindow) {
+pub fn start_polling_loops(ui: &AppWindow, shutdown_rx: tokio::sync::watch::Receiver<bool>) {
     let ui_weak = ui.as_weak();
 
     let (tx, rx) = tokio::sync::oneshot::channel::<(
@@ -49,23 +49,7 @@ pub fn start_polling_loops(ui: &AppWindow) {
         let mut wifi_cache: Option<WifiNetwork> = None;
 
         if let Ok(Some(active_full)) = wifi_res {
-            let slint_active = WifiNetwork {
-                bssid: active_full.bssid.into(),
-                ssid: active_full.ssid.into(),
-                channel: active_full.channel,
-                frequency: active_full.frequency.into(),
-                band: active_full.band.into(),
-                signal: active_full.signal,
-                security: active_full.security.into(),
-                active: active_full.active,
-                rate: active_full.rate.unwrap_or_default().into(),
-                device: active_full.device.unwrap_or_default().into(),
-                mac: active_full.mac.unwrap_or_default().into(),
-                ip_address: active_full.ip_address.unwrap_or_default().into(),
-                gateway: active_full.gateway.unwrap_or_default().into(),
-                dns_primary: active_full.dns_primary.unwrap_or_default().into(),
-                dns_secondary: active_full.dns_secondary.unwrap_or_default().into(),
-            };
+            let slint_active = helpers::to_slint_wifi(active_full);
             wifi_ssid = slint_active.ssid.clone();
             wifi_cache = Some(slint_active);
         }
@@ -92,23 +76,7 @@ pub fn start_polling_loops(ui: &AppWindow) {
             if let Some(active) = wifi_cache_ui {
                 ui.set_active_wifi(active);
             } else {
-                ui.set_active_wifi(WifiNetwork {
-                    ssid: "Not Connected".into(),
-                    active: false,
-                    signal: 0,
-                    bssid: "--".into(),
-                    security: "--".into(),
-                    mac: "--".into(),
-                    device: "--".into(),
-                    ip_address: "--".into(),
-                    gateway: "--".into(),
-                    dns_primary: "--".into(),
-                    dns_secondary: "--".into(),
-                    rate: "--".into(),
-                    band: "--".into(),
-                    channel: 0,
-                    frequency: "--".into(),
-                });
+                ui.set_active_wifi(helpers::disconnected_wifi());
             }
         });
 
@@ -117,6 +85,7 @@ pub fn start_polling_loops(ui: &AppWindow) {
 
     // Loop 1: Network Bandwidth IO speed monitoring
     let ui_speed_weak = ui_weak.clone();
+    let mut shutdown_rx1 = shutdown_rx.clone();
     tokio::spawn(async move {
         let mut last_rx = 0;
         let mut last_tx = 0;
@@ -131,7 +100,15 @@ pub fn start_polling_loops(ui: &AppWindow) {
         let mut ul_ring = std::collections::VecDeque::from(vec![0.0f32; HISTORY_SIZE]);
 
         loop {
-            tokio::time::sleep(std::time::Duration::from_millis(SPEED_POLL_MS)).await;
+            tokio::select! {
+                _ = shutdown_rx1.changed() => {
+                    break;
+                }
+                _ = tokio::time::sleep(std::time::Duration::from_millis(SPEED_POLL_MS)) => {}
+            }
+            if *shutdown_rx1.borrow() {
+                break;
+            }
 
             if let Ok(io) = net_utils::get_network_io().await {
                 // Read exact bytes parsed directly from /proc/net/dev
@@ -234,6 +211,7 @@ pub fn start_polling_loops(ui: &AppWindow) {
 
     // Loop 2: Wi-Fi active interface, Cloudflare WARP Daemon status and Mode
     let ui_status_weak = ui_weak.clone();
+    let mut shutdown_rx2 = shutdown_rx.clone();
     tokio::spawn(async move {
         let (mut last_warp_state, mut last_wifi_ssid, mut cached_wifi_details) = match rx.await {
             Ok(states) => states,
@@ -241,7 +219,15 @@ pub fn start_polling_loops(ui: &AppWindow) {
         };
 
         loop {
-            tokio::time::sleep(std::time::Duration::from_millis(STATUS_POLL_MS)).await;
+            tokio::select! {
+                _ = shutdown_rx2.changed() => {
+                    break;
+                }
+                _ = tokio::time::sleep(std::time::Duration::from_millis(STATUS_POLL_MS)) => {}
+            }
+            if *shutdown_rx2.borrow() {
+                break;
+            }
 
             let mut current_wifi_ssid = slint::SharedString::new();
             let mut active_wifi_to_set = None;
@@ -279,23 +265,7 @@ pub fn start_polling_loops(ui: &AppWindow) {
                     } else {
                         // SSID changed or cache is empty, fetch full details with CLI forks
                         if let Ok(Some(active_full)) = wifi::get_active_wifi(true).await {
-                            let slint_active = WifiNetwork {
-                                bssid: active_full.bssid.into(),
-                                ssid: active_full.ssid.into(),
-                                channel: active_full.channel,
-                                frequency: active_full.frequency.into(),
-                                band: active_full.band.into(),
-                                signal: active_full.signal,
-                                security: active_full.security.into(),
-                                active: active_full.active,
-                                rate: active_full.rate.unwrap_or_default().into(),
-                                device: active_full.device.unwrap_or_default().into(),
-                                mac: active_full.mac.unwrap_or_default().into(),
-                                ip_address: active_full.ip_address.unwrap_or_default().into(),
-                                gateway: active_full.gateway.unwrap_or_default().into(),
-                                dns_primary: active_full.dns_primary.unwrap_or_default().into(),
-                                dns_secondary: active_full.dns_secondary.unwrap_or_default().into(),
-                            };
+                            let slint_active = helpers::to_slint_wifi(active_full);
                             cached_wifi_details = Some(slint_active.clone());
                             last_wifi_ssid = slint_active.ssid.clone();
                             current_wifi_ssid = slint_active.ssid.clone();
@@ -303,23 +273,7 @@ pub fn start_polling_loops(ui: &AppWindow) {
                             should_update_wifi_ui = true;
                         } else {
                             // Fallback if full info query failed
-                            let slint_active = WifiNetwork {
-                                bssid: active.bssid.into(),
-                                ssid: active.ssid.into(),
-                                channel: active.channel,
-                                frequency: active.frequency.into(),
-                                band: active.band.into(),
-                                signal: active.signal,
-                                security: active.security.into(),
-                                active: active.active,
-                                rate: active.rate.unwrap_or_default().into(),
-                                device: "--".into(),
-                                mac: "--".into(),
-                                ip_address: "--".into(),
-                                gateway: "--".into(),
-                                dns_primary: "--".into(),
-                                dns_secondary: "--".into(),
-                            };
+                            let slint_active = helpers::to_slint_wifi(active);
                             current_wifi_ssid = slint_active.ssid.clone();
                             active_wifi_to_set = Some(slint_active);
                             should_update_wifi_ui = true;
@@ -365,23 +319,7 @@ pub fn start_polling_loops(ui: &AppWindow) {
                     if let Some(active) = active_wifi_to_set {
                         ui.set_active_wifi(active);
                     } else {
-                        ui.set_active_wifi(WifiNetwork {
-                            ssid: "Not Connected".into(),
-                            active: false,
-                            signal: 0,
-                            bssid: "--".into(),
-                            security: "--".into(),
-                            mac: "--".into(),
-                            device: "--".into(),
-                            ip_address: "--".into(),
-                            gateway: "--".into(),
-                            dns_primary: "--".into(),
-                            dns_secondary: "--".into(),
-                            rate: "--".into(),
-                            band: "--".into(),
-                            channel: 0,
-                            frequency: "--".into(),
-                        });
+                        ui.set_active_wifi(helpers::disconnected_wifi());
                     }
                 }
 
@@ -426,6 +364,7 @@ pub fn start_polling_loops(ui: &AppWindow) {
 
     // Loop 3: Ping Diagnostics Latencies
     let ui_ping_weak = ui_weak.clone();
+    let mut shutdown_rx3 = shutdown_rx;
     tokio::spawn(async move {
         loop {
             if let Ok(results) = net_utils::ping_multiple(&["1.1.1.1", "8.8.8.8"]).await {
@@ -448,7 +387,16 @@ pub fn start_polling_loops(ui: &AppWindow) {
                     }
                 });
             }
-            tokio::time::sleep(std::time::Duration::from_millis(PING_POLL_MS)).await;
+
+            tokio::select! {
+                _ = shutdown_rx3.changed() => {
+                    break;
+                }
+                _ = tokio::time::sleep(std::time::Duration::from_millis(PING_POLL_MS)) => {}
+            }
+            if *shutdown_rx3.borrow() {
+                break;
+            }
         }
     });
 }

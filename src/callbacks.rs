@@ -24,52 +24,10 @@ pub fn register_callbacks(ui: &AppWindow) {
             ui.set_show_wifi_modal(true);
             ui.set_is_scanning(true);
             helpers::append_log(&ui, "[Wi-Fi] Initiating active airwaves scan...");
-
-            let ui_inner_weak = ui.as_weak();
-
-            // Execute Wi-Fi scan in background thread
-            tokio::spawn(async move {
-                match wifi::get_wifi_list().await {
-                    Ok(list) => {
-                        let slint_list: Vec<WifiNetwork> = list
-                            .into_iter()
-                            .map(|net| WifiNetwork {
-                                bssid: net.bssid.into(),
-                                ssid: net.ssid.into(),
-                                channel: net.channel,
-                                frequency: net.frequency.into(),
-                                band: net.band.into(),
-                                signal: net.signal,
-                                security: net.security.into(),
-                                active: net.active,
-                                rate: net.rate.unwrap_or_default().into(),
-                                device: net.device.unwrap_or_default().into(),
-                                mac: net.mac.unwrap_or_default().into(),
-                                ip_address: net.ip_address.unwrap_or_default().into(),
-                                gateway: net.gateway.unwrap_or_default().into(),
-                                dns_primary: net.dns_primary.unwrap_or_default().into(),
-                                dns_secondary: net.dns_secondary.unwrap_or_default().into(),
-                            })
-                            .collect();
-
-                        let _ = ui_inner_weak.upgrade_in_event_loop(move |ui| {
-                            let new_model = Rc::new(slint::VecModel::from(slint_list));
-                            ui.set_wifi_list(new_model.into());
-                            ui.set_is_scanning(false);
-                            helpers::append_log(
-                                &ui,
-                                "[Wi-Fi] Airwaves scan completed successfully.",
-                            );
-                        });
-                    }
-                    Err(e) => {
-                        let _ = ui_inner_weak.upgrade_in_event_loop(move |ui| {
-                            ui.set_is_scanning(false);
-                            helpers::append_log(&ui, &format!("[Wi-Fi] Scan failed: {}", e));
-                        });
-                    }
-                }
-            });
+            tokio::spawn(perform_wifi_scan(
+                ui_change_weak.clone(),
+                "[Wi-Fi] Airwaves scan",
+            ));
         }
     });
 
@@ -79,48 +37,10 @@ pub fn register_callbacks(ui: &AppWindow) {
         if let Some(ui) = ui_scan_weak.upgrade() {
             ui.set_is_scanning(true);
             helpers::append_log(&ui, "[Wi-Fi] Scanning nearby frequencies...");
-
-            let ui_inner_weak = ui.as_weak();
-
-            tokio::spawn(async move {
-                match wifi::get_wifi_list().await {
-                    Ok(list) => {
-                        let slint_list: Vec<WifiNetwork> = list
-                            .into_iter()
-                            .map(|net| WifiNetwork {
-                                bssid: net.bssid.into(),
-                                ssid: net.ssid.into(),
-                                channel: net.channel,
-                                frequency: net.frequency.into(),
-                                band: net.band.into(),
-                                signal: net.signal,
-                                security: net.security.into(),
-                                active: net.active,
-                                rate: net.rate.unwrap_or_default().into(),
-                                device: net.device.unwrap_or_default().into(),
-                                mac: net.mac.unwrap_or_default().into(),
-                                ip_address: net.ip_address.unwrap_or_default().into(),
-                                gateway: net.gateway.unwrap_or_default().into(),
-                                dns_primary: net.dns_primary.unwrap_or_default().into(),
-                                dns_secondary: net.dns_secondary.unwrap_or_default().into(),
-                            })
-                            .collect();
-
-                        let _ = ui_inner_weak.upgrade_in_event_loop(move |ui| {
-                            let new_model = Rc::new(slint::VecModel::from(slint_list));
-                            ui.set_wifi_list(new_model.into());
-                            ui.set_is_scanning(false);
-                            helpers::append_log(&ui, "[Wi-Fi] Scan range completed.");
-                        });
-                    }
-                    Err(e) => {
-                        let _ = ui_inner_weak.upgrade_in_event_loop(move |ui| {
-                            ui.set_is_scanning(false);
-                            helpers::append_log(&ui, &format!("[Wi-Fi] Scan range failed: {}", e));
-                        });
-                    }
-                }
-            });
+            tokio::spawn(perform_wifi_scan(
+                ui_scan_weak.clone(),
+                "[Wi-Fi] Scan range",
+            ));
         }
     });
 
@@ -190,26 +110,7 @@ pub fn register_callbacks(ui: &AppWindow) {
                             let ui_refresh_weak = ui.as_weak();
                             tokio::spawn(async move {
                                 if let Ok(Some(active)) = wifi::get_active_wifi(true).await {
-                                    let slint_active = WifiNetwork {
-                                        bssid: active.bssid.into(),
-                                        ssid: active.ssid.into(),
-                                        channel: active.channel,
-                                        frequency: active.frequency.into(),
-                                        band: active.band.into(),
-                                        signal: active.signal,
-                                        security: active.security.into(),
-                                        active: active.active,
-                                        rate: active.rate.unwrap_or_default().into(),
-                                        device: active.device.unwrap_or_default().into(),
-                                        mac: active.mac.unwrap_or_default().into(),
-                                        ip_address: active.ip_address.unwrap_or_default().into(),
-                                        gateway: active.gateway.unwrap_or_default().into(),
-                                        dns_primary: active.dns_primary.unwrap_or_default().into(),
-                                        dns_secondary: active
-                                            .dns_secondary
-                                            .unwrap_or_default()
-                                            .into(),
-                                    };
+                                    let slint_active = helpers::to_slint_wifi(active);
                                     let _ = ui_refresh_weak.upgrade_in_event_loop(move |ui| {
                                         ui.set_active_wifi(slint_active);
                                     });
@@ -341,4 +242,27 @@ pub fn register_callbacks(ui: &AppWindow) {
             });
         }
     });
+}
+
+/// Reusable helper to perform a Wi-Fi scan and update the UI's wifi list model.
+async fn perform_wifi_scan(ui_weak: slint::Weak<AppWindow>, log_prefix: &'static str) {
+    match wifi::get_wifi_list().await {
+        Ok(list) => {
+            let slint_list: Vec<WifiNetwork> =
+                list.into_iter().map(helpers::to_slint_wifi).collect();
+
+            let _ = ui_weak.upgrade_in_event_loop(move |ui| {
+                let new_model = Rc::new(slint::VecModel::from(slint_list));
+                ui.set_wifi_list(new_model.into());
+                ui.set_is_scanning(false);
+                helpers::append_log(&ui, &format!("{} completed successfully.", log_prefix));
+            });
+        }
+        Err(e) => {
+            let _ = ui_weak.upgrade_in_event_loop(move |ui| {
+                ui.set_is_scanning(false);
+                helpers::append_log(&ui, &format!("{} failed: {}", log_prefix, e));
+            });
+        }
+    }
 }

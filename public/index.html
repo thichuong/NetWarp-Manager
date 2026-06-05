@@ -1,25 +1,31 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>WiWarp - Wi-Fi & Cloudflare WARP Manager for Fedora Linux</title>
-  <meta name="description" content="WiWarp is a premium desktop application built with Slint UI & Rust to manage Wi-Fi and Cloudflare WARP on Fedora Linux, resolving the missing webkit2gtk3 library issue.">
+  <meta name="description"
+    content="WiWarp is a premium desktop application built with Slint UI & Rust to manage Wi-Fi and Cloudflare WARP on Fedora Linux, resolving the missing webkit2gtk3 library issue.">
   <link rel="icon" type="image/svg+xml" href="assets/logo.svg">
-  
+
   <!-- Google Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
-  
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&family=Fira+Code:wght@400;500&display=swap"
+    rel="stylesheet">
+
   <style>
     /* Reset & Base Styles */
-    *, *::before, *::after {
+    *,
+    *::before,
+    *::after {
       box-sizing: border-box;
       margin: 0;
       padding: 0;
     }
-    
+
     :root {
       --bg-dark: #030712;
       --bg-card: rgba(17, 24, 39, 0.55);
@@ -35,10 +41,10 @@
       --font-inter: 'Inter', sans-serif;
       --font-mono: 'Fira Code', monospace;
     }
-    
+
     body {
       background-color: var(--bg-dark);
-      background-image: 
+      background-image:
         radial-gradient(at 0% 0%, rgba(99, 102, 241, 0.15) 0px, transparent 50%),
         radial-gradient(at 100% 0%, rgba(6, 182, 212, 0.12) 0px, transparent 50%),
         radial-gradient(at 50% 100%, rgba(139, 92, 246, 0.1) 0px, transparent 50%);
@@ -49,14 +55,14 @@
       overflow-x: hidden;
       -webkit-font-smoothing: antialiased;
     }
-    
+
     /* Layout Utilities */
     .container {
       max-width: 1200px;
       margin: 0 auto;
       padding: 0 2rem;
     }
-    
+
     /* Header / Navbar */
     header {
       backdrop-filter: blur(12px);
@@ -67,32 +73,32 @@
       z-index: 100;
       background: rgba(3, 7, 18, 0.7);
     }
-    
+
     .nav-container {
       display: flex;
       justify-content: space-between;
       align-items: center;
       height: 80px;
     }
-    
+
     .logo-area {
       display: flex;
       align-items: center;
       gap: 0.75rem;
       text-decoration: none;
     }
-    
+
     .logo-img {
       width: 42px;
       height: 42px;
       filter: drop-shadow(0 0 8px rgba(6, 182, 212, 0.5));
       transition: transform 0.3s ease;
     }
-    
+
     .logo-area:hover .logo-img {
       transform: rotate(10deg) scale(1.05);
     }
-    
+
     .logo-text {
       font-family: var(--font-outfit);
       font-weight: 800;
@@ -102,7 +108,7 @@
       -webkit-text-fill-color: transparent;
       letter-spacing: -0.5px;
     }
-    
+
     .github-link {
       display: flex;
       align-items: center;
@@ -117,25 +123,25 @@
       border: 1px solid var(--border-color);
       transition: all 0.3s ease;
     }
-    
+
     .github-link:hover {
       background: rgba(255, 255, 255, 0.1);
       border-color: rgba(255, 255, 255, 0.2);
       transform: translateY(-1px);
     }
-    
+
     .github-link svg {
       width: 18px;
       height: 18px;
       fill: currentColor;
     }
-    
+
     /* Hero Section */
     .hero-section {
       padding: 6rem 0 4rem;
       position: relative;
     }
-    
+
     .hero-container {
       display: grid;
       grid-template-columns: 1.2fr 1fr;
@@ -143,7 +149,7 @@
       align-items: center;
       text-align: left;
     }
-    
+
     .badge-container {
       display: flex;
       justify-content: flex-start;
@@ -151,7 +157,7 @@
       margin-bottom: 2rem;
       flex-wrap: wrap;
     }
-    
+
     .badge {
       font-size: 0.8rem;
       font-weight: 600;
@@ -161,25 +167,25 @@
       letter-spacing: 0.5px;
       border: 1px solid rgba(255, 255, 255, 0.1);
     }
-    
+
     .badge-fedora {
       background: rgba(60, 110, 180, 0.15);
       color: #76a2ed;
       border-color: rgba(60, 110, 180, 0.3);
     }
-    
+
     .badge-rust {
       background: rgba(217, 119, 6, 0.15);
       color: #fbbf24;
       border-color: rgba(217, 119, 6, 0.3);
     }
-    
+
     .badge-slint {
       background: rgba(6, 182, 212, 0.15);
       color: #22d3ee;
       border-color: rgba(6, 182, 212, 0.3);
     }
-    
+
     .hero-title {
       font-family: var(--font-outfit);
       font-weight: 800;
@@ -191,14 +197,14 @@
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
     }
-    
+
     .hero-subtitle {
       font-size: clamp(1.05rem, 2vw, 1.25rem);
       color: var(--text-muted);
       margin: 0 0 2.5rem;
       font-weight: 400;
     }
-    
+
     .cta-area {
       display: flex;
       flex-direction: column;
@@ -217,7 +223,7 @@
       backdrop-filter: blur(16px);
       -webkit-backdrop-filter: blur(16px);
     }
-    
+
     .hero-install .install-title {
       font-family: var(--font-outfit);
       font-size: 1.4rem;
@@ -227,18 +233,18 @@
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
     }
-    
+
     .hero-install .install-steps {
       display: flex;
       flex-direction: column;
       gap: 1.5rem;
     }
-    
+
     .hero-install .step-item {
       display: flex;
       gap: 1rem;
     }
-    
+
     .hero-install .step-number {
       font-family: var(--font-outfit);
       font-size: 1.05rem;
@@ -254,11 +260,11 @@
       flex-shrink: 0;
       box-shadow: 0 0 10px rgba(6, 182, 212, 0.3);
     }
-    
+
     .hero-install .step-content {
       flex-grow: 1;
     }
-    
+
     .hero-install .step-title {
       font-family: var(--font-outfit);
       font-size: 1.05rem;
@@ -266,18 +272,18 @@
       margin-bottom: 0.25rem;
       color: #fff;
     }
-    
+
     .hero-install .step-desc {
       color: var(--text-muted);
       font-size: 0.85rem;
       margin-bottom: 0.5rem;
     }
-    
+
     .hero-install .terminal-body {
       padding: 0.8rem 1rem;
       font-size: 0.8rem;
     }
-    
+
     .download-btn {
       display: inline-flex;
       align-items: center;
@@ -296,35 +302,37 @@
       animation: pulse-glow-btn 2.5s infinite;
       cursor: pointer;
     }
-    
+
     .download-btn:hover {
       transform: translateY(-4px);
       box-shadow: 0 12px 30px rgba(6, 182, 212, 0.5), 0 0 15px rgba(139, 92, 246, 0.3);
       border-color: rgba(255, 255, 255, 0.2);
     }
-    
+
     .download-btn svg {
       width: 24px;
       height: 24px;
       transition: transform 0.3s ease;
     }
-    
+
     .download-btn:hover svg {
       transform: translateY(2px);
     }
-    
+
     @keyframes pulse-glow-btn {
       0% {
         box-shadow: 0 4px 20px rgba(6, 182, 212, 0.25);
       }
+
       50% {
         box-shadow: 0 4px 30px rgba(6, 182, 212, 0.45), 0 0 15px rgba(139, 92, 246, 0.2);
       }
+
       100% {
         box-shadow: 0 4px 20px rgba(6, 182, 212, 0.25);
       }
     }
-    
+
     .download-meta {
       font-size: 0.85rem;
       color: var(--text-muted);
@@ -332,18 +340,18 @@
       align-items: center;
       gap: 1rem;
     }
-    
+
     .download-meta span {
       display: flex;
       align-items: center;
       gap: 0.25rem;
     }
-    
+
     /* Features Grid */
     .features-section {
       padding: 4rem 0;
     }
-    
+
     .section-title {
       font-family: var(--font-outfit);
       font-size: 2.2rem;
@@ -355,13 +363,13 @@
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
     }
-    
+
     .features-grid {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
       gap: 1.5rem;
     }
-    
+
     .feature-card {
       background: var(--bg-card);
       border: 1px solid var(--border-color);
@@ -373,7 +381,7 @@
       backdrop-filter: blur(16px);
       -webkit-backdrop-filter: blur(16px);
     }
-    
+
     .feature-card::before {
       content: '';
       position: absolute;
@@ -386,17 +394,17 @@
       transition: opacity 0.4s ease;
       pointer-events: none;
     }
-    
+
     .feature-card:hover {
       transform: translateY(-6px);
       border-color: rgba(6, 182, 212, 0.25);
       box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2), inset 0 1px 1px rgba(255, 255, 255, 0.05);
     }
-    
+
     .feature-card:hover::before {
       opacity: 1;
     }
-    
+
     .feature-icon-wrapper {
       width: 48px;
       height: 48px;
@@ -410,19 +418,19 @@
       border: 1px solid rgba(6, 182, 212, 0.2);
       transition: all 0.3s ease;
     }
-    
+
     .feature-card:hover .feature-icon-wrapper {
       background: rgba(6, 182, 212, 0.2);
       color: #fff;
       box-shadow: 0 0 15px rgba(6, 182, 212, 0.3);
       transform: scale(1.05);
     }
-    
+
     .feature-icon-wrapper svg {
       width: 24px;
       height: 24px;
     }
-    
+
     .feature-title {
       font-family: var(--font-outfit);
       font-size: 1.25rem;
@@ -430,18 +438,18 @@
       margin-bottom: 0.75rem;
       color: #fff;
     }
-    
+
     .feature-desc {
       color: var(--text-muted);
       font-size: 0.95rem;
       line-height: 1.6;
     }
-    
+
     /* Installation Guide Section */
     .install-section {
       padding: 5rem 0;
     }
-    
+
     .install-container {
       background: var(--bg-card);
       border: 1px solid var(--border-color);
@@ -452,18 +460,18 @@
       backdrop-filter: blur(16px);
       -webkit-backdrop-filter: blur(16px);
     }
-    
+
     .install-steps {
       display: flex;
       flex-direction: column;
       gap: 2.5rem;
     }
-    
+
     .step-item {
       display: flex;
       gap: 1.5rem;
     }
-    
+
     .step-number {
       font-family: var(--font-outfit);
       font-size: 1.3rem;
@@ -479,11 +487,11 @@
       flex-shrink: 0;
       box-shadow: 0 0 10px rgba(6, 182, 212, 0.3);
     }
-    
+
     .step-content {
       flex-grow: 1;
     }
-    
+
     .step-title {
       font-family: var(--font-outfit);
       font-size: 1.2rem;
@@ -491,13 +499,13 @@
       margin-bottom: 0.5rem;
       color: #fff;
     }
-    
+
     .step-desc {
       color: var(--text-muted);
       font-size: 0.95rem;
       margin-bottom: 1rem;
     }
-    
+
     /* Code Terminal Style */
     .terminal-box {
       background: #080d16;
@@ -505,9 +513,9 @@
       border-radius: 10px;
       overflow: hidden;
       margin-top: 0.75rem;
-      box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
     }
-    
+
     .terminal-header {
       background: rgba(255, 255, 255, 0.03);
       padding: 0.6rem 1rem;
@@ -516,32 +524,40 @@
       justify-content: space-between;
       border-bottom: 1px solid rgba(255, 255, 255, 0.05);
     }
-    
+
     .terminal-dots {
       display: flex;
       gap: 0.35rem;
     }
-    
+
     .dot {
       width: 10px;
       height: 10px;
       border-radius: 50%;
     }
-    
-    .dot-red { background: #ef4444; }
-    .dot-yellow { background: #f59e0b; }
-    .dot-green { background: #10b981; }
-    
+
+    .dot-red {
+      background: #ef4444;
+    }
+
+    .dot-yellow {
+      background: #f59e0b;
+    }
+
+    .dot-green {
+      background: #10b981;
+    }
+
     .terminal-lang {
       font-size: 0.75rem;
       color: var(--text-muted);
       font-family: var(--font-mono);
       text-transform: uppercase;
     }
-    
+
     .copy-btn {
-      background: rgba(255,255,255,0.05);
-      border: 1px solid rgba(255,255,255,0.08);
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.08);
       color: var(--text-muted);
       padding: 0.25rem 0.6rem;
       border-radius: 4px;
@@ -553,12 +569,12 @@
       transition: all 0.2s ease;
       font-family: var(--font-inter);
     }
-    
+
     .copy-btn:hover {
-      background: rgba(255,255,255,0.1);
+      background: rgba(255, 255, 255, 0.1);
       color: #fff;
     }
-    
+
     .terminal-body {
       padding: 1.1rem;
       font-family: var(--font-mono);
@@ -567,23 +583,25 @@
       white-space: pre;
       color: #38bdf8;
     }
-    
+
     .terminal-body span.comment {
       color: #6b7280;
     }
+
     .terminal-body span.prompt {
       color: #f43f5e;
       user-select: none;
     }
+
     .terminal-body span.cmd {
       color: #e2e8f0;
     }
-    
+
     /* Requirements Section */
     .req-section {
       padding: 3rem 0 6rem;
     }
-    
+
     .req-grid {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
@@ -591,14 +609,14 @@
       max-width: 800px;
       margin: 0 auto;
     }
-    
+
     .req-card {
       background: rgba(255, 255, 255, 0.02);
       border: 1px solid var(--border-color);
       border-radius: 12px;
       padding: 1.5rem;
     }
-    
+
     .req-title {
       font-family: var(--font-outfit);
       font-size: 1.1rem;
@@ -609,13 +627,13 @@
       align-items: center;
       gap: 0.5rem;
     }
-    
+
     .req-title svg {
       width: 18px;
       height: 18px;
       color: var(--accent-cyan);
     }
-    
+
     .req-list {
       list-style-type: none;
       font-size: 0.9rem;
@@ -624,12 +642,12 @@
       flex-direction: column;
       gap: 0.5rem;
     }
-    
+
     .req-list li {
       position: relative;
       padding-left: 1.1rem;
     }
-    
+
     .req-list li::before {
       content: '•';
       color: var(--accent-cyan);
@@ -637,7 +655,7 @@
       left: 0;
       font-weight: bold;
     }
-    
+
     /* Footer */
     footer {
       border-top: 1px solid var(--border-color);
@@ -647,24 +665,24 @@
       color: var(--text-muted);
       font-size: 0.9rem;
     }
-    
+
     .footer-links {
       display: flex;
       justify-content: center;
       gap: 1.5rem;
       margin-top: 1rem;
     }
-    
+
     .footer-link {
       color: var(--text-muted);
       text-decoration: none;
       transition: color 0.2s ease;
     }
-    
+
     .footer-link:hover {
       color: var(--accent-cyan);
     }
-    
+
     /* Toast Notification */
     .toast {
       position: fixed;
@@ -687,19 +705,19 @@
       pointer-events: none;
       transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s ease;
     }
-    
+
     .toast.show {
       transform: translateY(0);
       opacity: 1;
       pointer-events: auto;
     }
-    
+
     .toast svg {
       width: 18px;
       height: 18px;
       color: #10b981;
     }
-    
+
     /* Responsiveness */
     @media (max-width: 992px) {
       .hero-container {
@@ -707,30 +725,37 @@
         text-align: center;
         gap: 3rem;
       }
+
       .badge-container {
         justify-content: center;
       }
+
       .hero-subtitle {
         margin: 0 auto 2.5rem;
       }
+
       .cta-area {
         align-items: center;
       }
     }
-    
+
     @media (max-width: 768px) {
       .hero-install .install-container {
         padding: 1.5rem;
       }
+
       .nav-container {
         height: 70px;
       }
+
       .hero-section {
         padding: 4rem 0 3rem;
       }
     }
   </style>
-</head><body>
+</head>
+
+<body>
 
   <!-- Header / Navbar -->
   <header>
@@ -739,9 +764,11 @@
         <img src="assets/logo.svg" alt="WiWarp Logo" class="logo-img">
         <span class="logo-text">WiWarp</span>
       </a>
-      <a href="https://github.com/thichuong/WiWarp" target="_blank" class="github-link" id="btn-github-nav" aria-label="View source code on GitHub">
+      <a href="https://github.com/thichuong/WiWarp" target="_blank" class="github-link" id="btn-github-nav"
+        aria-label="View source code on GitHub">
         <svg viewBox="0 0 24 24">
-          <path d="M12 2C6.477 2 2 6.477 2 12c0 4.42 2.865 8.166 6.839 9.489.5.092.682-.217.682-.482 0-.237-.008-.866-.013-1.7-2.782.603-3.369-1.34-3.369-1.34-.454-1.156-1.11-1.464-1.11-1.464-.908-.62.069-.608.069-.608 1.003.07 1.531 1.03 1.531 1.03.892 1.529 2.341 1.087 2.91.831.092-.646.35-1.086.636-1.336-2.22-.253-4.555-1.11-4.555-4.943 0-1.091.39-1.984 1.029-2.683-.103-.253-.446-1.27.098-2.647 0 0 .84-.269 2.75 1.025A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.294 2.747-1.025 2.747-1.025.546 1.377.203 2.394.1 2.647.64.699 1.028 1.592 1.028 2.683 0 3.842-2.339 4.687-4.566 4.935.359.309.678.919.678 1.852 0 1.336-.012 2.415-.012 2.743 0 .267.18.579.688.481C19.137 20.162 22 16.418 22 12c0-5.523-4.477-10-10-10z"/>
+          <path
+            d="M12 2C6.477 2 2 6.477 2 12c0 4.42 2.865 8.166 6.839 9.489.5.092.682-.217.682-.482 0-.237-.008-.866-.013-1.7-2.782.603-3.369-1.34-3.369-1.34-.454-1.156-1.11-1.464-1.11-1.464-.908-.62.069-.608.069-.608 1.003.07 1.531 1.03 1.531 1.03.892 1.529 2.341 1.087 2.91.831.092-.646.35-1.086.636-1.336-2.22-.253-4.555-1.11-4.555-4.943 0-1.091.39-1.984 1.029-2.683-.103-.253-.446-1.27.098-2.647 0 0 .84-.269 2.75 1.025A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.294 2.747-1.025 2.747-1.025.546 1.377.203 2.394.1 2.647.64.699 1.028 1.592 1.028 2.683 0 3.842-2.339 4.687-4.566 4.935.359.309.678.919.678 1.852 0 1.336-.012 2.415-.012 2.743 0 .267.18.579.688.481C19.137 20.162 22 16.418 22 12c0-5.523-4.477-10-10-10z" />
         </svg>
         <span>GitHub</span>
       </a>
@@ -758,13 +785,15 @@
             <span class="badge badge-rust">Rust Backend</span>
             <span class="badge badge-slint">Slint UI</span>
           </div>
-          
+
           <h1 class="hero-title">Manage Wi-Fi & WARP<br>with Modern Style</h1>
-          <p class="hero-subtitle">A premium, ultra-smooth desktop application built with Rust and Slint. Automatically resolves outdated graphic library issues and supports advanced configurations with intuitive controls.</p>
-          
+          <p class="hero-subtitle">A premium, ultra-smooth desktop application built with Rust and Slint. Automatically
+            resolves outdated graphic library issues and supports advanced configurations with intuitive controls.</p>
+
           <div class="cta-area">
-            <a href="wiwarp-linux-amd64.tar.gz" class="download-btn" id="btn-download-hero">
-              <svg fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" viewBox="0 0 24 24">
+            <a href="https://thichuong.github.io/WiWarp/wiwarp-linux-amd64.tar.gz" class="download-btn" id="btn-download-hero">
+              <svg fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5"
+                viewBox="0 0 24 24">
                 <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"></path>
               </svg>
               Download Build (.tar.gz)
@@ -786,7 +815,8 @@
                 <div class="step-number">1</div>
                 <div class="step-content">
                   <h3 class="step-title">Download & Extract</h3>
-                  <p class="step-desc">Download the `.tar.gz` package, or use the following command to download and extract directly in your terminal:</p>
+                  <p class="step-desc">Download the `.tar.gz` package, or use the following command to download and
+                    extract directly in your terminal:</p>
                   <div class="terminal-box">
                     <div class="terminal-header">
                       <div class="terminal-dots">
@@ -796,23 +826,32 @@
                       </div>
                       <span class="terminal-lang">bash</span>
                       <button class="copy-btn" id="btn-copy-step1" onclick="copyCommand('cmd-step1', 'btn-copy-step1')">
-                        <svg width="12" height="12" fill="currentColor" viewBox="0 0 16 16"><path d="M4 1.5H3a2 2 0 0 0-2 2V14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V3.5a2 2 0 0 0-2-2h-1v1h1a1 1 0 0 1 1 1V14a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V3.5a1 1 0 0 1 1-1h1v-1z"/><path d="M9.5 1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5.5h-3a.5.5 0 0 1-.5-.5v-1a.5.5 0 0 1 .5-.5h3zm-3-1A1.5 1.5 0 0 0 5 1.5v1A1.5 1.5 0 0 0 6.5 4h3A1.5 1.5 0 0 0 11 2.5v-1A1.5 1.5 0 0 0 9.5 0h-3z"/></svg>
+                        <svg width="12" height="12" fill="currentColor" viewBox="0 0 16 16">
+                          <path
+                            d="M4 1.5H3a2 2 0 0 0-2 2V14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V3.5a2 2 0 0 0-2-2h-1v1h1a1 1 0 0 1 1 1V14a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V3.5a1 1 0 0 1 1-1h1v-1z" />
+                          <path
+                            d="M9.5 1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5.5h-3a.5.5 0 0 1-.5-.5v-1a.5.5 0 0 1 .5-.5h3zm-3-1A1.5 1.5 0 0 0 5 1.5v1A1.5 1.5 0 0 0 6.5 4h3A1.5 1.5 0 0 0 11 2.5v-1A1.5 1.5 0 0 0 9.5 0h-3z" />
+                        </svg>
                         Copy
                       </button>
                     </div>
-                    <div class="terminal-body" id="cmd-step1"><span class="comment"># Download and extract the release package</span>
-<span class="prompt">$</span> <span class="cmd">wget -qO- https://thichuong.github.io/WiWarp/wiwarp-linux-amd64.tar.gz | tar -xz</span>
-<span class="prompt">$</span> <span class="cmd">cd wiwarp-release</span></div>
+                    <div class="terminal-body" id="cmd-step1"><span class="comment"># Download and extract the release
+                        package</span>
+                      <span class="prompt">$</span> <span class="cmd">wget -qO-
+                        https://thichuong.github.io/WiWarp/wiwarp-linux-amd64.tar.gz | tar -xz</span>
+                      <span class="prompt">$</span> <span class="cmd">cd wiwarp-release</span>
+                    </div>
                   </div>
                 </div>
               </div>
-              
+
               <!-- Step 2 -->
               <div class="step-item">
                 <div class="step-number">2</div>
                 <div class="step-content">
                   <h3 class="step-title">Run Installer</h3>
-                  <p class="step-desc">Run the installation script with `sudo`. The script installs the executable to `/opt/wiwarp`, and creates a wrapper and desktop launcher icon in your applications menu:</p>
+                  <p class="step-desc">Run the installation script with `sudo`. The script installs the executable to
+                    `/opt/wiwarp`, and creates a wrapper and desktop launcher icon in your applications menu:</p>
                   <div class="terminal-box">
                     <div class="terminal-header">
                       <div class="terminal-dots">
@@ -822,22 +861,31 @@
                       </div>
                       <span class="terminal-lang">bash</span>
                       <button class="copy-btn" id="btn-copy-step2" onclick="copyCommand('cmd-step2', 'btn-copy-step2')">
-                        <svg width="12" height="12" fill="currentColor" viewBox="0 0 16 16"><path d="M4 1.5H3a2 2 0 0 0-2 2V14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V3.5a2 2 0 0 0-2-2h-1v1h1a1 1 0 0 1 1 1V14a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V3.5a1 1 0 0 1 1-1h1v-1z"/><path d="M9.5 1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5.5h-3a.5.5 0 0 1-.5-.5v-1a.5.5 0 0 1 .5-.5h3zm-3-1A1.5 1.5 0 0 0 5 1.5v1A1.5 1.5 0 0 0 6.5 4h3A1.5 1.5 0 0 0 11 2.5v-1A1.5 1.5 0 0 0 9.5 0h-3z"/></svg>
+                        <svg width="12" height="12" fill="currentColor" viewBox="0 0 16 16">
+                          <path
+                            d="M4 1.5H3a2 2 0 0 0-2 2V14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V3.5a2 2 0 0 0-2-2h-1v1h1a1 1 0 0 1 1 1V14a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V3.5a1 1 0 0 1 1-1h1v-1z" />
+                          <path
+                            d="M9.5 1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5.5h-3a.5.5 0 0 1-.5-.5v-1a.5.5 0 0 1 .5-.5h3zm-3-1A1.5 1.5 0 0 0 5 1.5v1A1.5 1.5 0 0 0 6.5 4h3A1.5 1.5 0 0 0 11 2.5v-1A1.5 1.5 0 0 0 9.5 0h-3z" />
+                        </svg>
                         Copy
                       </button>
                     </div>
-                    <div class="terminal-body" id="cmd-step2"><span class="comment"># Grant execution permissions and run the installer</span>
-<span class="prompt">$</span> <span class="cmd">sudo chmod +x install.sh && sudo ./install.sh</span></div>
+                    <div class="terminal-body" id="cmd-step2"><span class="comment"># Grant execution permissions and
+                        run the installer</span>
+                      <span class="prompt">$</span> <span class="cmd">sudo chmod +x install.sh && sudo
+                        ./install.sh</span>
+                    </div>
                   </div>
                 </div>
               </div>
-              
+
               <!-- Step 3 -->
               <div class="step-item">
                 <div class="step-number">3</div>
                 <div class="step-content">
                   <h3 class="step-title">Launch Application</h3>
-                  <p class="step-desc">Once installed, find **WiWarp** in your Fedora Application Menu or launch it directly from the terminal:</p>
+                  <p class="step-desc">Once installed, find **WiWarp** in your Fedora Application Menu or launch it
+                    directly from the terminal:</p>
                   <div class="terminal-box">
                     <div class="terminal-header">
                       <div class="terminal-dots">
@@ -847,12 +895,18 @@
                       </div>
                       <span class="terminal-lang">bash</span>
                       <button class="copy-btn" id="btn-copy-step3" onclick="copyCommand('cmd-step3', 'btn-copy-step3')">
-                        <svg width="12" height="12" fill="currentColor" viewBox="0 0 16 16"><path d="M4 1.5H3a2 2 0 0 0-2 2V14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V3.5a2 2 0 0 0-2-2h-1v1h1a1 1 0 0 1 1 1V14a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V3.5a1 1 0 0 1 1-1h1v-1z"/><path d="M9.5 1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5.5h-3a.5.5 0 0 1-.5-.5v-1a.5.5 0 0 1 .5-.5h3zm-3-1A1.5 1.5 0 0 0 5 1.5v1A1.5 1.5 0 0 0 6.5 4h3A1.5 1.5 0 0 0 11 2.5v-1A1.5 1.5 0 0 0 9.5 0h-3z"/></svg>
+                        <svg width="12" height="12" fill="currentColor" viewBox="0 0 16 16">
+                          <path
+                            d="M4 1.5H3a2 2 0 0 0-2 2V14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V3.5a2 2 0 0 0-2-2h-1v1h1a1 1 0 0 1 1 1V14a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V3.5a1 1 0 0 1 1-1h1v-1z" />
+                          <path
+                            d="M9.5 1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5.5h-3a.5.5 0 0 1-.5-.5v-1a.5.5 0 0 1 .5-.5h3zm-3-1A1.5 1.5 0 0 0 5 1.5v1A1.5 1.5 0 0 0 6.5 4h3A1.5 1.5 0 0 0 11 2.5v-1A1.5 1.5 0 0 0 9.5 0h-3z" />
+                        </svg>
                         Copy
                       </button>
                     </div>
                     <div class="terminal-body" id="cmd-step3"><span class="comment"># Launch WiWarp</span>
-<span class="prompt">$</span> <span class="cmd">wiwarp</span></div>
+                      <span class="prompt">$</span> <span class="cmd">wiwarp</span>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -866,50 +920,60 @@
     <section class="features-section" id="features">
       <div class="container">
         <h2 class="section-title">Key Features</h2>
-        
+
         <div class="features-grid">
           <!-- Card 1 -->
           <div class="feature-card">
             <div class="feature-icon-wrapper">
-              <svg fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24">
+              <svg fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                viewBox="0 0 24 24">
                 <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
               </svg>
             </div>
             <h3 class="feature-title">Fix WebKit Dependency</h3>
-            <p class="feature-desc">Completely resolves the missing legacy WebKit library issue on Fedora. Securely downloads and installs official Cloudflare WARP via an automated terminal wizard.</p>
+            <p class="feature-desc">Completely resolves the missing legacy WebKit library issue on Fedora. Securely
+              downloads and installs official Cloudflare WARP via an automated terminal wizard.</p>
           </div>
-          
+
           <!-- Card 2 -->
           <div class="feature-card">
             <div class="feature-icon-wrapper">
-              <svg fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24">
-                <path d="M5 12.55a11 11 0 0 1 14.08 0M1.42 9a16 16 0 0 1 21.16 0M8.53 16.11a6 6 0 0 1 6.95 0M12 20h.01"></path>
+              <svg fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                viewBox="0 0 24 24">
+                <path d="M5 12.55a11 11 0 0 1 14.08 0M1.42 9a16 16 0 0 1 21.16 0M8.53 16.11a6 6 0 0 1 6.95 0M12 20h.01">
+                </path>
               </svg>
             </div>
             <h3 class="feature-title">Wi-Fi BSSID Locking</h3>
-            <p class="feature-desc">Force a persistent connection to a specific MAC address (BSSID). Fully supports Wi-Fi 6/6E (6 GHz band), eliminating automatic mesh roaming.</p>
+            <p class="feature-desc">Force a persistent connection to a specific MAC address (BSSID). Fully supports
+              Wi-Fi 6/6E (6 GHz band), eliminating automatic mesh roaming.</p>
           </div>
-          
+
           <!-- Card 3 -->
           <div class="feature-card">
             <div class="feature-icon-wrapper">
-              <svg fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24">
+              <svg fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                viewBox="0 0 24 24">
                 <path d="M22 12h-4l-3 9L9 3l-3 9H2"></path>
               </svg>
             </div>
             <h3 class="feature-title">Real-time Monitoring</h3>
-            <p class="feature-desc">Monitor real-time download/upload network speeds via Linux procfs. Automatically test ping latency to Google and Cloudflare continuously.</p>
+            <p class="feature-desc">Monitor real-time download/upload network speeds via Linux procfs. Automatically
+              test ping latency to Google and Cloudflare continuously.</p>
           </div>
-          
+
           <!-- Card 4 -->
           <div class="feature-card">
             <div class="feature-icon-wrapper">
-              <svg fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24">
-                <path d="M12 20h9M3 20v-8a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v8M11 20V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v16"></path>
+              <svg fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                viewBox="0 0 24 24">
+                <path d="M12 20h9M3 20v-8a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v8M11 20V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v16">
+                </path>
               </svg>
             </div>
             <h3 class="feature-title">Console Logs & Toasts</h3>
-            <p class="feature-desc">Integrated mini-console log viewer to track background command execution. Smooth toast notifications for real-time connection status updates.</p>
+            <p class="feature-desc">Integrated mini-console log viewer to track background command execution. Smooth
+              toast notifications for real-time connection status updates.</p>
           </div>
         </div>
       </div>
@@ -923,7 +987,10 @@
           <!-- Card 1 -->
           <div class="req-card">
             <h3 class="req-title">
-              <svg fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 1-10 10A10 10 0 0 1 12 2m0 6v4m0 4h.01"/></svg>
+              <svg fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5"
+                viewBox="0 0 24 24">
+                <path d="M12 2a10 10 0 1 1-10 10A10 10 0 0 1 12 2m0 6v4m0 4h.01" />
+              </svg>
               Compatible OS
             </h3>
             <ul class="req-list">
@@ -931,11 +998,14 @@
               <li>RPM-based distributions (NetworkManager & nmcli configuration).</li>
             </ul>
           </div>
-          
+
           <!-- Card 2 -->
           <div class="req-card">
             <h3 class="req-title">
-              <svg fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" viewBox="0 0 24 24"><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2M7 9l5-5 5 5M12 4v12"/></svg>
+              <svg fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5"
+                viewBox="0 0 24 24">
+                <path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2M7 9l5-5 5 5M12 4v12" />
+              </svg>
               Graphics & Utilities
             </h3>
             <ul class="req-list">
@@ -953,16 +1023,21 @@
     <div class="container">
       <p>© 2026 WiWarp. Built with passion using Rust & Slint UI.</p>
       <div class="footer-links">
-        <a href="https://github.com/thichuong/WiWarp" target="_blank" class="footer-link" id="link-github-footer">GitHub Repo</a>
+        <a href="https://github.com/thichuong/WiWarp" target="_blank" class="footer-link" id="link-github-footer">GitHub
+          Repo</a>
         <span>•</span>
-        <a href="https://github.com/thichuong/WiWarp/blob/main/LICENSE" target="_blank" class="footer-link" id="link-license-footer">MIT License</a>
+        <a href="https://github.com/thichuong/WiWarp/blob/main/LICENSE" target="_blank" class="footer-link"
+          id="link-license-footer">MIT License</a>
       </div>
     </div>
   </footer>
 
   <!-- Toast Notification -->
   <div class="toast" id="toast-notify">
-    <svg fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14M22 4L12 14.01l-3-3"/></svg>
+    <svg fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+      viewBox="0 0 24 24">
+      <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14M22 4L12 14.01l-3-3" />
+    </svg>
     <span>Command copied to clipboard!</span>
   </div>
 
@@ -973,24 +1048,24 @@
       // Get only the command text, ignoring comments and prompt signs
       const cmds = element.querySelectorAll('span.cmd');
       let textToCopy = '';
-      
+
       if (cmds.length > 0) {
         textToCopy = Array.from(cmds).map(span => span.textContent.trim()).join('\n');
       } else {
         textToCopy = element.innerText;
       }
-      
+
       navigator.clipboard.writeText(textToCopy).then(() => {
         // Change button style temporarily
         const btn = document.getElementById(buttonId);
         const originalHTML = btn.innerHTML;
-        
+
         btn.innerHTML = `<svg width="12" height="12" fill="#10b981" viewBox="0 0 16 16"><path d="M12.736 3.97a.733.733 0 0 1 1.047 0c.286.289.29.756.01 1.05L7.88 12.01a.733.733 0 0 1-1.065.02L3.217 8.384a.757.757 0 0 1 0-1.06.733.733 0 0 1 1.047 0l3.052 3.093 5.4-6.425a.247.247 0 0 1 .02-.022z"/></svg> Copied`;
-        
+
         // Show Toast
         const toast = document.getElementById('toast-notify');
         toast.classList.add('show');
-        
+
         setTimeout(() => {
           btn.innerHTML = originalHTML;
           toast.classList.remove('show');
@@ -1001,4 +1076,5 @@
     }
   </script>
 </body>
+
 </html>
