@@ -52,7 +52,16 @@ else
   echo -e "${RED}Warning: Icon not found at $ICON_SRC. Skipping icon installation.${NC}"
 fi
 
-# 4. Create terminal command wrapper in /usr/local/bin/wiwarp
+# 4. Copy uninstaller script
+if [ -f "$PROJECT_DIR/uninstall.sh" ]; then
+  echo -e "${BLUE}Copying uninstaller script to /opt/wiwarp/uninstall.sh...${NC}"
+  cp "$PROJECT_DIR/uninstall.sh" /opt/wiwarp/uninstall.sh
+  chmod +x /opt/wiwarp/uninstall.sh
+else
+  echo -e "${RED}Warning: uninstaller script not found at $PROJECT_DIR/uninstall.sh. Skipping uninstaller installation.${NC}"
+fi
+
+# 5. Create terminal command wrapper in /usr/local/bin/wiwarp
 echo -e "${BLUE}Creating terminal command '/usr/local/bin/wiwarp'...${NC}"
 cat << 'EOF' > /usr/local/bin/wiwarp
 #!/bin/bash
@@ -62,7 +71,7 @@ EOF
 
 chmod +x /usr/local/bin/wiwarp
 
-# 5. Create desktop entry shortcut
+# 6. Create desktop entry shortcut
 echo -e "${BLUE}Creating application launcher shortcut...${NC}"
 cat << EOF > /usr/share/applications/wiwarp.desktop
 [Desktop Entry]
@@ -81,5 +90,7 @@ echo -e "${GREEN}${BOLD}✔ WiWarp Slint Native has been successfully installed!
 echo -e "--------------------------------------------------"
 echo -e "1. You can now launch it from the application menu (search for ${BOLD}WiWarp${NC})."
 echo -e "2. Or run it directly from the terminal using the command: ${BOLD}wiwarp${NC}"
+echo -e "3. To uninstall the application, run: ${BOLD}sudo /opt/wiwarp/uninstall.sh${NC}"
 echo -e "--------------------------------------------------"
+
 

@@ -61,6 +61,9 @@ cargo build --release
 
 # Install system-wide (adds menu shortcut and 'wiwarp' CLI command)
 sudo ./install.sh
+
+# Uninstall system-wide (removes menu shortcut, wrapper, and application directory)
+sudo /opt/wiwarp/uninstall.sh
 ```
 
 ---
@@ -71,8 +74,10 @@ sudo ./install.sh
 *   [architecture.md](architecture.md) - Deep dive into system architecture and async loops.
 *   [LICENSE](LICENSE) - MIT License.
 *   [install.sh](install.sh) - Installer script.
+*   [uninstall.sh](uninstall.sh) - Uninstaller script.
 *   [Cargo.toml](Cargo.toml) - Dependencies and project configurations.
 *   [build.rs](build.rs) - Slint build script.
+
 
 **Source Files:**
 *   [src/app.slint](src/app.slint) - UI markup and theme styles.
