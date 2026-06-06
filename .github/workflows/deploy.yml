@@ -54,6 +54,7 @@ jobs:
           mkdir -p wiwarp-release/assets
           cp target/release/wiwarp wiwarp-release/
           cp install.sh wiwarp-release/
+          cp uninstall.sh wiwarp-release/
           cp assets/logo.svg wiwarp-release/assets/
           
           # 4. Compress to tar.gz and save in public folder
