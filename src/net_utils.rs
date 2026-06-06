@@ -96,23 +96,23 @@ pub async fn get_network_io() -> Result<NetworkIO, AppError> {
     let mut total_tx = 0;
 
     for line in content.lines().skip(2) {
-        let parts: Vec<&str> = line.split_whitespace().collect();
-        if parts.len() >= 10 {
-            if let Some(interface_str) = parts.first() {
-                let interface = interface_str.trim_end_matches(':');
-                if interface == "lo" {
-                    continue; // Skip loopback
-                }
+        let mut tokens = line.split_whitespace();
+        if let Some(interface_str) = tokens.next() {
+            let interface = interface_str.trim_end_matches(':');
+            if interface == "lo" {
+                continue; // Skip loopback
             }
 
             // Index 1 contains bytes received (rx_bytes)
-            // Index 9 contains bytes transmitted (tx_bytes)
-            if let Some(rx_str) = parts.get(1)
+            if let Some(rx_str) = tokens.next()
                 && let Ok(rx) = rx_str.parse::<u64>()
             {
                 total_rx += rx;
             }
-            if let Some(tx_str) = parts.get(9)
+
+            // Index 9 contains bytes transmitted (tx_bytes)
+            // Skip 7 elements to go from index 1 to index 9
+            if let Some(tx_str) = tokens.nth(7)
                 && let Ok(tx) = tx_str.parse::<u64>()
             {
                 total_tx += tx;
@@ -147,17 +147,13 @@ pub async fn ping_multiple(targets: &[&str]) -> Result<Vec<PingResult>, AppError
                     let mut latency = elapsed_ms;
 
                     for line in stdout.lines() {
-                        if line.contains("time=")
-                            && let Some(idx) = line.find("time=")
+                        if let Some(idx) = line.find("time=")
                             && let Some(time_str) = line.get(idx + 5..)
+                            && let Some(part) = time_str.split_whitespace().next()
+                            && let Ok(parsed) = part.parse::<f64>()
                         {
-                            let parts: Vec<&str> = time_str.split_whitespace().collect();
-                            if let Some(part) = parts.first()
-                                && let Ok(parsed) = part.parse::<f64>()
-                            {
-                                latency = parsed;
-                                break;
-                            }
+                            latency = parsed;
+                            break;
                         }
                     }
 

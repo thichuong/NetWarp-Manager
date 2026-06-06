@@ -149,8 +149,8 @@ pub async fn get_warp_status() -> Result<String, AppError> {
     for line in stdout_str.lines() {
         let trimmed = line.trim();
         // Parse status from the line starting with "Status update:"
-        if trimmed.starts_with("Status update:") {
-            status = trimmed.replace("Status update:", "").trim().to_string();
+        if let Some(suffix) = trimmed.strip_prefix("Status update:") {
+            status = suffix.trim().to_string();
             break;
         }
     }
@@ -178,8 +178,9 @@ pub async fn get_warp_mode() -> Result<String, AppError> {
     let stdout_str = String::from_utf8_lossy(&output.stdout);
     for line in stdout_str.lines() {
         let trimmed = line.trim();
-        if trimmed.contains("Mode:") {
-            let lower = trimmed.to_lowercase();
+        if let Some(idx) = trimmed.find("Mode:") {
+            let mode_str = trimmed[idx + 5..].trim();
+            let lower = mode_str.to_lowercase();
             // Check complex modes containing both Warp and DoH first
             if lower.contains("warp")
                 && (lower.contains("doh")
@@ -195,12 +196,7 @@ pub async fn get_warp_mode() -> Result<String, AppError> {
             } else if lower.contains("warp") {
                 return Ok("warp".to_string());
             } else {
-                if let Some(idx) = trimmed.find("Mode:")
-                    && let Some(mode_str) = trimmed.get(idx + 5..)
-                {
-                    let mode_part = mode_str.trim().to_string();
-                    return Ok(mode_part.to_lowercase());
-                }
+                return Ok(lower);
             }
         }
     }

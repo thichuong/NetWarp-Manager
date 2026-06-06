@@ -25,8 +25,8 @@ pub struct WifiNetwork {
 /// Splits a line from the nmcli terse output (-t).
 /// Properly supports colon characters escaped with a backslash (`\:`).
 fn split_terse_line(line: &str) -> Vec<String> {
-    let mut parts = Vec::new();
-    let mut current = String::new();
+    let mut parts = Vec::with_capacity(8);
+    let mut current = String::with_capacity(32);
     let mut chars = line.chars().peekable();
     while let Some(c) = chars.next() {
         if c == '\\' {
@@ -542,12 +542,15 @@ async fn get_active_device_details() -> ActiveDeviceDetails {
 
         for line in show_stdout.lines() {
             let trimmed = line.trim();
-            let parts: Vec<&str> = trimmed.splitn(2, ':').collect();
-            if parts.len() < 2 {
-                continue;
-            }
-            let key = parts.first().map(|s| s.trim()).unwrap_or("");
-            let val = parts.get(1).map(|s| s.trim()).unwrap_or("");
+            let mut parts = trimmed.splitn(2, ':');
+            let key = match parts.next() {
+                Some(k) => k.trim(),
+                None => continue,
+            };
+            let val = match parts.next() {
+                Some(v) => v.trim(),
+                None => continue,
+            };
 
             if val == "--" || val.is_empty() {
                 continue;
@@ -584,14 +587,12 @@ pub async fn get_realtime_bitrate(interface: &str) -> Option<String> {
         let iw_stdout = String::from_utf8_lossy(&iw_output.stdout);
         for line in iw_stdout.lines() {
             let trimmed = line.trim();
-            if trimmed.starts_with("tx bitrate:") {
-                if let Some(part) = trimmed.strip_prefix("tx bitrate:") {
-                    let words: Vec<&str> = part.split_whitespace().collect();
-                    if words.len() >= 2 {
-                        let speed = words.first().unwrap_or(&"");
-                        let unit = words.get(1).unwrap_or(&"");
-                        return Some(format!("{} {}", speed, unit));
-                    }
+            if let Some(part) = trimmed.strip_prefix("tx bitrate:") {
+                let mut words = part.split_whitespace();
+                if let Some(speed) = words.next()
+                    && let Some(unit) = words.next()
+                {
+                    return Some(format!("{} {}", speed, unit));
                 }
                 break;
             }

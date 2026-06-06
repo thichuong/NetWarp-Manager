@@ -41,10 +41,12 @@ async fn main() -> Result<(), slint::PlatformError> {
     ui.set_wifi_list(wifi_list_model.into());
 
     let download_history_model = Rc::new(slint::VecModel::<f32>::from(vec![0.0; 25]));
-    ui.set_download_history(download_history_model.into());
+    ui.set_download_history(download_history_model.clone().into());
 
     let upload_history_model = Rc::new(slint::VecModel::<f32>::from(vec![0.0; 25]));
-    ui.set_upload_history(upload_history_model.into());
+    ui.set_upload_history(upload_history_model.clone().into());
+
+    helpers::init_history_models(download_history_model, upload_history_model);
 
     let console_logs_model = Rc::new(slint::VecModel::<slint::SharedString>::from(vec![
         "[System] Engine initialized. Awaiting user input commands.".into(),

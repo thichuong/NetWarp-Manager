@@ -3,15 +3,15 @@ use slint::Model;
 use std::rc::Rc;
 
 /// Generates SVG path commands for a history array mapping into a physical pixel dimension coordinate space.
-pub fn generate_svg_path(
+/// Returns a tuple containing (line_path, area_path) generated in a single pass.
+pub fn generate_svg_paths(
     history: &[f32],
     max_val: f32,
     chart_w: f32,
     chart_h: f32,
-    is_area: bool,
-) -> String {
+) -> (String, String) {
     if history.is_empty() {
-        return String::new();
+        return (String::new(), String::new());
     }
 
     let len = history.len();
@@ -25,33 +25,25 @@ pub fn generate_svg_path(
 
     use std::fmt::Write;
     let estimated_capacity = history.len() * 24 + 32;
-    let mut commands = String::with_capacity(estimated_capacity);
+    let mut line = String::with_capacity(estimated_capacity);
+    let mut area = String::with_capacity(estimated_capacity + 32);
 
     let first_val = history.first().copied().unwrap_or(0.0);
-    if is_area {
-        // Start at bottom-left corner of the chart area in physical pixels
-        let _ = write!(
-            commands,
-            "M 0.0 {:.2} L 0.0 {:.2} ",
-            chart_h,
-            get_y(first_val)
-        );
-    } else {
-        let _ = write!(commands, "M 0.0 {:.2} ", get_y(first_val));
-    }
+    let y0 = get_y(first_val);
+
+    let _ = write!(line, "M 0.0 {:.2} ", y0);
+    let _ = write!(area, "M 0.0 {:.2} L 0.0 {:.2} ", chart_h, y0);
 
     for (i, &val) in history.iter().enumerate().skip(1) {
         let x = i as f32 * x_step;
         let y = get_y(val);
-        let _ = write!(commands, "L {:.2} {:.2} ", x, y);
+        let _ = write!(line, "L {:.2} {:.2} ", x, y);
+        let _ = write!(area, "L {:.2} {:.2} ", x, y);
     }
 
-    if is_area {
-        // Go down to bottom-right corner and close the shape
-        let _ = write!(commands, "L {:.2} {:.2} Z", chart_w, chart_h);
-    }
+    let _ = write!(area, "L {:.2} {:.2} Z", chart_w, chart_h);
 
-    commands
+    (line, area)
 }
 
 /// Converts a size in bytes to a human-readable string (KB, MB, GB, etc.)
@@ -84,12 +76,24 @@ use std::cell::RefCell;
 
 thread_local! {
     static LOGS_MODEL: RefCell<Option<Rc<slint::VecModel<slint::SharedString>>>> = const { RefCell::new(None) };
+    pub static DOWNLOAD_HISTORY_MODEL: RefCell<Option<Rc<slint::VecModel<f32>>>> = const { RefCell::new(None) };
+    pub static UPLOAD_HISTORY_MODEL: RefCell<Option<Rc<slint::VecModel<f32>>>> = const { RefCell::new(None) };
 }
 
 /// Initializes the thread-local reference to the console logs model for O(1) logging.
 pub fn init_logs_model(model: Rc<slint::VecModel<slint::SharedString>>) {
     LOGS_MODEL.with(|m| {
         *m.borrow_mut() = Some(model);
+    });
+}
+
+/// Initializes the thread-local reference to the download and upload history models.
+pub fn init_history_models(dl: Rc<slint::VecModel<f32>>, ul: Rc<slint::VecModel<f32>>) {
+    DOWNLOAD_HISTORY_MODEL.with(|m| {
+        *m.borrow_mut() = Some(dl);
+    });
+    UPLOAD_HISTORY_MODEL.with(|m| {
+        *m.borrow_mut() = Some(ul);
     });
 }
 
@@ -102,7 +106,7 @@ pub fn append_log(ui: &AppWindow, message: &str) {
     let mut success = false;
     LOGS_MODEL.with(|m| {
         if let Some(model) = m.borrow().as_ref() {
-            model.push(formatted_message.clone().into());
+            model.push(slint::SharedString::from(&formatted_message));
             if model.row_count() > 100 {
                 model.remove(0);
             }
@@ -255,8 +259,8 @@ pub async fn refresh_ping(ui_weak: slint::Weak<AppWindow>) {
 pub fn detect_os_name() -> String {
     if let Ok(content) = std::fs::read_to_string("/etc/os-release") {
         for line in content.lines() {
-            if line.starts_with("NAME=") {
-                let name = line.replace("NAME=", "").trim_matches('"').to_string();
+            if let Some(name_val) = line.strip_prefix("NAME=") {
+                let name = name_val.trim_matches('"');
                 return name.to_uppercase();
             }
         }
@@ -275,13 +279,34 @@ pub fn to_slint_wifi(net: wifi::WifiNetwork) -> WifiNetwork {
         signal: net.signal,
         security: net.security.into(),
         active: net.active,
-        rate: net.rate.unwrap_or_else(|| "--".to_string()).into(),
-        device: net.device.unwrap_or_else(|| "--".to_string()).into(),
-        mac: net.mac.unwrap_or_else(|| "--".to_string()).into(),
-        ip_address: net.ip_address.unwrap_or_else(|| "--".to_string()).into(),
-        gateway: net.gateway.unwrap_or_else(|| "--".to_string()).into(),
-        dns_primary: net.dns_primary.unwrap_or_else(|| "--".to_string()).into(),
-        dns_secondary: net.dns_secondary.unwrap_or_else(|| "--".to_string()).into(),
+        rate: net
+            .rate
+            .map(slint::SharedString::from)
+            .unwrap_or_else(|| "--".into()),
+        device: net
+            .device
+            .map(slint::SharedString::from)
+            .unwrap_or_else(|| "--".into()),
+        mac: net
+            .mac
+            .map(slint::SharedString::from)
+            .unwrap_or_else(|| "--".into()),
+        ip_address: net
+            .ip_address
+            .map(slint::SharedString::from)
+            .unwrap_or_else(|| "--".into()),
+        gateway: net
+            .gateway
+            .map(slint::SharedString::from)
+            .unwrap_or_else(|| "--".into()),
+        dns_primary: net
+            .dns_primary
+            .map(slint::SharedString::from)
+            .unwrap_or_else(|| "--".into()),
+        dns_secondary: net
+            .dns_secondary
+            .map(slint::SharedString::from)
+            .unwrap_or_else(|| "--".into()),
     }
 }
 
@@ -329,13 +354,11 @@ mod tests {
     }
 
     #[test]
-    fn test_generate_svg_path() {
+    fn test_generate_svg_paths() {
         let history = vec![10.0, 20.0, 30.0];
-        let path_line = generate_svg_path(&history, 100.0, 200.0, 100.0, false);
+        let (path_line, path_area) = generate_svg_paths(&history, 100.0, 200.0, 100.0);
         assert!(!path_line.is_empty());
         assert!(path_line.starts_with("M 0.0"));
-
-        let path_area = generate_svg_path(&history, 100.0, 200.0, 100.0, true);
         assert!(!path_area.is_empty());
         assert!(path_area.starts_with("M 0.0"));
         assert!(path_area.ends_with('Z'));

@@ -2,8 +2,7 @@ use crate::{
     AppWindow, IPGeolocatorInfo, NetworkSpeed, PingResult, WifiNetwork, helpers, net_utils, warp,
     wifi,
 };
-use slint::ComponentHandle;
-use std::rc::Rc;
+use slint::{ComponentHandle, Model};
 use std::time::Instant;
 
 async fn fetch_and_hydrate_state(
@@ -12,7 +11,7 @@ async fn fetch_and_hydrate_state(
     slint::SharedString,
     slint::SharedString,
     Option<WifiNetwork>,
-    String,
+    slint::SharedString,
     Option<wifi::WifiNetwork>,
     Option<helpers::CachedGeoInfo>,
 ) {
@@ -23,10 +22,10 @@ async fn fetch_and_hydrate_state(
         helpers::query_geoip(),
     );
 
-    let initial_warp_mode = mode_res.unwrap_or_else(|e| {
+    let initial_warp_mode = slint::SharedString::from(mode_res.unwrap_or_else(|e| {
         eprintln!("[WARN] Failed to get WARP mode: {e}");
         "DoH".to_string()
-    });
+    }));
 
     let initial_warp_status = status_res.unwrap_or_else(|e| {
         eprintln!("[WARN] Failed to get WARP status: {e}");
@@ -115,7 +114,7 @@ enum UiUpdateMsg {
     },
     Wifi(Option<WifiNetwork>),
     WarpStatus(slint::SharedString),
-    WarpMode(String),
+    WarpMode(slint::SharedString),
     GeoIp(Option<helpers::CachedGeoInfo>),
     Pings {
         p1: Option<PingResult>,
@@ -177,7 +176,7 @@ pub fn start_polling_loops(ui: &AppWindow, shutdown_rx: tokio::sync::watch::Rece
         slint::SharedString,
         slint::SharedString,
         Option<WifiNetwork>,
-        String,
+        slint::SharedString,
         Option<helpers::CachedGeoInfo>,
     )>();
 
@@ -264,30 +263,37 @@ pub fn start_polling_loops(ui: &AppWindow, shutdown_rx: tokio::sync::watch::Rece
                     ui.set_speed_stats(stats);
                 }
                 if let (Some(dl), Some(ul)) = (dl_vec_to_set, ul_vec_to_set) {
-                    let max_dl = dl.iter().copied().fold(0.0f32, f32::max);
-                    let max_ul = ul.iter().copied().fold(0.0f32, f32::max);
-                    let max_val = max_dl.max(max_ul);
-                    let max_val_safe = if max_val < 100.0 { 100.0 } else { max_val };
-
                     let chart_w = ui.get_chart_width();
                     let chart_h = ui.get_chart_height();
 
-                    let dl_line =
-                        helpers::generate_svg_path(&dl, max_val_safe, chart_w, chart_h, false);
-                    let dl_area =
-                        helpers::generate_svg_path(&dl, max_val_safe, chart_w, chart_h, true);
-                    let ul_line =
-                        helpers::generate_svg_path(&ul, max_val_safe, chart_w, chart_h, false);
-                    let ul_area =
-                        helpers::generate_svg_path(&ul, max_val_safe, chart_w, chart_h, true);
+                    let max_dl = dl.iter().copied().fold(0.0f32, f32::max);
+                    let max_ul = ul.iter().copied().fold(0.0f32, f32::max);
+                    let max_val_safe = max_dl.max(max_ul).max(100.0);
+
+                    let (dl_line, dl_area) =
+                        helpers::generate_svg_paths(&dl, max_val_safe, chart_w, chart_h);
+                    let (ul_line, ul_area) =
+                        helpers::generate_svg_paths(&ul, max_val_safe, chart_w, chart_h);
 
                     ui.set_download_line_path(dl_line.into());
                     ui.set_download_area_path(dl_area.into());
                     ui.set_upload_line_path(ul_line.into());
                     ui.set_upload_area_path(ul_area.into());
 
-                    ui.set_download_history(Rc::new(slint::VecModel::from(dl)).into());
-                    ui.set_upload_history(Rc::new(slint::VecModel::from(ul)).into());
+                    helpers::DOWNLOAD_HISTORY_MODEL.with(|m| {
+                        if let Some(model) = m.borrow().as_ref() {
+                            for (idx, &val) in dl.iter().enumerate() {
+                                model.set_row_data(idx, val);
+                            }
+                        }
+                    });
+                    helpers::UPLOAD_HISTORY_MODEL.with(|m| {
+                        if let Some(model) = m.borrow().as_ref() {
+                            for (idx, &val) in ul.iter().enumerate() {
+                                model.set_row_data(idx, val);
+                            }
+                        }
+                    });
                 }
                 if let Some(wifi) = wifi_to_set {
                     ui.set_active_wifi(wifi);
@@ -360,8 +366,8 @@ pub fn start_polling_loops(ui: &AppWindow, shutdown_rx: tokio::sync::watch::Rece
         let mut ul_ring = std::collections::VecDeque::from(vec![0.0f32; HISTORY_SIZE]);
 
         let mut last_speed_stats: Option<NetworkSpeed> = None;
-        let mut last_dl_vec: Option<Vec<f32>> = None;
-        let mut last_ul_vec: Option<Vec<f32>> = None;
+        let mut last_dl_ring: Option<std::collections::VecDeque<f32>> = None;
+        let mut last_ul_ring: Option<std::collections::VecDeque<f32>> = None;
 
         loop {
             tokio::select! {
@@ -431,25 +437,25 @@ pub fn start_polling_loops(ui: &AppWindow, shutdown_rx: tokio::sync::watch::Rece
                 ul_ring.pop_front();
                 ul_ring.push_back(speed_ul_kb as f32);
 
-                let dl_vec: Vec<f32> = dl_ring.iter().copied().collect();
-                let ul_vec: Vec<f32> = ul_ring.iter().copied().collect();
-
+                let dl_changed = last_dl_ring.as_ref() != Some(&dl_ring);
+                let ul_changed = last_ul_ring.as_ref() != Some(&ul_ring);
                 let stats_changed = last_speed_stats.as_ref() != Some(&speed_stats);
-                let dl_changed = last_dl_vec.as_ref() != Some(&dl_vec);
-                let ul_changed = last_ul_vec.as_ref() != Some(&ul_vec);
 
                 if stats_changed || dl_changed || ul_changed {
+                    let dl_vec: Vec<f32> = dl_ring.iter().copied().collect();
+                    let ul_vec: Vec<f32> = ul_ring.iter().copied().collect();
+
                     let _ = tx_speed
                         .send(UiUpdateMsg::Speed {
                             stats: speed_stats.clone(),
-                            dl: dl_vec.clone(),
-                            ul: ul_vec.clone(),
+                            dl: dl_vec,
+                            ul: ul_vec,
                         })
                         .await;
 
                     last_speed_stats = Some(speed_stats);
-                    last_dl_vec = Some(dl_vec);
-                    last_ul_vec = Some(ul_vec);
+                    last_dl_ring = Some(dl_ring.clone());
+                    last_ul_ring = Some(ul_ring.clone());
                 }
             }
         }
@@ -471,7 +477,7 @@ pub fn start_polling_loops(ui: &AppWindow, shutdown_rx: tokio::sync::watch::Rece
                 slint::SharedString::new(),
                 slint::SharedString::new(),
                 None,
-                "DoH".to_string(),
+                "DoH".into(),
                 None,
             ),
         };
@@ -586,10 +592,10 @@ pub fn start_polling_loops(ui: &AppWindow, shutdown_rx: tokio::sync::watch::Rece
                     let (mode_res, geo_res) =
                         tokio::join!(warp::get_warp_mode(), helpers::query_geoip(),);
 
-                    let new_warp_mode = mode_res.unwrap_or_else(|e| {
+                    let new_warp_mode = slint::SharedString::from(mode_res.unwrap_or_else(|e| {
                         eprintln!("[WARN] Failed to get WARP mode on change: {e}");
                         "DoH".to_string()
-                    });
+                    }));
 
                     let geo_ui = geo_res.ok();
 
@@ -629,18 +635,33 @@ pub fn start_polling_loops(ui: &AppWindow, shutdown_rx: tokio::sync::watch::Rece
                 for res in results {
                     let is_ping1 = res.target == "1.1.1.1";
                     let is_ping2 = res.target == "8.8.8.8";
-                    let slint_res = PingResult {
-                        target: res.target.into(),
-                        latency: res.latency.unwrap_or(999.0) as f32,
-                        status: res.status.into(),
+                    if !is_ping1 && !is_ping2 {
+                        continue;
+                    }
+
+                    let raw_latency = res.latency.unwrap_or(999.0) as f32;
+                    let last = if is_ping1 { &last_ping1 } else { &last_ping2 };
+
+                    let changed = match last {
+                        Some(l) => {
+                            l.latency != raw_latency || l.status.as_str() != res.status.as_str()
+                        }
+                        None => true,
                     };
 
-                    if is_ping1 && last_ping1.as_ref() != Some(&slint_res) {
-                        p1_to_set = Some(slint_res.clone());
-                        last_ping1 = Some(slint_res);
-                    } else if is_ping2 && last_ping2.as_ref() != Some(&slint_res) {
-                        p2_to_set = Some(slint_res.clone());
-                        last_ping2 = Some(slint_res);
+                    if changed {
+                        let slint_res = PingResult {
+                            target: res.target.into(),
+                            latency: raw_latency,
+                            status: res.status.into(),
+                        };
+                        if is_ping1 {
+                            p1_to_set = Some(slint_res.clone());
+                            last_ping1 = Some(slint_res);
+                        } else {
+                            p2_to_set = Some(slint_res.clone());
+                            last_ping2 = Some(slint_res);
+                        }
                     }
                 }
 
