@@ -45,6 +45,11 @@ async fn fetch_and_hydrate_state(
         let slint_active = helpers::to_slint_wifi(active_full);
         wifi_ssid = slint_active.ssid.clone();
         wifi_cache = Some(slint_active);
+    } else if let Ok(Some(eth_full)) = wifi::get_active_ethernet(true).await {
+        active_wifi_raw = Some(eth_full.clone());
+        let slint_active = helpers::to_slint_wifi(eth_full);
+        wifi_ssid = slint_active.ssid.clone();
+        wifi_cache = Some(slint_active);
     }
 
     let mut geo_cache = None;
@@ -130,7 +135,7 @@ const HISTORY_SIZE: usize = 25;
 const STATUS_POLL_MS_FAST: u64 = 1500;
 const STATUS_POLL_MS_MEDIUM: u64 = 3000;
 const STATUS_POLL_MS_SLOW: u64 = 5000;
-const ADAPTIVE_MEDIUM_THRESHOLD: u32 = 3;  // cycles without change
+const ADAPTIVE_MEDIUM_THRESHOLD: u32 = 3; // cycles without change
 const ADAPTIVE_SLOW_THRESHOLD: u32 = 10;
 
 // Adaptive interval constants for Loop 3 (ping)
@@ -138,7 +143,6 @@ const PING_POLL_MS_NORMAL: u64 = 3000;
 const PING_POLL_MS_SLOW: u64 = 5000;
 const PING_STABLE_THRESHOLD: u32 = 5;
 const PING_JITTER_TOLERANCE: f32 = 5.0; // ms
-
 
 /// Starts all background polling loop engines for network status, speeds, and pings.
 // Developer Warning: Refer to architecture.md Section 6 for full Slint-Rust
@@ -382,7 +386,6 @@ pub fn start_polling_loops(ui: &AppWindow, shutdown_rx: tokio::sync::watch::Rece
         let mut last_ul_ring: Option<std::collections::VecDeque<f32>> = None;
         let mut last_all_zero = false;
 
-
         loop {
             tokio::select! {
                 _ = shutdown_rx1.changed() => {
@@ -451,7 +454,8 @@ pub fn start_polling_loops(ui: &AppWindow, shutdown_rx: tokio::sync::watch::Rece
                 ul_ring.pop_front();
                 ul_ring.push_back(speed_ul_kb as f32);
 
-                let all_zero = dl_ring.iter().all(|&v| v == 0.0) && ul_ring.iter().all(|&v| v == 0.0);
+                let all_zero =
+                    dl_ring.iter().all(|&v| v == 0.0) && ul_ring.iter().all(|&v| v == 0.0);
                 let was_all_zero = last_all_zero;
                 last_all_zero = all_zero;
 
@@ -533,61 +537,110 @@ pub fn start_polling_loops(ui: &AppWindow, shutdown_rx: tokio::sync::watch::Rece
             let mut active_wifi_to_set = None;
             let mut should_update_wifi_ui = false;
 
-            // Polling active Wi-Fi connection (optimized)
-            match wifi::get_active_wifi(false).await {
-                Ok(Some(active)) => {
-                    let has_cache = cached_wifi_details.is_some();
-                    let matches_last = active.ssid.as_str() == last_wifi_ssid.as_str();
+            // Check for active Ethernet connection first
+            let mut is_ethernet = false;
+            if let Ok(Some(eth)) = wifi::get_active_ethernet(false).await {
+                is_ethernet = true;
+                let has_cache = cached_wifi_details.is_some();
+                let matches_last = eth.ssid.as_str() == last_wifi_ssid.as_str();
 
-                    if matches_last && has_cache {
-                        // Apply cached static details (MAC, IP, Gateway, DNS) from Slint cache to save CPU process forks
-                        if let Some(ref mut cache) = cached_wifi_details {
-                            let new_rate = if !cache.device.is_empty() {
-                                wifi::get_realtime_bitrate(cache.device.as_str())
-                                    .await
-                                    .unwrap_or_else(|| {
-                                        active.rate.as_deref().unwrap_or("").to_string()
-                                    })
+                if matches_last && has_cache {
+                    if let Some(ref mut cache) = cached_wifi_details {
+                        let new_rate = if let Some(ref device) = eth.device {
+                            let speed_path = format!("/sys/class/net/{}/speed", device);
+                            if let Ok(speed_str) = std::fs::read_to_string(&speed_path) {
+                                if let Ok(speed_num) = speed_str.trim().parse::<i32>() {
+                                    if speed_num >= 1000 {
+                                        format!("{:.1} Gbps", speed_num as f32 / 1000.0)
+                                    } else {
+                                        format!("{} Mbps", speed_num)
+                                    }
+                                } else {
+                                    cache.rate.to_string()
+                                }
                             } else {
-                                active.rate.as_deref().unwrap_or("").to_string()
-                            };
-                            let rate_changed = cache.rate.as_str() != new_rate.as_str();
-                            let signal_changed = cache.signal != active.signal;
+                                cache.rate.to_string()
+                            }
+                        } else {
+                            cache.rate.to_string()
+                        };
 
-                            if rate_changed || signal_changed {
-                                cache.signal = active.signal;
-                                cache.rate = new_rate.into();
+                        let rate_changed = cache.rate.as_str() != new_rate.as_str();
+                        if rate_changed {
+                            cache.rate = new_rate.into();
+                            active_wifi_to_set = Some(cache.clone());
+                            should_update_wifi_ui = true;
+                        }
+                        current_wifi_ssid = cache.ssid.clone();
+                    }
+                } else {
+                    if let Ok(Some(eth_full)) = wifi::get_active_ethernet(true).await {
+                        let slint_active = helpers::to_slint_wifi(eth_full);
+                        cached_wifi_details = Some(slint_active.clone());
+                        current_wifi_ssid = slint_active.ssid.clone();
+                        active_wifi_to_set = Some(slint_active);
+                        should_update_wifi_ui = true;
+                    }
+                }
+            }
 
-                                active_wifi_to_set = Some(cache.clone());
+            if !is_ethernet {
+                // Polling active Wi-Fi connection (optimized)
+                match wifi::get_active_wifi(false).await {
+                    Ok(Some(active)) => {
+                        let has_cache = cached_wifi_details.is_some();
+                        let matches_last = active.ssid.as_str() == last_wifi_ssid.as_str();
+
+                        if matches_last && has_cache {
+                            // Apply cached static details (MAC, IP, Gateway, DNS) from Slint cache to save CPU process forks
+                            if let Some(ref mut cache) = cached_wifi_details {
+                                let new_rate = if !cache.device.is_empty() {
+                                    wifi::get_realtime_bitrate(cache.device.as_str())
+                                        .await
+                                        .unwrap_or_else(|| {
+                                            active.rate.as_deref().unwrap_or("").to_string()
+                                        })
+                                } else {
+                                    active.rate.as_deref().unwrap_or("").to_string()
+                                };
+                                let rate_changed = cache.rate.as_str() != new_rate.as_str();
+                                let signal_changed = cache.signal != active.signal;
+
+                                if rate_changed || signal_changed {
+                                    cache.signal = active.signal;
+                                    cache.rate = new_rate.into();
+
+                                    active_wifi_to_set = Some(cache.clone());
+                                    should_update_wifi_ui = true;
+                                }
+                                current_wifi_ssid = cache.ssid.clone();
+                            }
+                        } else {
+                            // SSID changed or cache is empty, fetch full details with CLI forks
+                            if let Ok(Some(active_full)) = wifi::get_active_wifi(true).await {
+                                let slint_active = helpers::to_slint_wifi(active_full);
+                                cached_wifi_details = Some(slint_active.clone());
+                                current_wifi_ssid = slint_active.ssid.clone();
+                                active_wifi_to_set = Some(slint_active);
+                                should_update_wifi_ui = true;
+                            } else {
+                                // Fallback if full info query failed
+                                let slint_active = helpers::to_slint_wifi(active);
+                                current_wifi_ssid = slint_active.ssid.clone();
+                                active_wifi_to_set = Some(slint_active);
                                 should_update_wifi_ui = true;
                             }
-                            current_wifi_ssid = cache.ssid.clone();
-                        }
-                    } else {
-                        // SSID changed or cache is empty, fetch full details with CLI forks
-                        if let Ok(Some(active_full)) = wifi::get_active_wifi(true).await {
-                            let slint_active = helpers::to_slint_wifi(active_full);
-                            cached_wifi_details = Some(slint_active.clone());
-                            current_wifi_ssid = slint_active.ssid.clone();
-                            active_wifi_to_set = Some(slint_active);
-                            should_update_wifi_ui = true;
-                        } else {
-                            // Fallback if full info query failed
-                            let slint_active = helpers::to_slint_wifi(active);
-                            current_wifi_ssid = slint_active.ssid.clone();
-                            active_wifi_to_set = Some(slint_active);
-                            should_update_wifi_ui = true;
                         }
                     }
-                }
-                Ok(None) => {
-                    if cached_wifi_details.is_some() {
-                        cached_wifi_details = None;
-                        current_wifi_ssid = slint::SharedString::new();
-                        should_update_wifi_ui = true; // Set to "Not Connected"
+                    Ok(None) => {
+                        if cached_wifi_details.is_some() {
+                            cached_wifi_details = None;
+                            current_wifi_ssid = slint::SharedString::new();
+                            should_update_wifi_ui = true; // Set to "Not Connected"
+                        }
                     }
+                    Err(_) => {}
                 }
-                Err(_) => {}
             }
 
             // Polling Cloudflare WARP Status

@@ -1,7 +1,7 @@
 use crate::AppError;
-use std::time::Instant;
+use socket2::{Domain, Protocol, Socket, Type};
 use std::sync::LazyLock;
-use socket2::{Socket, Domain, Type, Protocol};
+use std::time::Instant;
 use tokio::process::Command;
 
 /// Struct containing total received and transmitted bytes of the system.
@@ -164,11 +164,15 @@ fn build_icmp_request(identifier: u16, seq: u16) -> Vec<u8> {
 }
 
 #[allow(clippy::indexing_slicing)]
-async fn raw_icmp_ping(target: std::net::IpAddr, timeout_duration: std::time::Duration) -> Result<f64, AppError> {
+async fn raw_icmp_ping(
+    target: std::net::IpAddr,
+    timeout_duration: std::time::Duration,
+) -> Result<f64, AppError> {
     let socket = Socket::new(Domain::IPV4, Type::DGRAM, Some(Protocol::ICMPV4))
         .map_err(|e| AppError::Ping(format!("Failed to create ICMP socket: {}", e)))?;
 
-    socket.set_nonblocking(true)
+    socket
+        .set_nonblocking(true)
         .map_err(|e| AppError::Ping(format!("Failed to set nonblocking: {}", e)))?;
 
     let std_sock: std::net::UdpSocket = socket.into();
@@ -181,7 +185,8 @@ async fn raw_icmp_ping(target: std::net::IpAddr, timeout_duration: std::time::Du
     let dest = std::net::SocketAddr::new(target, 0);
 
     let start = Instant::now();
-    tokio_sock.send_to(&request_packet, dest)
+    tokio_sock
+        .send_to(&request_packet, dest)
         .await
         .map_err(|e| AppError::Ping(format!("Failed to send ICMP packet: {}", e)))?;
 
@@ -212,48 +217,58 @@ async fn raw_icmp_ping(target: std::net::IpAddr, timeout_duration: std::time::Du
     }
 }
 
-
 async fn ping_single_target(target_str: &str, timeout_duration: std::time::Duration) -> PingResult {
     let target_ip: Result<std::net::IpAddr, _> = target_str.parse();
 
     match target_ip {
-        Ok(ip) => {
-            match raw_icmp_ping(ip, timeout_duration).await {
-                Ok(rtt) => PingResult {
-                    target: target_str.to_string(),
-                    latency: Some(rtt),
-                    status: "Online".to_string(),
-                },
-                Err(e) => {
-                    eprintln!("[INFO] ICMP ping to {} failed: {}. Falling back to TCP connect...", target_str, e);
-                    let start = Instant::now();
-                    let addr_443 = std::net::SocketAddr::new(ip, 443);
-                    match tokio::time::timeout(timeout_duration, tokio::net::TcpStream::connect(addr_443)).await {
-                        Ok(Ok(_)) => PingResult {
-                            target: target_str.to_string(),
-                            latency: Some(start.elapsed().as_secs_f64() * 1000.0),
-                            status: "Online".to_string(),
-                        },
-                        _ => {
-                            let start_80 = Instant::now();
-                            let addr_80 = std::net::SocketAddr::new(ip, 80);
-                            match tokio::time::timeout(timeout_duration, tokio::net::TcpStream::connect(addr_80)).await {
-                                Ok(Ok(_)) => PingResult {
-                                    target: target_str.to_string(),
-                                    latency: Some(start_80.elapsed().as_secs_f64() * 1000.0),
-                                    status: "Online".to_string(),
-                                },
-                                _ => PingResult {
-                                    target: target_str.to_string(),
-                                    latency: None,
-                                    status: "Offline".to_string(),
-                                },
-                            }
+        Ok(ip) => match raw_icmp_ping(ip, timeout_duration).await {
+            Ok(rtt) => PingResult {
+                target: target_str.to_string(),
+                latency: Some(rtt),
+                status: "Online".to_string(),
+            },
+            Err(e) => {
+                eprintln!(
+                    "[INFO] ICMP ping to {} failed: {}. Falling back to TCP connect...",
+                    target_str, e
+                );
+                let start = Instant::now();
+                let addr_443 = std::net::SocketAddr::new(ip, 443);
+                match tokio::time::timeout(
+                    timeout_duration,
+                    tokio::net::TcpStream::connect(addr_443),
+                )
+                .await
+                {
+                    Ok(Ok(_)) => PingResult {
+                        target: target_str.to_string(),
+                        latency: Some(start.elapsed().as_secs_f64() * 1000.0),
+                        status: "Online".to_string(),
+                    },
+                    _ => {
+                        let start_80 = Instant::now();
+                        let addr_80 = std::net::SocketAddr::new(ip, 80);
+                        match tokio::time::timeout(
+                            timeout_duration,
+                            tokio::net::TcpStream::connect(addr_80),
+                        )
+                        .await
+                        {
+                            Ok(Ok(_)) => PingResult {
+                                target: target_str.to_string(),
+                                latency: Some(start_80.elapsed().as_secs_f64() * 1000.0),
+                                status: "Online".to_string(),
+                            },
+                            _ => PingResult {
+                                target: target_str.to_string(),
+                                latency: None,
+                                status: "Offline".to_string(),
+                            },
                         }
                     }
                 }
             }
-        }
+        },
         Err(_) => PingResult {
             target: target_str.to_string(),
             latency: None,

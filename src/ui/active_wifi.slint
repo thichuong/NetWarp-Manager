@@ -47,7 +47,39 @@ export component ActiveWifiPanel inherits Rectangle {
                             
                             VerticalLayout {
                                 alignment: center;
-                                HorizontalLayout {
+                                if (root.active_wifi.band == "Ethernet") : VerticalLayout {
+                                    alignment: center;
+                                    HorizontalLayout {
+                                        alignment: center;
+                                        Rectangle {
+                                            width: 18px;
+                                            height: 14px;
+                                            border-width: 2px;
+                                            border-color: Theme.success;
+                                            border-radius: 2px;
+                                            Rectangle {
+                                                width: 6px;
+                                                height: 4px;
+                                                x: 4px;
+                                                y: -5px;
+                                                background: Theme.success;
+                                                border-radius: 1px;
+                                            }
+                                            HorizontalLayout {
+                                                padding-left: 2px;
+                                                padding-right: 2px;
+                                                spacing: 1px;
+                                                alignment: center;
+                                                y: 5px;
+                                                Rectangle { width: 1px; height: 4px; background: Theme.success; }
+                                                Rectangle { width: 1px; height: 4px; background: Theme.success; }
+                                                Rectangle { width: 1px; height: 4px; background: Theme.success; }
+                                                Rectangle { width: 1px; height: 4px; background: Theme.success; }
+                                            }
+                                        }
+                                    }
+                                }
+                                if (root.active_wifi.band != "Ethernet") : HorizontalLayout {
                                     height: 24px;
                                     spacing: 3px;
                                     alignment: center;
@@ -100,7 +132,7 @@ export component ActiveWifiPanel inherits Rectangle {
                     VerticalLayout {
                         alignment: center;
                         Text {
-                            text: "Active Wi-Fi Connection";
+                            text: root.active_wifi.band == "Ethernet" ? "Active Ethernet Connection" : "Active Wi-Fi Connection";
                             font-size: 12px;
                             font-weight: 800;
                             color: Theme.text-label;
@@ -116,7 +148,7 @@ export component ActiveWifiPanel inherits Rectangle {
                                 color: Theme.text-heading;
                             }
                             // Signal Strength Badge
-                            if (root.active_wifi.active) : Rectangle {
+                            if (root.active_wifi.active && root.active_wifi.band != "Ethernet") : Rectangle {
                                 background: Theme.success-bg-trans;
                                 border-width: 1px;
                                 border-color: Theme.success-border-trans;
@@ -149,7 +181,7 @@ export component ActiveWifiPanel inherits Rectangle {
                                 }
                             }
                             // Frequency / Channel Badge
-                            if (root.active_wifi.active) : Rectangle {
+                            if (root.active_wifi.active && root.active_wifi.band != "Ethernet") : Rectangle {
                                 background: Theme.warning-bg-trans;
                                 border-width: 1px;
                                 border-color: rgba(243, 156, 18, 0.25);
@@ -227,7 +259,7 @@ export component ActiveWifiPanel inherits Rectangle {
                     alignment: end;
                     
                     // Change network action button
-                    Rectangle {
+                    if (root.active_wifi.band != "Ethernet") : Rectangle {
                         background: Theme.card-bg.transparentize(15%);
                         border-radius: 8px;
                         border-width: 1px;
@@ -265,26 +297,31 @@ export component ActiveWifiPanel inherits Rectangle {
                 spacing: 8px;
                 
                 Text {
-                    text: "🟢 Wi-Fi Hardware parameters";
+                    text: root.active_wifi.band == "Ethernet" ? "🟢 Ethernet Hardware parameters" : "🟢 Wi-Fi Hardware parameters";
                     font-size: 12px;
                     font-weight: 900;
                     color: Theme.success;
                     letter-spacing: 0.5px;
                 }
 
-                HorizontalLayout {
+                if (root.active_wifi.band != "Ethernet") : HorizontalLayout {
                     Text { text: "Security Type:"; color: Theme.text-label; font-size: 12px; }
                     Text { text: root.active_wifi.security; color: Theme.text-secondary; font-size: 12px; horizontal-alignment: right; font-family: "JetBrains Mono"; }
                 }
-                Rectangle { height: 1px; background: Theme.border-trans; }
-                HorizontalLayout {
+                if (root.active_wifi.band != "Ethernet") : Rectangle { height: 1px; background: Theme.border-trans; }
+                if (root.active_wifi.band != "Ethernet") : HorizontalLayout {
                     Text { text: "BSSID (Access Point MAC):"; color: Theme.text-label; font-size: 12px; }
                     Text { text: root.active_wifi.bssid; color: Theme.text-secondary; font-size: 12px; horizontal-alignment: right; font-family: "JetBrains Mono"; }
                 }
+                if (root.active_wifi.band != "Ethernet") : Rectangle { height: 1px; background: Theme.border-trans; }
+                HorizontalLayout {
+                    Text { text: root.active_wifi.band == "Ethernet" ? "Ethernet device Interface:" : "Wireless device Interface:"; color: Theme.text-label; font-size: 12px; }
+                    Text { text: root.active_wifi.device; color: Theme.text-secondary; font-size: 12px; horizontal-alignment: right; font-family: "JetBrains Mono"; }
+                }
                 Rectangle { height: 1px; background: Theme.border-trans; }
                 HorizontalLayout {
-                    Text { text: "Wireless device Interface:"; color: Theme.text-label; font-size: 12px; }
-                    Text { text: root.active_wifi.device; color: Theme.text-secondary; font-size: 12px; horizontal-alignment: right; font-family: "JetBrains Mono"; }
+                    Text { text: "Hardware MAC Address:"; color: Theme.text-label; font-size: 12px; }
+                    Text { text: root.active_wifi.mac; color: Theme.text-secondary; font-size: 12px; horizontal-alignment: right; font-family: "JetBrains Mono"; }
                 }
             }
 

@@ -705,6 +705,140 @@ pub async fn get_active_wifi(full_details: bool) -> Result<Option<WifiNetwork>, 
     Ok(None)
 }
 
+/// Retrieves details of the currently active Ethernet connection.
+pub async fn get_active_ethernet(full_details: bool) -> Result<Option<WifiNetwork>, AppError> {
+    let output = Command::new("nmcli")
+        .args(["-t", "-f", "DEVICE,TYPE,STATE,CONNECTION", "device"])
+        .output()
+        .await
+        .map_err(|e| AppError::WifiScan(format!("Failed to query active connections: {}", e)))?;
+
+    if !output.status.success() {
+        let err_msg = String::from_utf8_lossy(&output.stderr).to_string();
+        return Err(AppError::WifiScan(format!("System error: {}", err_msg)));
+    }
+
+    let stdout_str = String::from_utf8_lossy(&output.stdout);
+
+    for line in stdout_str.lines() {
+        let trimmed = line.trim();
+        if trimmed.is_empty() {
+            continue;
+        }
+
+        let parts = split_terse_line(trimmed);
+        if parts.len() < 3 {
+            continue;
+        }
+
+        let device = parts
+            .first()
+            .map_or_else(String::new, |s| s.trim().to_string());
+        let dev_type = parts
+            .get(1)
+            .map_or_else(String::new, |s| s.trim().to_string());
+        let state = parts
+            .get(2)
+            .map_or_else(String::new, |s| s.trim().to_string());
+        let connection = parts
+            .get(3)
+            .map_or_else(String::new, |s| s.trim().to_string());
+
+        if dev_type == "ethernet" && state == "connected" {
+            let (mut ip_address, mut gateway, mut dns_primary, mut dns_secondary, mut mac) =
+                (None, None, None, None, None);
+
+            if full_details {
+                let show_output = Command::new("nmcli")
+                    .args(["device", "show", &device])
+                    .output()
+                    .await
+                    .map_err(|e| {
+                        AppError::WifiScan(format!(
+                            "Failed to query device details for {}: {}",
+                            device, e
+                        ))
+                    })?;
+
+                if show_output.status.success() {
+                    let show_stdout = String::from_utf8_lossy(&show_output.stdout);
+                    for show_line in show_stdout.lines() {
+                        let trimmed_show = show_line.trim();
+                        let mut show_parts = trimmed_show.splitn(2, ':');
+                        let key = match show_parts.next() {
+                            Some(k) => k.trim(),
+                            None => continue,
+                        };
+                        let val = match show_parts.next() {
+                            Some(v) => v.trim(),
+                            None => continue,
+                        };
+
+                        if val == "--" || val.is_empty() {
+                            continue;
+                        }
+
+                        match key {
+                            "GENERAL.HWADDR" => mac = Some(val.to_string()),
+                            "IP4.ADDRESS[1]" => {
+                                let ip = val.split('/').next().unwrap_or(val).trim().to_string();
+                                ip_address = Some(ip);
+                            }
+                            "IP4.GATEWAY" => gateway = Some(val.to_string()),
+                            "IP4.DNS[1]" => dns_primary = Some(val.to_string()),
+                            "IP4.DNS[2]" => dns_secondary = Some(val.to_string()),
+                            _ => {}
+                        }
+                    }
+                }
+            }
+
+            let rate = if full_details {
+                let speed_path = format!("/sys/class/net/{}/speed", device);
+                if let Ok(speed_str) = std::fs::read_to_string(&speed_path) {
+                    if let Ok(speed_num) = speed_str.trim().parse::<i32>() {
+                        if speed_num >= 1000 {
+                            Some(format!("{:.1} Gbps", speed_num as f32 / 1000.0))
+                        } else {
+                            Some(format!("{} Mbps", speed_num))
+                        }
+                    } else {
+                        None
+                    }
+                } else {
+                    None
+                }
+            } else {
+                None
+            };
+
+            return Ok(Some(WifiNetwork {
+                bssid: String::new(),
+                ssid: if connection.is_empty() {
+                    "Ethernet".to_string()
+                } else {
+                    connection
+                },
+                channel: 0,
+                frequency: String::new(),
+                band: "Ethernet".to_string(),
+                signal: 100,
+                security: "Wired".to_string(),
+                active: true,
+                rate,
+                device: Some(device),
+                mac,
+                ip_address,
+                gateway,
+                dns_primary,
+                dns_secondary,
+            }));
+        }
+    }
+
+    Ok(None)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

@@ -40,9 +40,9 @@ graph TD
 ## 4. Operational Engines
 
 ### 4.1 Multi-Interval Polling Loops (`polling.rs`)
-- **Initial Sync**: One-shot startup hydration → fetches WARP mode, WARP status, active Wi-Fi, and public Geolocation concurrently on launch. Forwards cached state to Loop 2 via `tokio::sync::oneshot` channel.
+- **Initial Sync**: One-shot startup hydration → fetches WARP mode, WARP status, active Wi-Fi/Ethernet interface, and public Geolocation concurrently on launch. Forwards cached state to Loop 2 via `tokio::sync::oneshot` channel.
 - **1s00**: Compute network RX/TX IO rates, plot SVG chart paths.
-- **1s50**: Poll WiFi SSID and WARP tunnel status (receives initial state from startup sync). Auto-trigger GeoIP update only on state change (SSID or WARP status changed).
+- **1s50**: Poll active connection (Wi-Fi or Ethernet) and WARP tunnel status (receives initial state from startup sync). Auto-trigger GeoIP update only on state change (SSID/Connection name or WARP status changed).
 - **1s50**: Probe Cloudflare (`1.1.1.1`) and Google (`8.8.8.8`) ping latencies.
 
 ### 4.2 Polkit Daemon Installer
@@ -74,6 +74,6 @@ Linked in `src/callbacks.rs` inside `register_callbacks`:
 ### 6.2 State Properties (Rust ➔ UI Updates)
 Updated via background loops in `src/polling.rs`:
 - Loop 1 ➔ `speed_stats`, `download_history`, `upload_history`, dynamic SVG chart paths.
-- Loop 2 ➔ `active_wifi`, `warp_status_text`, `warp_network_text`, `warp_toggle_state`.
+- Loop 2 ➔ `active_wifi` (Wi-Fi or Ethernet connection details), `warp_status_text`, `warp_network_text`, `warp_toggle_state`.
 - Loop 3 ➔ `ping1`, `ping2`.
 - Loop 4 ➔ `geo_info` details.
