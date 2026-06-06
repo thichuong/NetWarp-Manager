@@ -307,6 +307,9 @@ export component WarpControlPanel inherits Rectangle {
                     border-radius: 10px;
                     
                     ScrollView {
+                        // Auto-scroll to the bottom of the log list when content height changes
+                        viewport-y: self.visible-height < self.viewport-height ? self.visible-height - self.viewport-height : 0px;
+
                         VerticalLayout {
                             padding: 8px;
                             spacing: 4px;
