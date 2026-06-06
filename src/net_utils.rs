@@ -95,10 +95,7 @@ pub async fn get_network_io() -> Result<NetworkIO, AppError> {
     let mut total_rx = 0;
     let mut total_tx = 0;
 
-    for (idx, line) in content.lines().enumerate() {
-        if idx < 2 {
-            continue; // Skip the header lines
-        }
+    for line in content.lines().skip(2) {
         let parts: Vec<&str> = line.split_whitespace().collect();
         if parts.len() >= 10 {
             if let Some(interface_str) = parts.first() {
@@ -149,7 +146,6 @@ pub async fn ping_multiple(targets: &[&str]) -> Result<Vec<PingResult>, AppError
                     let stdout = String::from_utf8_lossy(&out.stdout);
                     let mut latency = elapsed_ms;
 
-                    // Parse the more accurate RTT value from command line output
                     for line in stdout.lines() {
                         if line.contains("time=")
                             && let Some(idx) = line.find("time=")
@@ -160,6 +156,7 @@ pub async fn ping_multiple(targets: &[&str]) -> Result<Vec<PingResult>, AppError
                                 && let Ok(parsed) = part.parse::<f64>()
                             {
                                 latency = parsed;
+                                break;
                             }
                         }
                     }

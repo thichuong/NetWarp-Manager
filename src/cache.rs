@@ -100,6 +100,7 @@ pub fn save_cache_from_ui(ui: &AppWindow) {
 }
 
 #[cfg(test)]
+#[allow(clippy::unwrap_used)]
 mod tests {
     use super::*;
 

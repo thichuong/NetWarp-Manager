@@ -106,6 +106,23 @@ async fn fetch_and_hydrate_state(
     )
 }
 
+/// Message structure representing dynamic updates dispatched asynchronously to the UI event loop.
+enum UiUpdateMsg {
+    Speed {
+        stats: NetworkSpeed,
+        dl: Vec<f32>,
+        ul: Vec<f32>,
+    },
+    Wifi(Option<WifiNetwork>),
+    WarpStatus(slint::SharedString),
+    WarpMode(String),
+    GeoIp(Option<helpers::CachedGeoInfo>),
+    Pings {
+        p1: Option<PingResult>,
+        p2: Option<PingResult>,
+    },
+}
+
 // Interval and size constants for background polling engines
 const SPEED_POLL_MS: u64 = 1000;
 const STATUS_POLL_MS: u64 = 1500;
@@ -160,18 +177,174 @@ pub fn start_polling_loops(ui: &AppWindow, shutdown_rx: tokio::sync::watch::Rece
         slint::SharedString,
         slint::SharedString,
         Option<WifiNetwork>,
+        String,
+        Option<helpers::CachedGeoInfo>,
     )>();
 
     // Spawn task to fetch initial states concurrently and hydrate UI
     let ui_init = ui_weak.clone();
     tokio::spawn(async move {
-        let (warp_state, wifi_ssid, wifi_cache, _, _, _) = fetch_and_hydrate_state(&ui_init).await;
+        let (warp_state, wifi_ssid, wifi_cache, initial_warp_mode, _, geo_cache) =
+            fetch_and_hydrate_state(&ui_init).await;
 
-        let _ = tx.send((warp_state, wifi_ssid, wifi_cache));
+        let _ = tx.send((
+            warp_state,
+            wifi_ssid,
+            wifi_cache,
+            initial_warp_mode,
+            geo_cache,
+        ));
+    });
+
+    let (tx_msg, mut rx_msg) = tokio::sync::mpsc::channel::<UiUpdateMsg>(64);
+    let ui_dispatcher_weak = ui_weak.clone();
+
+    tokio::spawn(async move {
+        // UI Dispatcher Event Loop: Process update messages asynchronously.
+        // Once all worker threads shut down and drop their senders, rx_msg.recv() returns None,
+        // letting this dispatcher loop exit cleanly, dropping all allocated resources.
+        while let Some(first_msg) = rx_msg.recv().await {
+            // Local cache to aggregate updates before committing to Slint UI
+            let mut speed_stats_to_set = None;
+            let mut dl_vec_to_set = None;
+            let mut ul_vec_to_set = None;
+            let mut wifi_to_set = None;
+            let mut wifi_set_disconnected = false;
+            let mut warp_status_to_set = None;
+            let mut warp_mode_to_set = None;
+            let mut geo_info_to_set = None;
+            let mut ping1_to_set = None;
+            let mut ping2_to_set = None;
+
+            // Process a single message inline to avoid vector allocations and multi-pass loops
+            let mut process_msg = |msg: UiUpdateMsg| match msg {
+                UiUpdateMsg::Speed { stats, dl, ul } => {
+                    speed_stats_to_set = Some(stats);
+                    dl_vec_to_set = Some(dl);
+                    ul_vec_to_set = Some(ul);
+                }
+                UiUpdateMsg::Wifi(Some(wifi)) => {
+                    wifi_to_set = Some(wifi);
+                    wifi_set_disconnected = false;
+                }
+                UiUpdateMsg::Wifi(None) => {
+                    wifi_to_set = None;
+                    wifi_set_disconnected = true;
+                }
+                UiUpdateMsg::WarpStatus(status) => {
+                    warp_status_to_set = Some(status);
+                }
+                UiUpdateMsg::WarpMode(mode) => {
+                    warp_mode_to_set = Some(mode);
+                }
+                UiUpdateMsg::GeoIp(geo) => {
+                    geo_info_to_set = Some(geo);
+                }
+                UiUpdateMsg::Pings { p1, p2 } => {
+                    if let Some(p) = p1 {
+                        ping1_to_set = Some(p);
+                    }
+                    if let Some(p) = p2 {
+                        ping2_to_set = Some(p);
+                    }
+                }
+            };
+
+            // Process the first message immediately
+            process_msg(first_msg);
+
+            // Drain all currently queued pending updates to batch them in a single transaction
+            while let Ok(msg) = rx_msg.try_recv() {
+                process_msg(msg);
+            }
+
+            // Dispatch all consolidated changes to the main Slint UI event loop in one single IPC call
+            let _ = ui_dispatcher_weak.upgrade_in_event_loop(move |ui| {
+                if let Some(stats) = speed_stats_to_set {
+                    ui.set_speed_stats(stats);
+                }
+                if let (Some(dl), Some(ul)) = (dl_vec_to_set, ul_vec_to_set) {
+                    let max_dl = dl.iter().copied().fold(0.0f32, f32::max);
+                    let max_ul = ul.iter().copied().fold(0.0f32, f32::max);
+                    let max_val = max_dl.max(max_ul);
+                    let max_val_safe = if max_val < 100.0 { 100.0 } else { max_val };
+
+                    let chart_w = ui.get_chart_width();
+                    let chart_h = ui.get_chart_height();
+
+                    let dl_line =
+                        helpers::generate_svg_path(&dl, max_val_safe, chart_w, chart_h, false);
+                    let dl_area =
+                        helpers::generate_svg_path(&dl, max_val_safe, chart_w, chart_h, true);
+                    let ul_line =
+                        helpers::generate_svg_path(&ul, max_val_safe, chart_w, chart_h, false);
+                    let ul_area =
+                        helpers::generate_svg_path(&ul, max_val_safe, chart_w, chart_h, true);
+
+                    ui.set_download_line_path(dl_line.into());
+                    ui.set_download_area_path(dl_area.into());
+                    ui.set_upload_line_path(ul_line.into());
+                    ui.set_upload_area_path(ul_area.into());
+
+                    ui.set_download_history(Rc::new(slint::VecModel::from(dl)).into());
+                    ui.set_upload_history(Rc::new(slint::VecModel::from(ul)).into());
+                }
+                if let Some(wifi) = wifi_to_set {
+                    ui.set_active_wifi(wifi);
+                } else if wifi_set_disconnected {
+                    ui.set_active_wifi(helpers::disconnected_wifi());
+                }
+                if let Some(warp_status) = warp_status_to_set {
+                    let warp_lower = warp_status.to_lowercase();
+                    let is_connected = warp_lower.contains("connected");
+                    let is_connecting = warp_lower.contains("connecting");
+
+                    ui.set_warp_status_text(warp_status);
+                    if is_connected {
+                        ui.set_warp_network_text(
+                            "Your network traffic is encrypted & protected.".into(),
+                        );
+                        ui.set_warp_toggle_state(true);
+                    } else if is_connecting {
+                        ui.set_warp_network_text("Establishing secure Cloudflare tunnel...".into());
+                        ui.set_warp_toggle_state(true);
+                    } else {
+                        ui.set_warp_network_text(
+                            "Your network traffic is direct & unprotected.".into(),
+                        );
+                        ui.set_warp_toggle_state(false);
+                    }
+                }
+                if let Some(warp_mode) = warp_mode_to_set {
+                    ui.set_warp_mode_badge(format!("Mode: {}", warp_mode).into());
+                    ui.set_warp_mode_doh_active(!warp_mode.to_lowercase().contains("warp"));
+                }
+                if let Some(Some(geo)) = geo_info_to_set {
+                    ui.set_geo_info(IPGeolocatorInfo {
+                        ip: geo.ip.clone().into(),
+                        isp: geo.isp.clone().into(),
+                        location: geo.location.clone().into(),
+                        coordinates: geo.coordinates.clone().into(),
+                        warp_badge: geo.warp_badge.clone().into(),
+                    });
+                    let log_message = format!(
+                        "[GeoIP] Coordinates synced. IP: {} | ISP: {} ({})",
+                        geo.ip, geo.isp, geo.warp_badge
+                    );
+                    helpers::append_log(&ui, &log_message);
+                }
+                if let Some(p1) = ping1_to_set {
+                    ui.set_ping1(p1);
+                }
+                if let Some(p2) = ping2_to_set {
+                    ui.set_ping2(p2);
+                }
+            });
+        }
     });
 
     // Loop 1: Network Bandwidth IO speed monitoring
-    let ui_speed_weak = ui_weak.clone();
+    let tx_speed = tx_msg.clone();
     let mut shutdown_rx1 = shutdown_rx.clone();
     tokio::spawn(async move {
         let mut last_rx = 0;
@@ -185,6 +358,10 @@ pub fn start_polling_loops(ui: &AppWindow, shutdown_rx: tokio::sync::watch::Rece
         // Use pre-allocated Ring Buffers to eliminate massive allocations and O(n) shifts in Slint's Event Loop
         let mut dl_ring = std::collections::VecDeque::from(vec![0.0f32; HISTORY_SIZE]);
         let mut ul_ring = std::collections::VecDeque::from(vec![0.0f32; HISTORY_SIZE]);
+
+        let mut last_speed_stats: Option<NetworkSpeed> = None;
+        let mut last_dl_vec: Option<Vec<f32>> = None;
+        let mut last_ul_vec: Option<Vec<f32>> = None;
 
         loop {
             tokio::select! {
@@ -257,53 +434,50 @@ pub fn start_polling_loops(ui: &AppWindow, shutdown_rx: tokio::sync::watch::Rece
                 let dl_vec: Vec<f32> = dl_ring.iter().copied().collect();
                 let ul_vec: Vec<f32> = ul_ring.iter().copied().collect();
 
-                // Push new history to rolling models of graph visualization
-                let _ = ui_speed_weak.upgrade_in_event_loop(move |ui| {
-                    ui.set_speed_stats(speed_stats);
+                let stats_changed = last_speed_stats.as_ref() != Some(&speed_stats);
+                let dl_changed = last_dl_vec.as_ref() != Some(&dl_vec);
+                let ul_changed = last_ul_vec.as_ref() != Some(&ul_vec);
 
-                    let max_dl = dl_vec.iter().copied().fold(0.0f32, f32::max);
-                    let max_ul = ul_vec.iter().copied().fold(0.0f32, f32::max);
+                if stats_changed || dl_changed || ul_changed {
+                    let _ = tx_speed
+                        .send(UiUpdateMsg::Speed {
+                            stats: speed_stats.clone(),
+                            dl: dl_vec.clone(),
+                            ul: ul_vec.clone(),
+                        })
+                        .await;
 
-                    // Calculate the peak value across both historical channels for auto-scaling
-                    let max_val = max_dl.max(max_ul);
-
-                    // Clamp to a safe minimum baseline (100.0 KB/s) to prevent division by zero or overly micro-scaled waves when idle
-                    let max_val_safe = if max_val < 100.0 { 100.0 } else { max_val };
-
-                    let chart_w = ui.get_chart_width();
-                    let chart_h = ui.get_chart_height();
-
-                    // Generate dynamic line and area SVG paths for direct rendering on unified axis
-                    let dl_line =
-                        helpers::generate_svg_path(&dl_vec, max_val_safe, chart_w, chart_h, false);
-                    let dl_area =
-                        helpers::generate_svg_path(&dl_vec, max_val_safe, chart_w, chart_h, true);
-                    let ul_line =
-                        helpers::generate_svg_path(&ul_vec, max_val_safe, chart_w, chart_h, false);
-                    let ul_area =
-                        helpers::generate_svg_path(&ul_vec, max_val_safe, chart_w, chart_h, true);
-
-                    ui.set_download_line_path(dl_line.into());
-                    ui.set_download_area_path(dl_area.into());
-                    ui.set_upload_line_path(ul_line.into());
-                    ui.set_upload_area_path(ul_area.into());
-
-                    // Move vectors to Slint VecModels
-                    ui.set_download_history(Rc::new(slint::VecModel::from(dl_vec)).into());
-                    ui.set_upload_history(Rc::new(slint::VecModel::from(ul_vec)).into());
-                });
+                    last_speed_stats = Some(speed_stats);
+                    last_dl_vec = Some(dl_vec);
+                    last_ul_vec = Some(ul_vec);
+                }
             }
         }
     });
 
     // Loop 2: Wi-Fi active interface, Cloudflare WARP Daemon status and Mode
-    let ui_status_weak = ui_weak.clone();
+    let tx_status = tx_msg.clone();
     let mut shutdown_rx2 = shutdown_rx.clone();
     tokio::spawn(async move {
-        let (mut last_warp_state, mut last_wifi_ssid, mut cached_wifi_details) = match rx.await {
+        let (
+            mut last_warp_state,
+            mut last_wifi_ssid,
+            mut cached_wifi_details,
+            initial_warp_mode,
+            geo_cache,
+        ) = match rx.await {
             Ok(states) => states,
-            Err(_) => (slint::SharedString::new(), slint::SharedString::new(), None),
+            Err(_) => (
+                slint::SharedString::new(),
+                slint::SharedString::new(),
+                None,
+                "DoH".to_string(),
+                None,
+            ),
         };
+
+        let shared_state =
+            std::sync::Arc::new(tokio::sync::Mutex::new((initial_warp_mode, geo_cache)));
 
         loop {
             tokio::select! {
@@ -316,7 +490,7 @@ pub fn start_polling_loops(ui: &AppWindow, shutdown_rx: tokio::sync::watch::Rece
                 break;
             }
 
-            let mut current_wifi_ssid = slint::SharedString::new();
+            let mut current_wifi_ssid = last_wifi_ssid.clone();
             let mut active_wifi_to_set = None;
             let mut should_update_wifi_ui = false;
 
@@ -355,7 +529,6 @@ pub fn start_polling_loops(ui: &AppWindow, shutdown_rx: tokio::sync::watch::Rece
                         if let Ok(Some(active_full)) = wifi::get_active_wifi(true).await {
                             let slint_active = helpers::to_slint_wifi(active_full);
                             cached_wifi_details = Some(slint_active.clone());
-                            last_wifi_ssid = slint_active.ssid.clone();
                             current_wifi_ssid = slint_active.ssid.clone();
                             active_wifi_to_set = Some(slint_active);
                             should_update_wifi_ui = true;
@@ -371,7 +544,7 @@ pub fn start_polling_loops(ui: &AppWindow, shutdown_rx: tokio::sync::watch::Rece
                 Ok(None) => {
                     if cached_wifi_details.is_some() {
                         cached_wifi_details = None;
-                        last_wifi_ssid = slint::SharedString::new();
+                        current_wifi_ssid = slint::SharedString::new();
                         should_update_wifi_ui = true; // Set to "Not Connected"
                     }
                 }
@@ -386,52 +559,27 @@ pub fn start_polling_loops(ui: &AppWindow, shutdown_rx: tokio::sync::watch::Rece
             );
 
             // Detect if connection state or wifi SSID changed to trigger immediate Geo IP refresh
-            let state_changed =
-                warp_status != last_warp_state || current_wifi_ssid != last_wifi_ssid;
+            let warp_status_changed = warp_status != last_warp_state;
+            let wifi_ssid_changed = current_wifi_ssid != last_wifi_ssid;
+            let state_changed = warp_status_changed || wifi_ssid_changed;
 
             if state_changed {
                 last_warp_state = warp_status.clone();
                 last_wifi_ssid = current_wifi_ssid.clone();
             }
 
-            // Precompute lowering and status booleans to avoid overhead inside the event loop closure
-            let warp_lower = warp_status.to_lowercase();
-            let is_connected = warp_lower.contains("connected");
-            let is_connecting = warp_lower.contains("connecting");
+            if should_update_wifi_ui {
+                let _ = tx_status.send(UiUpdateMsg::Wifi(active_wifi_to_set)).await;
+            }
 
-            let ui_status_weak_inner = ui_status_weak.clone();
-
-            // Consolidate updates into a single event loop call to minimize cross-thread message passing
-            let _ = ui_status_weak_inner.upgrade_in_event_loop(move |ui| {
-                if should_update_wifi_ui {
-                    if let Some(active) = active_wifi_to_set {
-                        ui.set_active_wifi(active);
-                    } else {
-                        ui.set_active_wifi(helpers::disconnected_wifi());
-                    }
-                }
-
-                ui.set_warp_status_text(warp_status);
-
-                if is_connected {
-                    ui.set_warp_network_text(
-                        "Your network traffic is encrypted & protected.".into(),
-                    );
-                    ui.set_warp_toggle_state(true);
-                } else if is_connecting {
-                    ui.set_warp_network_text("Establishing secure Cloudflare tunnel...".into());
-                    ui.set_warp_toggle_state(true);
-                } else {
-                    ui.set_warp_network_text(
-                        "Your network traffic is direct & unprotected.".into(),
-                    );
-                    ui.set_warp_toggle_state(false);
-                }
-            });
+            if warp_status_changed {
+                let _ = tx_status.send(UiUpdateMsg::WarpStatus(warp_status)).await;
+            }
 
             // Immediate trigger Geolocation refresh and WARP mode check
             if state_changed {
-                let ui_upgrade = ui_status_weak.clone();
+                let tx_status_clone = tx_status.clone();
+                let shared_state_clone = shared_state.clone();
 
                 tokio::spawn(async move {
                     // Fetch updated operating mode and GeoIP concurrently
@@ -443,58 +591,67 @@ pub fn start_polling_loops(ui: &AppWindow, shutdown_rx: tokio::sync::watch::Rece
                         "DoH".to_string()
                     });
 
-                    // Update UI with newly fetched mode and GeoIP
-                    let warp_mode_ui = new_warp_mode.clone();
                     let geo_ui = geo_res.ok();
 
-                    let _ = ui_upgrade.upgrade_in_event_loop(move |ui| {
-                        ui.set_warp_mode_badge(format!("Mode: {}", warp_mode_ui).into());
-                        ui.set_warp_mode_doh_active(!warp_mode_ui.to_lowercase().contains("warp"));
+                    let mut state = shared_state_clone.lock().await;
+                    let mode_changed = new_warp_mode != state.0;
+                    let geo_changed = geo_ui != state.1;
 
-                        if let Some(ref geo) = geo_ui {
-                            ui.set_geo_info(IPGeolocatorInfo {
-                                ip: geo.ip.clone().into(),
-                                isp: geo.isp.clone().into(),
-                                location: geo.location.clone().into(),
-                                coordinates: geo.coordinates.clone().into(),
-                                warp_badge: geo.warp_badge.clone().into(),
-                            });
-                            let log_message = format!(
-                                "[GeoIP] Coordinates synced. IP: {} | ISP: {} ({})",
-                                geo.ip, geo.isp, geo.warp_badge
-                            );
-                            helpers::append_log(&ui, &log_message);
+                    if mode_changed || geo_changed {
+                        if mode_changed {
+                            state.0 = new_warp_mode.clone();
+                            let _ = tx_status_clone
+                                .send(UiUpdateMsg::WarpMode(new_warp_mode))
+                                .await;
                         }
-                    });
+                        if geo_changed {
+                            state.1 = geo_ui.clone();
+                            let _ = tx_status_clone.send(UiUpdateMsg::GeoIp(geo_ui)).await;
+                        }
+                    }
                 });
             }
         }
     });
 
     // Loop 3: Ping Diagnostics Latencies
-    let ui_ping_weak = ui_weak.clone();
+    let tx_ping = tx_msg;
     let mut shutdown_rx3 = shutdown_rx;
     tokio::spawn(async move {
+        let mut last_ping1: Option<PingResult> = None;
+        let mut last_ping2: Option<PingResult> = None;
+
         loop {
             if let Ok(results) = net_utils::ping_multiple(&["1.1.1.1", "8.8.8.8"]).await {
-                let ui_ping_inner = ui_ping_weak.clone();
-                let _ = ui_ping_inner.upgrade_in_event_loop(move |ui| {
-                    for res in results {
-                        let is_ping1 = res.target == "1.1.1.1";
-                        let is_ping2 = res.target == "8.8.8.8";
-                        let slint_res = PingResult {
-                            target: res.target.into(),
-                            latency: res.latency.unwrap_or(999.0) as f32,
-                            status: res.status.into(),
-                        };
+                let mut p1_to_set = None;
+                let mut p2_to_set = None;
 
-                        if is_ping1 {
-                            ui.set_ping1(slint_res);
-                        } else if is_ping2 {
-                            ui.set_ping2(slint_res);
-                        }
+                for res in results {
+                    let is_ping1 = res.target == "1.1.1.1";
+                    let is_ping2 = res.target == "8.8.8.8";
+                    let slint_res = PingResult {
+                        target: res.target.into(),
+                        latency: res.latency.unwrap_or(999.0) as f32,
+                        status: res.status.into(),
+                    };
+
+                    if is_ping1 && last_ping1.as_ref() != Some(&slint_res) {
+                        p1_to_set = Some(slint_res.clone());
+                        last_ping1 = Some(slint_res);
+                    } else if is_ping2 && last_ping2.as_ref() != Some(&slint_res) {
+                        p2_to_set = Some(slint_res.clone());
+                        last_ping2 = Some(slint_res);
                     }
-                });
+                }
+
+                if p1_to_set.is_some() || p2_to_set.is_some() {
+                    let _ = tx_ping
+                        .send(UiUpdateMsg::Pings {
+                            p1: p1_to_set,
+                            p2: p2_to_set,
+                        })
+                        .await;
+                }
             }
 
             tokio::select! {

@@ -124,7 +124,7 @@ pub fn append_log(ui: &AppWindow, message: &str) {
     }
 }
 
-#[derive(serde::Serialize, serde::Deserialize, Clone, Debug)]
+#[derive(serde::Serialize, serde::Deserialize, Clone, Debug, PartialEq)]
 pub struct CachedGeoInfo {
     pub ip: String,
     pub isp: String,
