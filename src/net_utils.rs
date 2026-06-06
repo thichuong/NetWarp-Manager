@@ -1,5 +1,7 @@
 use crate::AppError;
 use std::time::Instant;
+use std::sync::LazyLock;
+use socket2::{Socket, Domain, Type, Protocol};
 use tokio::process::Command;
 
 /// Struct containing total received and transmitted bytes of the system.
@@ -54,16 +56,18 @@ pub async fn ping_target(target: Option<&str>) -> Result<String, AppError> {
 /// Uses native HTTP crate (reqwest) instead of curl.
 /// Implements a 3-retry fallback with 1s delay and 3s connection timeout to gracefully
 /// handle temporary network dropouts during WARP mode switching.
-pub async fn trace_ip() -> Result<String, AppError> {
-    let client = reqwest::Client::builder()
+static HTTP_CLIENT: LazyLock<reqwest::Client> = LazyLock::new(|| {
+    reqwest::Client::builder()
         .timeout(std::time::Duration::from_secs(3))
         .user_agent("wiwarp/0.2.0")
         .build()
-        .map_err(|e| AppError::GeoIp(format!("Failed to build HTTP client: {}", e)))?;
+        .unwrap_or_else(|_| reqwest::Client::new())
+});
 
+pub async fn trace_ip() -> Result<String, AppError> {
     let mut last_err = None;
     for attempt in 1..=4 {
-        match client.get("https://ipwho.is/").send().await {
+        match HTTP_CLIENT.get("https://ipwho.is/").send().await {
             Ok(res) => {
                 let body = res.text().await.map_err(|e| {
                     AppError::GeoIp(format!("Failed to read geo response body: {}", e))
@@ -86,16 +90,17 @@ pub async fn trace_ip() -> Result<String, AppError> {
 }
 
 /// Fetches the accumulated download (rx) and upload (tx) bytes across active interfaces.
-/// Reads directly from `/proc/net/dev` on Linux systems asynchronously.
-pub async fn get_network_io() -> Result<NetworkIO, AppError> {
-    let content = tokio::fs::read_to_string("/proc/net/dev")
-        .await
+/// Reads directly from `/proc/net/dev` on Linux systems synchronously.
+pub fn get_network_io_sync() -> Result<NetworkIO, AppError> {
+    use std::io::{BufRead, BufReader};
+    let file = std::fs::File::open("/proc/net/dev")
         .map_err(|e| AppError::NetworkIO(format!("Failed to read /proc/net/dev: {}", e)))?;
+    let reader = BufReader::new(file);
 
     let mut total_rx = 0;
     let mut total_tx = 0;
 
-    for line in content.lines().skip(2) {
+    for line in reader.lines().skip(2).flatten() {
         let mut tokens = line.split_whitespace();
         if let Some(interface_str) = tokens.next() {
             let interface = interface_str.trim_end_matches(':');
@@ -126,6 +131,137 @@ pub async fn get_network_io() -> Result<NetworkIO, AppError> {
     })
 }
 
+#[allow(clippy::indexing_slicing)]
+fn checksum(data: &[u8]) -> u16 {
+    let mut sum = 0u32;
+    let mut chunks = data.chunks_exact(2);
+    for chunk in &mut chunks {
+        let val = u16::from_be_bytes([chunk[0], chunk[1]]);
+        sum += val as u32;
+    }
+    if let Some(&remainder) = chunks.remainder().first() {
+        let val = u16::from_be_bytes([remainder, 0]);
+        sum += val as u32;
+    }
+    while sum >> 16 != 0 {
+        sum = (sum & 0xffff) + (sum >> 16);
+    }
+    !(sum as u16)
+}
+
+#[allow(clippy::indexing_slicing)]
+fn build_icmp_request(identifier: u16, seq: u16) -> Vec<u8> {
+    let mut packet = vec![0u8; 16];
+    packet[0] = 8; // Type: Echo Request
+    packet[1] = 0; // Code: 0
+    packet[4..6].copy_from_slice(&identifier.to_be_bytes());
+    packet[6..8].copy_from_slice(&seq.to_be_bytes());
+    packet[8..16].copy_from_slice(b"wiwarp!!");
+
+    let cs = checksum(&packet);
+    packet[2..4].copy_from_slice(&cs.to_be_bytes());
+    packet
+}
+
+#[allow(clippy::indexing_slicing)]
+async fn raw_icmp_ping(target: std::net::IpAddr, timeout_duration: std::time::Duration) -> Result<f64, AppError> {
+    let socket = Socket::new(Domain::IPV4, Type::DGRAM, Some(Protocol::ICMPV4))
+        .map_err(|e| AppError::Ping(format!("Failed to create ICMP socket: {}", e)))?;
+
+    socket.set_nonblocking(true)
+        .map_err(|e| AppError::Ping(format!("Failed to set nonblocking: {}", e)))?;
+
+    let std_sock: std::net::UdpSocket = socket.into();
+    let tokio_sock = tokio::net::UdpSocket::from_std(std_sock)
+        .map_err(|e| AppError::Ping(format!("Failed to wrap tokio socket: {}", e)))?;
+
+    let identifier = std::process::id() as u16;
+    let seq = 1u16;
+    let request_packet = build_icmp_request(identifier, seq);
+    let dest = std::net::SocketAddr::new(target, 0);
+
+    let start = Instant::now();
+    tokio_sock.send_to(&request_packet, dest)
+        .await
+        .map_err(|e| AppError::Ping(format!("Failed to send ICMP packet: {}", e)))?;
+
+    let mut recv_buf = [0u8; 256];
+
+    loop {
+        let recv_future = tokio_sock.recv_from(&mut recv_buf);
+        match tokio::time::timeout(timeout_duration, recv_future).await {
+            Ok(Ok((len, _from_addr))) => {
+                if len >= 8 {
+                    let icmp_type = recv_buf[0];
+                    let icmp_code = recv_buf[1];
+                    let rcv_seq = u16::from_be_bytes([recv_buf[6], recv_buf[7]]);
+
+                    if icmp_type == 0 && icmp_code == 0 && rcv_seq == seq {
+                        let rtt = start.elapsed().as_secs_f64() * 1000.0;
+                        return Ok(rtt);
+                    }
+                }
+            }
+            Ok(Err(e)) => {
+                return Err(AppError::Ping(format!("Socket recv error: {}", e)));
+            }
+            Err(_) => {
+                return Err(AppError::Ping("ICMP request timed out".to_string()));
+            }
+        }
+    }
+}
+
+
+async fn ping_single_target(target_str: &str, timeout_duration: std::time::Duration) -> PingResult {
+    let target_ip: Result<std::net::IpAddr, _> = target_str.parse();
+
+    match target_ip {
+        Ok(ip) => {
+            match raw_icmp_ping(ip, timeout_duration).await {
+                Ok(rtt) => PingResult {
+                    target: target_str.to_string(),
+                    latency: Some(rtt),
+                    status: "Online".to_string(),
+                },
+                Err(e) => {
+                    eprintln!("[INFO] ICMP ping to {} failed: {}. Falling back to TCP connect...", target_str, e);
+                    let start = Instant::now();
+                    let addr_443 = std::net::SocketAddr::new(ip, 443);
+                    match tokio::time::timeout(timeout_duration, tokio::net::TcpStream::connect(addr_443)).await {
+                        Ok(Ok(_)) => PingResult {
+                            target: target_str.to_string(),
+                            latency: Some(start.elapsed().as_secs_f64() * 1000.0),
+                            status: "Online".to_string(),
+                        },
+                        _ => {
+                            let start_80 = Instant::now();
+                            let addr_80 = std::net::SocketAddr::new(ip, 80);
+                            match tokio::time::timeout(timeout_duration, tokio::net::TcpStream::connect(addr_80)).await {
+                                Ok(Ok(_)) => PingResult {
+                                    target: target_str.to_string(),
+                                    latency: Some(start_80.elapsed().as_secs_f64() * 1000.0),
+                                    status: "Online".to_string(),
+                                },
+                                _ => PingResult {
+                                    target: target_str.to_string(),
+                                    latency: None,
+                                    status: "Offline".to_string(),
+                                },
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        Err(_) => PingResult {
+            target: target_str.to_string(),
+            latency: None,
+            status: "Offline".to_string(),
+        },
+    }
+}
+
 /// Executes parallel quick pings (1 packet, 1s timeout) to a list of target hosts.
 /// Returns their respective RTT latency in milliseconds and online status.
 pub async fn ping_multiple(targets: &[&str]) -> Result<Vec<PingResult>, AppError> {
@@ -134,41 +270,7 @@ pub async fn ping_multiple(targets: &[&str]) -> Result<Vec<PingResult>, AppError
     for &target in targets {
         let target_string = target.to_string();
         let handle = tokio::spawn(async move {
-            let start = Instant::now();
-            let output = Command::new("ping")
-                .args(["-c", "1", "-W", "1", &target_string])
-                .output()
-                .await;
-
-            match output {
-                Ok(out) if out.status.success() => {
-                    let elapsed_ms = start.elapsed().as_secs_f64() * 1000.0;
-                    let stdout = String::from_utf8_lossy(&out.stdout);
-                    let mut latency = elapsed_ms;
-
-                    for line in stdout.lines() {
-                        if let Some(idx) = line.find("time=")
-                            && let Some(time_str) = line.get(idx + 5..)
-                            && let Some(part) = time_str.split_whitespace().next()
-                            && let Ok(parsed) = part.parse::<f64>()
-                        {
-                            latency = parsed;
-                            break;
-                        }
-                    }
-
-                    PingResult {
-                        target: target_string,
-                        latency: Some(latency),
-                        status: "Online".to_string(),
-                    }
-                }
-                _ => PingResult {
-                    target: target_string,
-                    latency: None,
-                    status: "Offline".to_string(),
-                },
-            }
+            ping_single_target(&target_string, std::time::Duration::from_secs(1)).await
         });
         handles.push(handle);
     }

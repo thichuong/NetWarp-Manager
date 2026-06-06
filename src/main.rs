@@ -28,7 +28,7 @@ mod ui_generated {
 }
 pub use ui_generated::*;
 
-#[tokio::main]
+#[tokio::main(flavor = "multi_thread", worker_threads = 2)]
 async fn main() -> Result<(), slint::PlatformError> {
     // 1. Initialize the main Slint UI Application Window
     let ui = AppWindow::new()?;

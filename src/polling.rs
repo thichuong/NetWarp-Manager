@@ -124,9 +124,21 @@ enum UiUpdateMsg {
 
 // Interval and size constants for background polling engines
 const SPEED_POLL_MS: u64 = 1000;
-const STATUS_POLL_MS: u64 = 1500;
-const PING_POLL_MS: u64 = 1500;
 const HISTORY_SIZE: usize = 25;
+
+// Adaptive interval constants for Loop 2 (status)
+const STATUS_POLL_MS_FAST: u64 = 1500;
+const STATUS_POLL_MS_MEDIUM: u64 = 3000;
+const STATUS_POLL_MS_SLOW: u64 = 5000;
+const ADAPTIVE_MEDIUM_THRESHOLD: u32 = 3;  // cycles without change
+const ADAPTIVE_SLOW_THRESHOLD: u32 = 10;
+
+// Adaptive interval constants for Loop 3 (ping)
+const PING_POLL_MS_NORMAL: u64 = 3000;
+const PING_POLL_MS_SLOW: u64 = 5000;
+const PING_STABLE_THRESHOLD: u32 = 5;
+const PING_JITTER_TOLERANCE: f32 = 5.0; // ms
+
 
 /// Starts all background polling loop engines for network status, speeds, and pings.
 // Developer Warning: Refer to architecture.md Section 6 for full Slint-Rust
@@ -368,6 +380,8 @@ pub fn start_polling_loops(ui: &AppWindow, shutdown_rx: tokio::sync::watch::Rece
         let mut last_speed_stats: Option<NetworkSpeed> = None;
         let mut last_dl_ring: Option<std::collections::VecDeque<f32>> = None;
         let mut last_ul_ring: Option<std::collections::VecDeque<f32>> = None;
+        let mut last_all_zero = false;
+
 
         loop {
             tokio::select! {
@@ -380,7 +394,7 @@ pub fn start_polling_loops(ui: &AppWindow, shutdown_rx: tokio::sync::watch::Rece
                 break;
             }
 
-            if let Ok(io) = net_utils::get_network_io().await {
+            if let Ok(io) = net_utils::get_network_io_sync() {
                 // Read exact bytes parsed directly from /proc/net/dev
                 let rx = io.rx_bytes;
                 let tx = io.tx_bytes;
@@ -437,6 +451,15 @@ pub fn start_polling_loops(ui: &AppWindow, shutdown_rx: tokio::sync::watch::Rece
                 ul_ring.pop_front();
                 ul_ring.push_back(speed_ul_kb as f32);
 
+                let all_zero = dl_ring.iter().all(|&v| v == 0.0) && ul_ring.iter().all(|&v| v == 0.0);
+                let was_all_zero = last_all_zero;
+                last_all_zero = all_zero;
+
+                if all_zero && was_all_zero {
+                    // Skip: no new data, chart is already flat
+                    continue;
+                }
+
                 let dl_changed = last_dl_ring.as_ref() != Some(&dl_ring);
                 let ul_changed = last_ul_ring.as_ref() != Some(&ul_ring);
                 let stats_changed = last_speed_stats.as_ref() != Some(&speed_stats);
@@ -485,12 +508,22 @@ pub fn start_polling_loops(ui: &AppWindow, shutdown_rx: tokio::sync::watch::Rece
         let shared_state =
             std::sync::Arc::new(tokio::sync::Mutex::new((initial_warp_mode, geo_cache)));
 
+        let mut stable_cycles = 0u32;
+
         loop {
+            let current_poll_ms = if stable_cycles >= ADAPTIVE_SLOW_THRESHOLD {
+                STATUS_POLL_MS_SLOW
+            } else if stable_cycles >= ADAPTIVE_MEDIUM_THRESHOLD {
+                STATUS_POLL_MS_MEDIUM
+            } else {
+                STATUS_POLL_MS_FAST
+            };
+
             tokio::select! {
                 _ = shutdown_rx2.changed() => {
                     break;
                 }
-                _ = tokio::time::sleep(std::time::Duration::from_millis(STATUS_POLL_MS)) => {}
+                _ = tokio::time::sleep(std::time::Duration::from_millis(current_poll_ms)) => {}
             }
             if *shutdown_rx2.borrow() {
                 break;
@@ -582,6 +615,12 @@ pub fn start_polling_loops(ui: &AppWindow, shutdown_rx: tokio::sync::watch::Rece
                 let _ = tx_status.send(UiUpdateMsg::WarpStatus(warp_status)).await;
             }
 
+            if should_update_wifi_ui || warp_status_changed {
+                stable_cycles = 0;
+            } else {
+                stable_cycles += 1;
+            }
+
             // Immediate trigger Geolocation refresh and WARP mode check
             if state_changed {
                 let tx_status_clone = tx_status.clone();
@@ -626,52 +665,87 @@ pub fn start_polling_loops(ui: &AppWindow, shutdown_rx: tokio::sync::watch::Rece
     tokio::spawn(async move {
         let mut last_ping1: Option<PingResult> = None;
         let mut last_ping2: Option<PingResult> = None;
+        let mut ping_stable_cycles = 0u32;
 
         loop {
-            if let Ok(results) = net_utils::ping_multiple(&["1.1.1.1", "8.8.8.8"]).await {
-                let mut p1_to_set = None;
-                let mut p2_to_set = None;
+            let current_ping_ms = if ping_stable_cycles >= PING_STABLE_THRESHOLD {
+                PING_POLL_MS_SLOW
+            } else {
+                PING_POLL_MS_NORMAL
+            };
 
-                for res in results {
-                    let is_ping1 = res.target == "1.1.1.1";
-                    let is_ping2 = res.target == "8.8.8.8";
-                    if !is_ping1 && !is_ping2 {
-                        continue;
+            let mut p1_stable = false;
+            let mut p2_stable = false;
+
+            match net_utils::ping_multiple(&["1.1.1.1", "8.8.8.8"]).await {
+                Ok(results) => {
+                    let mut p1_to_set = None;
+                    let mut p2_to_set = None;
+
+                    for res in results {
+                        let is_ping1 = res.target == "1.1.1.1";
+                        let is_ping2 = res.target == "8.8.8.8";
+                        if !is_ping1 && !is_ping2 {
+                            continue;
+                        }
+
+                        let raw_latency = res.latency.unwrap_or(999.0) as f32;
+                        let last = if is_ping1 { &last_ping1 } else { &last_ping2 };
+
+                        let stable = match last {
+                            Some(l) => {
+                                (l.latency - raw_latency).abs() <= PING_JITTER_TOLERANCE
+                                    && l.status.as_str() == res.status.as_str()
+                            }
+                            None => false,
+                        };
+
+                        if is_ping1 {
+                            p1_stable = stable;
+                        } else {
+                            p2_stable = stable;
+                        }
+
+                        let changed = match last {
+                            Some(l) => {
+                                l.latency != raw_latency || l.status.as_str() != res.status.as_str()
+                            }
+                            None => true,
+                        };
+
+                        if changed {
+                            let slint_res = PingResult {
+                                target: res.target.into(),
+                                latency: raw_latency,
+                                status: res.status.into(),
+                            };
+                            if is_ping1 {
+                                p1_to_set = Some(slint_res.clone());
+                                last_ping1 = Some(slint_res);
+                            } else {
+                                p2_to_set = Some(slint_res.clone());
+                                last_ping2 = Some(slint_res);
+                            }
+                        }
                     }
 
-                    let raw_latency = res.latency.unwrap_or(999.0) as f32;
-                    let last = if is_ping1 { &last_ping1 } else { &last_ping2 };
+                    if p1_to_set.is_some() || p2_to_set.is_some() {
+                        let _ = tx_ping
+                            .send(UiUpdateMsg::Pings {
+                                p1: p1_to_set,
+                                p2: p2_to_set,
+                            })
+                            .await;
+                    }
 
-                    let changed = match last {
-                        Some(l) => {
-                            l.latency != raw_latency || l.status.as_str() != res.status.as_str()
-                        }
-                        None => true,
-                    };
-
-                    if changed {
-                        let slint_res = PingResult {
-                            target: res.target.into(),
-                            latency: raw_latency,
-                            status: res.status.into(),
-                        };
-                        if is_ping1 {
-                            p1_to_set = Some(slint_res.clone());
-                            last_ping1 = Some(slint_res);
-                        } else {
-                            p2_to_set = Some(slint_res.clone());
-                            last_ping2 = Some(slint_res);
-                        }
+                    if p1_stable && p2_stable {
+                        ping_stable_cycles += 1;
+                    } else {
+                        ping_stable_cycles = 0;
                     }
                 }
-
-                if p1_to_set.is_some() || p2_to_set.is_some() {
-                    let _ = tx_ping
-                        .send(UiUpdateMsg::Pings {
-                            p1: p1_to_set,
-                            p2: p2_to_set,
-                        })
-                        .await;
+                Err(_) => {
+                    ping_stable_cycles = 0;
                 }
             }
 
@@ -679,7 +753,7 @@ pub fn start_polling_loops(ui: &AppWindow, shutdown_rx: tokio::sync::watch::Rece
                 _ = shutdown_rx3.changed() => {
                     break;
                 }
-                _ = tokio::time::sleep(std::time::Duration::from_millis(PING_POLL_MS)) => {}
+                _ = tokio::time::sleep(std::time::Duration::from_millis(current_ping_ms)) => {}
             }
             if *shutdown_rx3.borrow() {
                 break;
