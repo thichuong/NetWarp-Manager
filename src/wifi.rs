@@ -1,5 +1,11 @@
 use crate::AppError;
-use tokio::process::Command;
+
+struct Command;
+impl Command {
+    fn new(program: &str) -> tokio::process::Command {
+        crate::helpers::new_tokio_command(program)
+    }
+}
 
 /// Structure representing a Wi-Fi network returned to the frontend with detailed information.
 #[derive(serde::Serialize, serde::Deserialize, Clone, Debug)]

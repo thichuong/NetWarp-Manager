@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>io.github.thichuong.wiwarp</id>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>MIT</project_license>
+  <name>WiWarp</name>
+  <summary>Manage Wi-Fi and Cloudflare WARP connections seamlessly</summary>
+  <description>
+    <p>
+      WiWarp is a native Linux desktop application built with Slint and Rust that allows you to manage your Wi-Fi connections and Cloudflare WARP VPN settings seamlessly in one modern interface.
+    </p>
+  </description>
+  <launchable type="desktop-id">io.github.thichuong.wiwarp.desktop</launchable>
+  <screenshots>
+  </screenshots>
+  <url type="homepage">https://github.com/thichuong/NetWarp-Manager</url>
+  <developer_name>thichuong</developer_name>
+</component>

@@ -253,11 +253,24 @@ pub async fn refresh_ping(ui_weak: slint::Weak<AppWindow>) {
     }
 }
 
-/// Dynamically detects the host OS name from `/etc/os-release`.
-/// Returns the name in uppercase (e.g., "FEDORA LINUX" or "UBUNTU"),
-/// defaulting to "LINUX SYSTEM" on failure.
 pub fn detect_os_name() -> String {
-    if let Ok(content) = std::fs::read_to_string("/etc/os-release") {
+    let content_opt = if is_flatpak() {
+        std::process::Command::new("flatpak-spawn")
+            .args(["--host", "cat", "/etc/os-release"])
+            .output()
+            .ok()
+            .and_then(|o| {
+                if o.status.success() {
+                    Some(String::from_utf8_lossy(&o.stdout).into_owned())
+                } else {
+                    None
+                }
+            })
+    } else {
+        std::fs::read_to_string("/etc/os-release").ok()
+    };
+
+    if let Some(content) = content_opt {
         for line in content.lines() {
             if let Some(name_val) = line.strip_prefix("NAME=") {
                 let name = name_val.trim_matches('"');
@@ -328,6 +341,35 @@ pub fn disconnected_wifi() -> WifiNetwork {
         band: "--".into(),
         channel: 0,
         frequency: "--".into(),
+    }
+}
+
+/// Detects if the application is running inside a Flatpak container.
+pub fn is_flatpak() -> bool {
+    std::path::Path::new("/.flatpak-info").exists()
+}
+
+/// Creates a new asynchronous tokio command.
+/// If running under Flatpak, it wraps the command via `flatpak-spawn --host`.
+pub fn new_tokio_command(program: &str) -> tokio::process::Command {
+    if is_flatpak() {
+        let mut cmd = tokio::process::Command::new("flatpak-spawn");
+        cmd.arg("--host").arg(program);
+        cmd
+    } else {
+        tokio::process::Command::new(program)
+    }
+}
+
+/// Creates a new synchronous std command.
+/// If running under Flatpak, it wraps the command via `flatpak-spawn --host`.
+pub fn new_std_command(program: &str) -> std::process::Command {
+    if is_flatpak() {
+        let mut cmd = std::process::Command::new("flatpak-spawn");
+        cmd.arg("--host").arg(program);
+        cmd
+    } else {
+        std::process::Command::new(program)
     }
 }
 

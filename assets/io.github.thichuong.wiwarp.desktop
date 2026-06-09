@@ -1,0 +1,10 @@
+[Desktop Entry]
+Name=WiWarp
+Comment=Manage Wi-Fi and Cloudflare WARP connections seamlessly
+Exec=wiwarp
+Icon=io.github.thichuong.wiwarp
+Terminal=false
+Type=Application
+Categories=Network;Utility;System;
+Keywords=wifi;warp;cloudflare;network;vpn;
+StartupNotify=true

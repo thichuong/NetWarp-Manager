@@ -2,7 +2,12 @@ use crate::AppError;
 use socket2::{Domain, Protocol, Socket, Type};
 use std::sync::LazyLock;
 use std::time::Instant;
-use tokio::process::Command;
+struct Command;
+impl Command {
+    fn new(program: &str) -> tokio::process::Command {
+        crate::helpers::new_tokio_command(program)
+    }
+}
 
 /// Struct containing total received and transmitted bytes of the system.
 #[derive(serde::Serialize)]
