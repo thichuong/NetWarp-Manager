@@ -15,9 +15,15 @@ fn get_cache_path() -> std::path::PathBuf {
     }
     #[cfg(not(test))]
     {
-        let home = std::env::var("HOME").unwrap_or_else(|_| ".".to_string());
-        let mut path = std::path::PathBuf::from(home);
-        path.push(".cache");
+        let cache_dir = std::env::var("XDG_CACHE_HOME")
+            .map(std::path::PathBuf::from)
+            .unwrap_or_else(|_| {
+                let home = std::env::var("HOME").unwrap_or_else(|_| ".".to_string());
+                let mut path = std::path::PathBuf::from(home);
+                path.push(".cache");
+                path
+            });
+        let mut path = cache_dir;
         path.push("netwarp-manager");
         path.push("state_cache.json");
         path

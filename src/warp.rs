@@ -45,7 +45,10 @@ pub async fn install_warp() -> Result<String, AppError> {
         let script_name = format!("install_warp_wizard_{}.sh", pid);
         let host_script_path = format!("/tmp/{}", script_name);
 
-        println!("[WARP Installer] Running in Flatpak. Writing script securely to host's {}...", host_script_path);
+        println!(
+            "[WARP Installer] Running in Flatpak. Writing script securely to host's {}...",
+            host_script_path
+        );
 
         // Prepare file on host with secure permissions and pipe the content
         let touch_cmd = format!(
@@ -57,13 +60,18 @@ pub async fn install_warp() -> Result<String, AppError> {
             .args(["--host", "sh", "-c", &touch_cmd])
             .stdin(std::process::Stdio::piped())
             .spawn()
-            .map_err(|e| AppError::WarpInstaller(format!("Failed to spawn touch/tee on host: {}", e)))?;
+            .map_err(|e| {
+                AppError::WarpInstaller(format!("Failed to spawn touch/tee on host: {}", e))
+            })?;
 
         if let Some(mut stdin) = child.stdin.take() {
             use tokio::io::AsyncWriteExt;
-            stdin.write_all(script_content.as_bytes()).await.map_err(|e| {
-                AppError::WarpInstaller(format!("Failed to write to stdin of host tee: {}", e))
-            })?;
+            stdin
+                .write_all(script_content.as_bytes())
+                .await
+                .map_err(|e| {
+                    AppError::WarpInstaller(format!("Failed to write to stdin of host tee: {}", e))
+                })?;
         }
 
         let status = child.wait().await.map_err(|e| {
@@ -71,7 +79,9 @@ pub async fn install_warp() -> Result<String, AppError> {
         })?;
 
         if !status.success() {
-            return Err(AppError::WarpInstaller("Host script write failed".to_string()));
+            return Err(AppError::WarpInstaller(
+                "Host script write failed".to_string(),
+            ));
         }
 
         // Detect terminal emulator on host
@@ -81,10 +91,13 @@ pub async fn install_warp() -> Result<String, AppError> {
                 term
             );
             args.push(host_script_path.clone());
-            
+
             if let Err(e) = helpers::new_std_command(&term).args(args).spawn() {
                 // Try to cleanup
-                let _ = helpers::new_tokio_command("rm").args(["-f", &host_script_path]).output().await;
+                let _ = helpers::new_tokio_command("rm")
+                    .args(["-f", &host_script_path])
+                    .output()
+                    .await;
                 return Err(AppError::WarpInstaller(format!(
                     "Failed to launch terminal '{}': {}",
                     term, e
@@ -96,7 +109,10 @@ pub async fn install_warp() -> Result<String, AppError> {
                     .to_string(),
             )
         } else {
-            let _ = helpers::new_tokio_command("rm").args(["-f", &host_script_path]).output().await;
+            let _ = helpers::new_tokio_command("rm")
+                .args(["-f", &host_script_path])
+                .output()
+                .await;
             let err_msg = "No suitable terminal emulator (gnome-terminal, konsole, xterm, etc.) was found on your system!".to_string();
             eprintln!("[WARP Installer] Error: {}", err_msg);
             Err(AppError::WarpInstaller(err_msg))
@@ -184,7 +200,10 @@ pub async fn warp_toggle(connect: bool) -> Result<String, AppError> {
 /// Retrieves the connection status of Cloudflare WARP.
 /// Runs `warp-cli status` and parses the output.
 pub async fn get_warp_status() -> Result<String, AppError> {
-    let output_result = helpers::new_tokio_command("warp-cli").arg("status").output().await;
+    let output_result = helpers::new_tokio_command("warp-cli")
+        .arg("status")
+        .output()
+        .await;
 
     let output = match output_result {
         Ok(o) => o,
