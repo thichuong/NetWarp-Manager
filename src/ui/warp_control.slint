@@ -16,10 +16,12 @@ export component WarpControlPanel inherits Rectangle {
     in-out property <bool> warp_toggle_state;
     in-out property <bool> warp_mode_doh_active;
     in-out property <[string]> console_logs;
+    in-out property <string> warp_account_type: "Free";
 
     callback warp_toggle_clicked(bool);
     callback warp_mode_clicked(string);
     callback install_rpm_clicked();
+    callback activate_license_clicked();
 
     background: Theme.card-bg;
     border-width: 1px;
@@ -111,10 +113,12 @@ export component WarpControlPanel inherits Rectangle {
                     width: 280px;
                 }
                 
-                // Operating mode active status badge
-                if (root.warp_status_text == "Connected") : HorizontalLayout {
+                // Operating mode active status badge & account type badge
+                HorizontalLayout {
                     alignment: center;
-                    Rectangle {
+                    spacing: 8px;
+
+                    if (root.warp_status_text == "Connected") : Rectangle {
                         background: Theme.card-bg.transparentize(15%);
                         border-width: 1px;
                         border-color: Theme.border;
@@ -129,6 +133,26 @@ export component WarpControlPanel inherits Rectangle {
                                 font-size: 12px;
                                 font-weight: 800;
                                 color: Theme.text-secondary;
+                                vertical-alignment: center;
+                            }
+                        }
+                    }
+
+                    Rectangle {
+                        background: root.warp_account_type == "Unlimited" ? Theme.success.transparentize(85%) : Theme.card-bg.transparentize(15%);
+                        border-width: 1px;
+                        border-color: root.warp_account_type == "Unlimited" ? Theme.success : Theme.border;
+                        border-radius: 12px;
+                        height: 22px;
+                        
+                        HorizontalLayout {
+                            padding-left: 12px;
+                            padding-right: 12px;
+                            Text {
+                                text: "Account: " + root.warp_account_type;
+                                font-size: 12px;
+                                font-weight: 800;
+                                color: root.warp_account_type == "Unlimited" ? Theme.success : Theme.text-secondary;
                                 vertical-alignment: center;
                             }
                         }
@@ -263,29 +287,61 @@ export component WarpControlPanel inherits Rectangle {
             spacing: 8px;
             alignment: end;
             
-            // Action: Install daemon button
-            Rectangle {
-                height: 32px;
-                background: Theme.card-bg-opaque;
-                border-width: 1px;
-                border-color: Theme.border;
-                border-radius: 10px;
+            // Action buttons row (Install Daemon / Activate WARP+)
+            HorizontalLayout {
+                spacing: 8px;
                 
-                HorizontalLayout {
-                    spacing: 8px;
-                    alignment: center;
-                    Text { text: "📥"; font-size: 12px; vertical-alignment: center; }
-                    Text {
-                        text: "Install WARP Daemon via Polkit";
-                        font-size: 13px;
-                        font-weight: 800;
-                        color: Theme.text-secondary;
-                        vertical-alignment: center;
+                // Button 1: Install Daemon
+                Rectangle {
+                    horizontal-stretch: 1;
+                    height: 32px;
+                    background: Theme.card-bg-opaque;
+                    border-width: 1px;
+                    border-color: Theme.border;
+                    border-radius: 10px;
+                    
+                    HorizontalLayout {
+                        spacing: 6px;
+                        alignment: center;
+                        Text { text: "📥"; font-size: 11px; vertical-alignment: center; }
+                        Text {
+                            text: "Install Daemon";
+                            font-size: 12px;
+                            font-weight: 800;
+                            color: Theme.text-secondary;
+                            vertical-alignment: center;
+                        }
+                    }
+                    
+                    TouchArea {
+                        clicked => { root.install_rpm_clicked(); }
                     }
                 }
                 
-                TouchArea {
-                    clicked => { root.install_rpm_clicked(); }
+                // Button 2: Activate WARP+
+                Rectangle {
+                    horizontal-stretch: 1;
+                    height: 32px;
+                    background: Theme.card-bg-opaque;
+                    border-width: 1px;
+                    border-color: Theme.border;
+                    border-radius: 10px;
+                    
+                    HorizontalLayout {
+                        spacing: 6px;
+                        alignment: center;
+                        Text {
+                            text: "Activate WARP+";
+                            font-size: 12px;
+                            font-weight: 800;
+                            color: Theme.text-secondary;
+                            vertical-alignment: center;
+                        }
+                    }
+                    
+                    TouchArea {
+                        clicked => { root.activate_license_clicked(); }
+                    }
                 }
             }
 

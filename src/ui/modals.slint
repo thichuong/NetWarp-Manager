@@ -347,7 +347,7 @@ export component PasswordModal inherits Rectangle {
                 }
 
                 // Connect action
-                Rectangle {
+                 Rectangle {
                     background: Theme.accent;
                     border-radius: 8px;
                     width: 100px;
@@ -377,3 +377,110 @@ export component PasswordModal inherits Rectangle {
         }
     }
 }
+
+export component LicenseModal inherits Rectangle {
+    in-out property <string> license_input_val;
+
+    callback close_modals();
+    callback submit_license_clicked(string);
+
+    background: Theme.interior-bg.transparentize(15%); // overlay dark backdrop blur
+    
+    TouchArea {} // Consume all pointer events to prevent clicking components underneath
+
+    Rectangle {
+        width: 400px;
+        height: 240px;
+        background: Theme.card-bg-opaque.transparentize(5%);
+        border-width: 1px;
+        border-color: Theme.border;
+        border-radius: 24px;
+        
+        VerticalLayout {
+            padding: 24px;
+            spacing: 16px;
+            alignment: space-between;
+            
+            // Header Info
+            VerticalLayout {
+                spacing: 4px;
+                Text {
+                    text: "Activate WARP+ Unlimited";
+                    font-size: 14px;
+                    font-weight: 800;
+                    color: Theme.text-heading;
+                }
+                Text {
+                    text: "Enter your 26-character license key below";
+                    font-size: 12px;
+                    color: Theme.text-subtle;
+                }
+            }
+
+            // License key input field
+            VerticalLayout {
+                spacing: 6px;
+                Text { text: "LICENSE KEY (AAAAA-BBBBB-CCCCC-...)"; font-size: 12px; font-weight: 800; color: Theme.text-label; }
+                
+                LineEdit {
+                    placeholder-text: "e.g. KT26P85W-FRS62C04-6r2S5TG7";
+                    text: root.license_input_val;
+                    edited(val) => { root.license_input_val = val; }
+                }
+            }
+
+            // Action controls buttons
+            HorizontalLayout {
+                spacing: 12px;
+                alignment: end;
+                
+                // Cancel button
+                Rectangle {
+                    background: Theme.card-bg-opaque.transparentize(40%);
+                    border-radius: 8px;
+                    border-width: 1px;
+                    border-color: Theme.border;
+                    width: 80px;
+                    height: 32px;
+                    
+                    Text {
+                        text: "Cancel";
+                        font-size: 12px;
+                        font-weight: 800;
+                        color: Theme.text-subtle;
+                        horizontal-alignment: center;
+                        vertical-alignment: center;
+                    }
+                    
+                    TouchArea {
+                        clicked => { root.close_modals(); }
+                    }
+                }
+
+                // Activate button
+                Rectangle {
+                    background: Theme.accent;
+                    border-radius: 8px;
+                    width: 100px;
+                    height: 32px;
+                    
+                    Text {
+                        text: "Activate";
+                        font-size: 12px;
+                        font-weight: 900;
+                        color: Theme.text-primary;
+                        horizontal-alignment: center;
+                        vertical-alignment: center;
+                    }
+                    
+                    TouchArea {
+                        clicked => {
+                            root.submit_license_clicked(root.license_input_val);
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+

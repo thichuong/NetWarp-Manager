@@ -18,7 +18,7 @@ import { ActiveWifiPanel } from "ui/active_wifi.slint";
 import { SpeedMonitorPanel } from "ui/speed_monitor.slint";
 import { DiagnosticsPanel } from "ui/diagnostics.slint";
 import { WarpControlPanel } from "ui/warp_control.slint";
-import { WifiScanModal, PasswordModal } from "ui/modals.slint";
+import { WifiScanModal, PasswordModal, LicenseModal } from "ui/modals.slint";
 
 export component AppWindow inherits Window {
     title: "WiWarp - Wi-Fi & Cloudflare WARP Manager";
@@ -92,6 +92,9 @@ export component AppWindow inherits Window {
     in-out property <bool> warp_mode_doh_active: true;
     in-out property <[string]> console_logs: ["[System] Engine initialized. Awaiting user input commands."];
     in property <string> os_platform: "LINUX SYSTEM";
+    in-out property <string> warp_account_type: "Free";
+    in-out property <bool> show_license_modal: false;
+    in-out property <string> license_input_val: "";
 
     // Animation assistance variables
 
@@ -103,6 +106,8 @@ export component AppWindow inherits Window {
     callback warp_toggle_clicked(bool);
     callback warp_mode_clicked(string); // "doh" or "warp"
     callback install_rpm_clicked();
+    callback activate_license_clicked();
+    callback submit_license_clicked(string);
     callback close_modals();
 
     // Password input bindings
@@ -183,10 +188,12 @@ export component AppWindow inherits Window {
                     warp_toggle_state: root.warp_toggle_state;
                     warp_mode_doh_active: root.warp_mode_doh_active;
                     console_logs: root.console_logs;
+                    warp_account_type: root.warp_account_type;
                     
                     warp_toggle_clicked(state) => { root.warp_toggle_clicked(state); }
                     warp_mode_clicked(mode) => { root.warp_mode_clicked(mode); }
                     install_rpm_clicked => { root.install_rpm_clicked(); }
+                    activate_license_clicked => { root.activate_license_clicked(); }
                 }
             }
 
@@ -239,6 +246,13 @@ export component AppWindow inherits Window {
         connect_wifi_clicked(bssid, ssid, pwd, lock) => {
             root.connect_wifi_clicked(bssid, ssid, pwd, lock);
         }
+    }
+
+    // MODAL 3: License entry dialog Modal Overlay
+    if (root.show_license_modal) : LicenseModal {
+        license_input_val: root.license_input_val;
+        close_modals => { root.close_modals(); }
+        submit_license_clicked(key) => { root.submit_license_clicked(key); }
     }
 }
 }

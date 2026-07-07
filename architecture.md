@@ -70,10 +70,13 @@ Linked in `src/callbacks.rs` inside `register_callbacks`:
 - `warp_toggle_clicked(bool)` ➔ Toggle WARP connection status.
 - `warp_mode_clicked(string)` ➔ Set WARP tunnel mode (DNS or Dual).
 - `install_rpm_clicked()` ➔ Spawn Polkit wizard installer for Fedora/Ubuntu/Debian.
+- `activate_license_clicked()` ➔ Open WARP+ license activation modal.
+- `submit_license_clicked(string)` ➔ Register and activate new WARP license key.
 
 ### 6.2 State Properties (Rust ➔ UI Updates)
 Updated via background loops in `src/polling.rs`:
 - Loop 1 ➔ `speed_stats`, `download_history`, `upload_history`, dynamic SVG chart paths.
-- Loop 2 ➔ `active_wifi` (Wi-Fi or Ethernet connection details), `warp_status_text`, `warp_network_text`, `warp_toggle_state`.
+- Loop 2 ➔ `active_wifi` (Wi-Fi or Ethernet connection details), `warp_status_text`, `warp_network_text`, `warp_toggle_state`, `warp_account_type`.
 - Loop 3 ➔ `ping1`, `ping2`.
 - Loop 4 ➔ `geo_info` details.
+

@@ -6,6 +6,8 @@ pub struct AppStateCache {
     pub warp_status: String,
     pub wifi_network: Option<wifi::WifiNetwork>,
     pub geo_info: Option<helpers::CachedGeoInfo>,
+    #[serde(default)]
+    pub warp_account_type: Option<String>,
 }
 
 fn get_cache_path() -> std::path::PathBuf {
@@ -95,11 +97,14 @@ pub fn save_cache_from_ui(ui: &AppWindow) {
         })
     };
 
+    let warp_account_type = Some(ui.get_warp_account_type().to_string());
+
     let cache = AppStateCache {
         warp_mode,
         warp_status,
         wifi_network,
         geo_info,
+        warp_account_type,
     };
 
     save_state_cache(&cache);
@@ -141,6 +146,7 @@ mod tests {
             warp_status: "Connected".to_string(),
             wifi_network: Some(wifi),
             geo_info: Some(geo),
+            warp_account_type: Some("Unlimited".to_string()),
         };
 
         let serialized = serde_json::to_string(&cache).unwrap();
@@ -150,6 +156,7 @@ mod tests {
         assert_eq!(deserialized.warp_status, "Connected");
         assert_eq!(deserialized.wifi_network.as_ref().unwrap().ssid, "TestWiFi");
         assert_eq!(deserialized.geo_info.as_ref().unwrap().ip, "1.1.1.1");
+        assert_eq!(deserialized.warp_account_type.as_deref(), Some("Unlimited"));
     }
 
     #[test]
@@ -159,6 +166,7 @@ mod tests {
             warp_status: "Disconnected".to_string(),
             wifi_network: None,
             geo_info: None,
+            warp_account_type: Some("Free".to_string()),
         };
 
         // Save state cache (which writes to the test-configured temp file path)
@@ -174,6 +182,7 @@ mod tests {
         assert_eq!(loaded.warp_status, "Disconnected");
         assert!(loaded.wifi_network.is_none());
         assert!(loaded.geo_info.is_none());
+        assert_eq!(loaded.warp_account_type.as_deref(), Some("Free"));
 
         // Cleanup
         let _ = std::fs::remove_file(&cache_file);

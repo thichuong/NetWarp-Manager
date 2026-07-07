@@ -14,6 +14,7 @@ pub fn register_callbacks(ui: &AppWindow) {
         if let Some(ui) = ui_close_weak.upgrade() {
             ui.set_show_wifi_modal(false);
             ui.set_show_password_modal(false);
+            ui.set_show_license_modal(false);
         }
     });
 
@@ -235,6 +236,57 @@ pub fn register_callbacks(ui: &AppWindow) {
                             helpers::append_log(
                                 &ui,
                                 &format!("[System] Polkit deployment failed: {}", e),
+                            );
+                        });
+                    }
+                }
+            });
+        }
+    });
+
+    // Callback 10: Open WARP+ License Activation Modal
+    let ui_act_weak = ui_weak.clone();
+    ui.on_activate_license_clicked(move || {
+        if let Some(ui) = ui_act_weak.upgrade() {
+            ui.set_show_license_modal(true);
+            ui.set_license_input_val("".into());
+        }
+    });
+
+    // Callback 11: Submit WARP+ License Key for activation
+    let ui_sub_weak = ui_weak.clone();
+    ui.on_submit_license_clicked(move |license_key| {
+        if let Some(ui) = ui_sub_weak.upgrade() {
+            ui.set_show_license_modal(false);
+            let license_str = license_key.to_string();
+            helpers::append_log(
+                &ui,
+                &format!("[WARP] Registering new license key: {}...", license_str),
+            );
+
+            let ui_inner_weak = ui.as_weak();
+            tokio::spawn(async move {
+                match warp::set_warp_license(&license_str).await {
+                    Ok(msg) => {
+                        let _ = ui_inner_weak.upgrade_in_event_loop(move |ui| {
+                            helpers::append_log(
+                                &ui,
+                                &format!("[WARP] License key registered successfully: {}", msg),
+                            );
+                        });
+                        // Retrieve and update the Account Type immediately after success
+                        if let Ok(account_type) = warp::get_warp_account_type().await {
+                            let ui_account_update = ui_inner_weak.clone();
+                            let _ = ui_account_update.upgrade_in_event_loop(move |ui| {
+                                ui.set_warp_account_type(account_type.into());
+                            });
+                        }
+                    }
+                    Err(e) => {
+                        let _ = ui_inner_weak.upgrade_in_event_loop(move |ui| {
+                            helpers::append_log(
+                                &ui,
+                                &format!("[WARP] License registration failed: {}", e),
                             );
                         });
                     }

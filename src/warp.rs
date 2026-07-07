@@ -307,3 +307,69 @@ pub async fn set_warp_mode(mode: &str) -> Result<String, AppError> {
         )))
     }
 }
+
+/// Retrieves the registration account type of Cloudflare WARP.
+/// Runs `warp-cli registration show` and parses the "Account type:" line.
+pub async fn get_warp_account_type() -> Result<String, AppError> {
+    let output_result = helpers::new_tokio_command("warp-cli")
+        .args(["registration", "show"])
+        .output()
+        .await;
+
+    let output = match output_result {
+        Ok(o) => o,
+        Err(e) => {
+            if e.kind() == std::io::ErrorKind::NotFound {
+                return Ok("Free".to_string());
+            }
+            return Err(AppError::WarpStatus(format!(
+                "Error invoking warp-cli registration show: {}",
+                e
+            )));
+        }
+    };
+
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr).to_string();
+        return Err(AppError::WarpStatus(format!(
+            "Could not get WARP registration: {}",
+            stderr
+        )));
+    }
+
+    let stdout_str = String::from_utf8_lossy(&output.stdout);
+    for line in stdout_str.lines() {
+        let trimmed = line.trim();
+        if let Some(suffix) = trimmed.strip_prefix("Account type:") {
+            return Ok(suffix.trim().to_string());
+        }
+    }
+
+    Ok("Free".to_string())
+}
+
+/// Sets a new license key for WARP.
+/// Runs `warp-cli registration license <KEY>`
+pub async fn set_warp_license(license: &str) -> Result<String, AppError> {
+    let output = helpers::new_tokio_command("warp-cli")
+        .args(["registration", "license", license])
+        .output()
+        .await
+        .map_err(|e| {
+            AppError::WarpControl(format!(
+                "Failed to execute warp-cli registration license command: {}",
+                e
+            ))
+        })?;
+
+    if output.status.success() {
+        let stdout = String::from_utf8_lossy(&output.stdout).to_string();
+        Ok(stdout)
+    } else {
+        let stderr = String::from_utf8_lossy(&output.stderr).to_string();
+        Err(AppError::WarpControl(format!(
+            "WARP license setting error: {}",
+            stderr
+        )))
+    }
+}

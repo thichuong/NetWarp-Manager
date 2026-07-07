@@ -14,12 +14,14 @@ async fn fetch_and_hydrate_state(
     slint::SharedString,
     Option<wifi::WifiNetwork>,
     Option<helpers::CachedGeoInfo>,
+    slint::SharedString,
 ) {
-    let (mode_res, status_res, wifi_res, geo_res) = tokio::join!(
+    let (mode_res, status_res, wifi_res, geo_res, account_res) = tokio::join!(
         warp::get_warp_mode(),
         warp::get_warp_status(),
         wifi::get_active_wifi(true),
         helpers::query_geoip(),
+        warp::get_warp_account_type(),
     );
 
     let initial_warp_mode = slint::SharedString::from(mode_res.unwrap_or_else(|e| {
@@ -35,6 +37,11 @@ async fn fetch_and_hydrate_state(
     let init_connected = init_lower.contains("connected");
     let init_connecting = init_lower.contains("connecting");
     let warp_state = slint::SharedString::from(&initial_warp_status);
+
+    let initial_warp_account = slint::SharedString::from(account_res.unwrap_or_else(|e| {
+        eprintln!("[WARN] Failed to get WARP account type: {e}");
+        "Free".to_string()
+    }));
 
     let mut wifi_ssid = slint::SharedString::new();
     let mut wifi_cache: Option<WifiNetwork> = None;
@@ -61,10 +68,12 @@ async fn fetch_and_hydrate_state(
     let wifi_cache_ui = wifi_cache.clone();
     let geo_cache_ui = geo_cache.clone();
     let initial_warp_mode_clone = initial_warp_mode.clone();
+    let initial_warp_account_clone = initial_warp_account.clone();
 
     let _ = ui_weak.upgrade_in_event_loop(move |ui| {
         ui.set_warp_mode_badge(format!("Mode: {}", initial_warp_mode_clone).into());
         ui.set_warp_mode_doh_active(!initial_warp_mode_clone.to_lowercase().contains("warp"));
+        ui.set_warp_account_type(initial_warp_account_clone);
 
         ui.set_warp_status_text(warp_state_ui);
         if init_connected {
@@ -107,6 +116,7 @@ async fn fetch_and_hydrate_state(
         initial_warp_mode,
         active_wifi_raw,
         geo_cache,
+        initial_warp_account,
     )
 }
 
@@ -120,6 +130,7 @@ enum UiUpdateMsg {
     Wifi(Option<WifiNetwork>),
     WarpStatus(slint::SharedString),
     WarpMode(slint::SharedString),
+    WarpAccountType(slint::SharedString),
     GeoIp(Option<helpers::CachedGeoInfo>),
     Pings {
         p1: Option<PingResult>,
@@ -186,6 +197,9 @@ pub fn start_polling_loops(ui: &AppWindow, shutdown_rx: tokio::sync::watch::Rece
                 warp_badge: geo.warp_badge.into(),
             });
         }
+        if let Some(ref account) = cache.warp_account_type {
+            ui.set_warp_account_type(account.clone().into());
+        }
     }
 
     let (tx, rx) = tokio::sync::oneshot::channel::<(
@@ -194,13 +208,21 @@ pub fn start_polling_loops(ui: &AppWindow, shutdown_rx: tokio::sync::watch::Rece
         Option<WifiNetwork>,
         slint::SharedString,
         Option<helpers::CachedGeoInfo>,
+        slint::SharedString,
     )>();
 
     // Spawn task to fetch initial states concurrently and hydrate UI
     let ui_init = ui_weak.clone();
     tokio::spawn(async move {
-        let (warp_state, wifi_ssid, wifi_cache, initial_warp_mode, _, geo_cache) =
-            fetch_and_hydrate_state(&ui_init).await;
+        let (
+            warp_state,
+            wifi_ssid,
+            wifi_cache,
+            initial_warp_mode,
+            _,
+            geo_cache,
+            initial_warp_account,
+        ) = fetch_and_hydrate_state(&ui_init).await;
 
         let _ = tx.send((
             warp_state,
@@ -208,6 +230,7 @@ pub fn start_polling_loops(ui: &AppWindow, shutdown_rx: tokio::sync::watch::Rece
             wifi_cache,
             initial_warp_mode,
             geo_cache,
+            initial_warp_account,
         ));
     });
 
@@ -227,6 +250,7 @@ pub fn start_polling_loops(ui: &AppWindow, shutdown_rx: tokio::sync::watch::Rece
             let mut wifi_set_disconnected = false;
             let mut warp_status_to_set = None;
             let mut warp_mode_to_set = None;
+            let mut warp_account_to_set = None;
             let mut geo_info_to_set = None;
             let mut ping1_to_set = None;
             let mut ping2_to_set = None;
@@ -251,6 +275,9 @@ pub fn start_polling_loops(ui: &AppWindow, shutdown_rx: tokio::sync::watch::Rece
                 }
                 UiUpdateMsg::WarpMode(mode) => {
                     warp_mode_to_set = Some(mode);
+                }
+                UiUpdateMsg::WarpAccountType(account) => {
+                    warp_account_to_set = Some(account);
                 }
                 UiUpdateMsg::GeoIp(geo) => {
                     geo_info_to_set = Some(geo);
@@ -340,6 +367,9 @@ pub fn start_polling_loops(ui: &AppWindow, shutdown_rx: tokio::sync::watch::Rece
                 if let Some(warp_mode) = warp_mode_to_set {
                     ui.set_warp_mode_badge(format!("Mode: {}", warp_mode).into());
                     ui.set_warp_mode_doh_active(!warp_mode.to_lowercase().contains("warp"));
+                }
+                if let Some(warp_account) = warp_account_to_set {
+                    ui.set_warp_account_type(warp_account);
                 }
                 if let Some(Some(geo)) = geo_info_to_set {
                     ui.set_geo_info(IPGeolocatorInfo {
@@ -498,6 +528,7 @@ pub fn start_polling_loops(ui: &AppWindow, shutdown_rx: tokio::sync::watch::Rece
             mut cached_wifi_details,
             initial_warp_mode,
             geo_cache,
+            initial_warp_account,
         ) = match rx.await {
             Ok(states) => states,
             Err(_) => (
@@ -506,11 +537,15 @@ pub fn start_polling_loops(ui: &AppWindow, shutdown_rx: tokio::sync::watch::Rece
                 None,
                 "DoH".into(),
                 None,
+                "Free".into(),
             ),
         };
 
-        let shared_state =
-            std::sync::Arc::new(tokio::sync::Mutex::new((initial_warp_mode, geo_cache)));
+        let shared_state = std::sync::Arc::new(tokio::sync::Mutex::new((
+            initial_warp_mode,
+            geo_cache,
+            initial_warp_account,
+        )));
 
         let mut stable_cycles = 0u32;
 
@@ -674,28 +709,38 @@ pub fn start_polling_loops(ui: &AppWindow, shutdown_rx: tokio::sync::watch::Rece
                 stable_cycles += 1;
             }
 
-            // Immediate trigger Geolocation refresh and WARP mode check
+            // Immediate trigger Geolocation refresh, WARP mode and account check
             if state_changed {
                 let tx_status_clone = tx_status.clone();
                 let shared_state_clone = shared_state.clone();
 
                 tokio::spawn(async move {
-                    // Fetch updated operating mode and GeoIP concurrently
-                    let (mode_res, geo_res) =
-                        tokio::join!(warp::get_warp_mode(), helpers::query_geoip(),);
+                    // Fetch updated operating mode, GeoIP, and Account Type concurrently
+                    let (mode_res, geo_res, account_res) = tokio::join!(
+                        warp::get_warp_mode(),
+                        helpers::query_geoip(),
+                        warp::get_warp_account_type(),
+                    );
 
                     let new_warp_mode = slint::SharedString::from(mode_res.unwrap_or_else(|e| {
                         eprintln!("[WARN] Failed to get WARP mode on change: {e}");
                         "DoH".to_string()
                     }));
 
+                    let new_warp_account =
+                        slint::SharedString::from(account_res.unwrap_or_else(|e| {
+                            eprintln!("[WARN] Failed to get WARP account type on change: {e}");
+                            "Free".to_string()
+                        }));
+
                     let geo_ui = geo_res.ok();
 
                     let mut state = shared_state_clone.lock().await;
                     let mode_changed = new_warp_mode != state.0;
                     let geo_changed = geo_ui != state.1;
+                    let account_changed = new_warp_account != state.2;
 
-                    if mode_changed || geo_changed {
+                    if mode_changed || geo_changed || account_changed {
                         if mode_changed {
                             state.0 = new_warp_mode.clone();
                             let _ = tx_status_clone
@@ -705,6 +750,12 @@ pub fn start_polling_loops(ui: &AppWindow, shutdown_rx: tokio::sync::watch::Rece
                         if geo_changed {
                             state.1 = geo_ui.clone();
                             let _ = tx_status_clone.send(UiUpdateMsg::GeoIp(geo_ui)).await;
+                        }
+                        if account_changed {
+                            state.2 = new_warp_account.clone();
+                            let _ = tx_status_clone
+                                .send(UiUpdateMsg::WarpAccountType(new_warp_account))
+                                .await;
                         }
                     }
                 });
