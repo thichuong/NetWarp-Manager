@@ -242,6 +242,69 @@ pub async fn get_warp_status() -> Result<String, AppError> {
     Ok(status)
 }
 
+/// Helper to parse raw mode string extracted from `warp-cli settings list`.
+pub fn parse_mode_string(stdout_str: &str) -> String {
+    for line in stdout_str.lines() {
+        let trimmed = line.trim();
+        if let Some(idx) = trimmed.find("Mode:") {
+            let mode_str = trimmed[idx + 5..].trim();
+            let lower = mode_str.to_lowercase();
+            // Check complex modes containing both Warp and DoH/DoT first
+            if lower.contains("warp")
+                && (lower.contains("doh")
+                    || lower.contains("dnsoverhttps")
+                    || lower.contains("warpwithdnsoverhttps"))
+            {
+                return "warp+doh".to_string();
+            } else if lower.contains("warp")
+                && (lower.contains("dot")
+                    || lower.contains("dnsovertls")
+                    || lower.contains("warpwithdnsovertls"))
+            {
+                return "warp+dot".to_string();
+            } else if lower.contains("proxy") || lower.contains("warpproxy") {
+                return "proxy".to_string();
+            } else if lower.contains("tunnelonly") || lower.contains("tunnel_only") {
+                return "tunnel_only".to_string();
+            } else if lower.contains("doh")
+                || lower.contains("dnsoverhttps")
+                || lower.contains("dns-over-https")
+            {
+                return "doh".to_string();
+            } else if lower.contains("dot")
+                || lower.contains("dnsovertls")
+                || lower.contains("dns-over-tls")
+            {
+                return "dot".to_string();
+            } else if lower.contains("warp") {
+                return "warp".to_string();
+            } else {
+                return lower;
+            }
+        }
+    }
+    "unknown".to_string()
+}
+
+/// Converts a mode ID to its user-friendly display name.
+pub fn mode_to_display_name(mode: &str) -> &'static str {
+    match mode {
+        "doh" => "DNS only (HTTPS)",
+        "dot" => "DNS only (TLS)",
+        "warp" => "Traffic and DNS (UDP)",
+        "warp+doh" => "Traffic and DNS (HTTPS)",
+        "warp+dot" => "Traffic and DNS (TLS)",
+        "proxy" => "Local proxy",
+        "tunnel_only" => "Traffic only",
+        _ => "Unknown Mode",
+    }
+}
+
+/// Returns true if the mode is a DNS-only proxy without full tunnel routing.
+pub fn is_dns_only_mode(mode: &str) -> bool {
+    matches!(mode, "doh" | "dot")
+}
+
 /// Retrieves the current operating mode of WARP.
 /// Runs `warp-cli settings list` and parses the "Mode:" line.
 pub async fn get_warp_mode() -> Result<String, AppError> {
@@ -260,31 +323,7 @@ pub async fn get_warp_mode() -> Result<String, AppError> {
     }
 
     let stdout_str = String::from_utf8_lossy(&output.stdout);
-    for line in stdout_str.lines() {
-        let trimmed = line.trim();
-        if let Some(idx) = trimmed.find("Mode:") {
-            let mode_str = trimmed[idx + 5..].trim();
-            let lower = mode_str.to_lowercase();
-            // Check complex modes containing both Warp and DoH first
-            if lower.contains("warp")
-                && (lower.contains("doh")
-                    || lower.contains("dnsoverhttps")
-                    || lower.contains("dns-over-https"))
-            {
-                return Ok("warp+doh".to_string());
-            } else if lower.contains("doh")
-                || lower.contains("dnsoverhttps")
-                || lower.contains("dns-over-https")
-            {
-                return Ok("doh".to_string());
-            } else if lower.contains("warp") {
-                return Ok("warp".to_string());
-            } else {
-                return Ok(lower);
-            }
-        }
-    }
-    Ok("unknown".to_string())
+    Ok(parse_mode_string(&stdout_str))
 }
 
 /// Configures a new operating mode for WARP.
@@ -371,5 +410,55 @@ pub async fn set_warp_license(license: &str) -> Result<String, AppError> {
             "WARP license setting error: {}",
             stderr
         )))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_parse_mode_string_all_7_modes() {
+        assert_eq!(parse_mode_string("(user set)\tMode: Warp"), "warp");
+        assert_eq!(parse_mode_string("(user set)\tMode: DnsOverHttps"), "doh");
+        assert_eq!(
+            parse_mode_string("(user set)\tMode: WarpWithDnsOverHttps"),
+            "warp+doh"
+        );
+        assert_eq!(parse_mode_string("(user set)\tMode: DnsOverTls"), "dot");
+        assert_eq!(
+            parse_mode_string("(user set)\tMode: WarpWithDnsOverTls"),
+            "warp+dot"
+        );
+        assert_eq!(
+            parse_mode_string("(user set)\tMode: WarpProxy on port 40000"),
+            "proxy"
+        );
+        assert_eq!(
+            parse_mode_string("(user set)\tMode: TunnelOnly"),
+            "tunnel_only"
+        );
+    }
+
+    #[test]
+    fn test_mode_display_names() {
+        assert_eq!(mode_to_display_name("doh"), "DNS only (HTTPS)");
+        assert_eq!(mode_to_display_name("dot"), "DNS only (TLS)");
+        assert_eq!(mode_to_display_name("warp"), "Traffic and DNS (UDP)");
+        assert_eq!(mode_to_display_name("warp+doh"), "Traffic and DNS (HTTPS)");
+        assert_eq!(mode_to_display_name("warp+dot"), "Traffic and DNS (TLS)");
+        assert_eq!(mode_to_display_name("proxy"), "Local proxy");
+        assert_eq!(mode_to_display_name("tunnel_only"), "Traffic only");
+    }
+
+    #[test]
+    fn test_is_dns_only_mode() {
+        assert!(is_dns_only_mode("doh"));
+        assert!(is_dns_only_mode("dot"));
+        assert!(!is_dns_only_mode("warp"));
+        assert!(!is_dns_only_mode("warp+doh"));
+        assert!(!is_dns_only_mode("warp+dot"));
+        assert!(!is_dns_only_mode("proxy"));
+        assert!(!is_dns_only_mode("tunnel_only"));
     }
 }

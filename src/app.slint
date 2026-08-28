@@ -8,9 +8,9 @@
 import { Button, LineEdit, ScrollView } from "std-widgets.slint";
 
 // Import and Re-export shared data structures for Rust compiler compatibility
-import { WifiNetwork, PingResult, NetworkSpeed, IPGeolocatorInfo } from "ui/structs.slint";
+import { WifiNetwork, PingResult, NetworkSpeed, IPGeolocatorInfo, WarpModeOption } from "ui/structs.slint";
 import { Theme } from "ui/theme.slint";
-export { WifiNetwork, PingResult, NetworkSpeed, IPGeolocatorInfo, Theme }
+export { WifiNetwork, PingResult, NetworkSpeed, IPGeolocatorInfo, WarpModeOption, Theme }
 
 // Import modular UI components
 import { HeaderPanel } from "ui/header.slint";
@@ -87,9 +87,10 @@ export component AppWindow inherits Window {
 
     in-out property <string> warp_status_text: "Disconnected";
     in-out property <string> warp_network_text: "Your network traffic is direct & unprotected.";
-    in-out property <string> warp_mode_badge: "Mode: DoH DNS Only";
+    in-out property <string> warp_mode_badge: "Mode: Traffic and DNS (UDP)";
+    in-out property <string> current_warp_mode: "warp";
     in-out property <bool> warp_toggle_state: false;
-    in-out property <bool> warp_mode_doh_active: true;
+    in-out property <bool> warp_mode_doh_active: false;
     in-out property <[string]> console_logs: ["[System] Engine initialized. Awaiting user input commands."];
     in property <string> os_platform: "LINUX SYSTEM";
     in-out property <string> warp_account_type: "Free";
@@ -104,7 +105,7 @@ export component AppWindow inherits Window {
     callback wifi_selected(string, string); // ssid, bssid
     callback connect_wifi_clicked(string, string, string, bool); // bssid, ssid, password, lock_bssid
     callback warp_toggle_clicked(bool);
-    callback warp_mode_clicked(string); // "doh" or "warp"
+    callback warp_mode_clicked(string); // mode id
     callback install_rpm_clicked();
     callback activate_license_clicked();
     callback submit_license_clicked(string);
@@ -185,6 +186,7 @@ export component AppWindow inherits Window {
                     warp_status_text: root.warp_status_text;
                     warp_network_text: root.warp_network_text;
                     warp_mode_badge: root.warp_mode_badge;
+                    current_warp_mode: root.current_warp_mode;
                     warp_toggle_state: root.warp_toggle_state;
                     warp_mode_doh_active: root.warp_mode_doh_active;
                     console_logs: root.console_logs;

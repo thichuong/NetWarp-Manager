@@ -68,7 +68,7 @@ Linked in `src/callbacks.rs` inside `register_callbacks`:
 - `wifi_selected(ssid, bssid)` ➔ Load stored PSK keyring, lock BSSID profile.
 - `connect_wifi_clicked(...)` ➔ Connect to network.
 - `warp_toggle_clicked(bool)` ➔ Toggle WARP connection status.
-- `warp_mode_clicked(string)` ➔ Set WARP tunnel mode (DNS or Dual).
+- `warp_mode_clicked(string)` ➔ Set WARP tunnel mode (supports 7 modes: doh, dot, warp, warp+doh, warp+dot, proxy, tunnel_only).
 - `install_rpm_clicked()` ➔ Spawn Polkit wizard installer for Fedora/Ubuntu/Debian.
 - `activate_license_clicked()` ➔ Open WARP+ license activation modal.
 - `submit_license_clicked(string)` ➔ Register and activate new WARP license key.
@@ -76,7 +76,7 @@ Linked in `src/callbacks.rs` inside `register_callbacks`:
 ### 6.2 State Properties (Rust ➔ UI Updates)
 Updated via background loops in `src/polling.rs`:
 - Loop 1 ➔ `speed_stats`, `download_history`, `upload_history`, dynamic SVG chart paths.
-- Loop 2 ➔ `active_wifi` (Wi-Fi or Ethernet connection details), `warp_status_text`, `warp_network_text`, `warp_toggle_state`, `warp_account_type`.
+- Loop 2 ➔ `active_wifi` (Wi-Fi or Ethernet connection details), `warp_status_text`, `warp_network_text`, `warp_toggle_state`, `current_warp_mode`, `warp_mode_badge`, `warp_mode_doh_active`, `warp_account_type`.
 - Loop 3 ➔ `ping1`, `ping2`.
 - Loop 4 ➔ `geo_info` details.
 

@@ -167,9 +167,13 @@ pub fn register_callbacks(ui: &AppWindow) {
     let ui_mode_weak = ui_weak.clone();
     ui.on_warp_mode_clicked(move |mode| {
         if let Some(ui) = ui_mode_weak.upgrade() {
+            let mode_display = warp::mode_to_display_name(&mode);
             helpers::append_log(
                 &ui,
-                &format!("[WARP] Configuring operating tunnel mode to: {}...", mode),
+                &format!(
+                    "[WARP] Configuring operating tunnel mode to: {} ({})...",
+                    mode_display, mode
+                ),
             );
             let mode_str = mode.to_string();
 
@@ -187,11 +191,13 @@ pub fn register_callbacks(ui: &AppWindow) {
                         // Query and update warp mode details immediately
                         if let Ok(warp_mode) = warp::get_warp_mode().await {
                             let ui_mode_update = ui_inner_weak.clone();
+                            let is_dns_only = warp::is_dns_only_mode(&warp_mode);
+                            let display_badge =
+                                format!("Mode: {}", warp::mode_to_display_name(&warp_mode));
                             let _ = ui_mode_update.upgrade_in_event_loop(move |ui| {
-                                ui.set_warp_mode_badge(format!("Mode: {}", warp_mode).into());
-                                ui.set_warp_mode_doh_active(
-                                    !warp_mode.to_lowercase().contains("warp"),
-                                );
+                                ui.set_current_warp_mode(warp_mode.into());
+                                ui.set_warp_mode_badge(display_badge.into());
+                                ui.set_warp_mode_doh_active(is_dns_only);
                             });
                         }
 

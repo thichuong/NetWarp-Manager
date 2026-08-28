@@ -4,6 +4,7 @@ use std::sync::LazyLock;
 use std::time::Instant;
 struct Command;
 impl Command {
+    #[allow(clippy::new_ret_no_self)]
     fn new(program: &str) -> tokio::process::Command {
         crate::helpers::new_tokio_command(program)
     }

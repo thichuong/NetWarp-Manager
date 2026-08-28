@@ -26,7 +26,7 @@ async fn fetch_and_hydrate_state(
 
     let initial_warp_mode = slint::SharedString::from(mode_res.unwrap_or_else(|e| {
         eprintln!("[WARN] Failed to get WARP mode: {e}");
-        "DoH".to_string()
+        "warp".to_string()
     }));
 
     let initial_warp_status = status_res.unwrap_or_else(|e| {
@@ -71,8 +71,14 @@ async fn fetch_and_hydrate_state(
     let initial_warp_account_clone = initial_warp_account.clone();
 
     let _ = ui_weak.upgrade_in_event_loop(move |ui| {
-        ui.set_warp_mode_badge(format!("Mode: {}", initial_warp_mode_clone).into());
-        ui.set_warp_mode_doh_active(!initial_warp_mode_clone.to_lowercase().contains("warp"));
+        let is_dns_only = warp::is_dns_only_mode(&initial_warp_mode_clone);
+        let display_badge = format!(
+            "Mode: {}",
+            warp::mode_to_display_name(&initial_warp_mode_clone)
+        );
+        ui.set_current_warp_mode(initial_warp_mode_clone);
+        ui.set_warp_mode_badge(display_badge.into());
+        ui.set_warp_mode_doh_active(is_dns_only);
         ui.set_warp_account_type(initial_warp_account_clone);
 
         ui.set_warp_status_text(warp_state_ui);
@@ -167,8 +173,11 @@ pub fn start_polling_loops(ui: &AppWindow, shutdown_rx: tokio::sync::watch::Rece
         let init_connected = init_lower.contains("connected");
         let init_connecting = init_lower.contains("connecting");
 
-        ui.set_warp_mode_badge(format!("Mode: {}", cache.warp_mode).into());
-        ui.set_warp_mode_doh_active(!cache.warp_mode.to_lowercase().contains("warp"));
+        let is_dns_only = warp::is_dns_only_mode(&cache.warp_mode);
+        let display_badge = format!("Mode: {}", warp::mode_to_display_name(&cache.warp_mode));
+        ui.set_current_warp_mode(cache.warp_mode.as_str().into());
+        ui.set_warp_mode_badge(display_badge.into());
+        ui.set_warp_mode_doh_active(is_dns_only);
 
         ui.set_warp_status_text(cache.warp_status.into());
         if init_connected {
@@ -365,8 +374,11 @@ pub fn start_polling_loops(ui: &AppWindow, shutdown_rx: tokio::sync::watch::Rece
                     }
                 }
                 if let Some(warp_mode) = warp_mode_to_set {
-                    ui.set_warp_mode_badge(format!("Mode: {}", warp_mode).into());
-                    ui.set_warp_mode_doh_active(!warp_mode.to_lowercase().contains("warp"));
+                    let is_dns_only = warp::is_dns_only_mode(&warp_mode);
+                    let display_badge = format!("Mode: {}", warp::mode_to_display_name(&warp_mode));
+                    ui.set_current_warp_mode(warp_mode);
+                    ui.set_warp_mode_badge(display_badge.into());
+                    ui.set_warp_mode_doh_active(is_dns_only);
                 }
                 if let Some(warp_account) = warp_account_to_set {
                     ui.set_warp_account_type(warp_account);
@@ -724,7 +736,7 @@ pub fn start_polling_loops(ui: &AppWindow, shutdown_rx: tokio::sync::watch::Rece
 
                     let new_warp_mode = slint::SharedString::from(mode_res.unwrap_or_else(|e| {
                         eprintln!("[WARN] Failed to get WARP mode on change: {e}");
-                        "DoH".to_string()
+                        "warp".to_string()
                     }));
 
                     let new_warp_account =

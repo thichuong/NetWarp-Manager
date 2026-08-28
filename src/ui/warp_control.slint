@@ -9,6 +9,59 @@
 import { ScrollView } from "std-widgets.slint";
 import { Theme } from "theme.slint";
 
+component WarpModeRow inherits Rectangle {
+    in-out property <string> label;
+    in-out property <bool> is_active;
+    callback clicked();
+
+    height: 28px;
+    border-radius: 6px;
+    background: row_touch.has-hover ? Theme.accent-bg-trans : transparent;
+    animate background { duration: 100ms; }
+
+    HorizontalLayout {
+        padding-left: 8px;
+        padding-right: 8px;
+        spacing: 10px;
+        alignment: start;
+
+        // Custom checkbox indicator matching Cloudflare UI
+        Rectangle {
+            width: 16px;
+            height: 16px;
+            y: (parent.height - self.height) / 2;
+            border-radius: 4px;
+            background: root.is_active ? Theme.accent : Theme.card-bg-opaque;
+            border-width: 1.5px;
+            border-color: root.is_active ? Theme.accent : Theme.border;
+
+            if (root.is_active) : Text {
+                text: "✓";
+                font-size: 11px;
+                font-weight: 900;
+                color: #ffffff;
+                horizontal-alignment: center;
+                vertical-alignment: center;
+            }
+        }
+
+        // Mode label text
+        Text {
+            text: root.label;
+            font-size: 12px;
+            font-weight: root.is_active ? 800 : 600;
+            color: root.is_active ? Theme.accent : (row_touch.has-hover ? Theme.text-heading : Theme.text-secondary);
+            vertical-alignment: center;
+        }
+    }
+
+    row_touch := TouchArea {
+        clicked => {
+            root.clicked();
+        }
+    }
+}
+
 export component WarpControlPanel inherits Rectangle {
     in-out property <string> warp_status_text;
     in-out property <string> warp_network_text;
@@ -17,6 +70,18 @@ export component WarpControlPanel inherits Rectangle {
     in-out property <bool> warp_mode_doh_active;
     in-out property <[string]> console_logs;
     in-out property <string> warp_account_type: "Free";
+    in-out property <string> current_warp_mode: "warp";
+
+    pure function get_mode_label(mode: string) -> string {
+        if (mode == "doh") { return "DNS only (HTTPS)"; }
+        if (mode == "dot") { return "DNS only (TLS)"; }
+        if (mode == "warp") { return "Traffic and DNS (UDP)"; }
+        if (mode == "warp+doh") { return "Traffic and DNS (HTTPS)"; }
+        if (mode == "warp+dot") { return "Traffic and DNS (TLS)"; }
+        if (mode == "proxy") { return "Local proxy"; }
+        if (mode == "tunnel_only") { return "Traffic only"; }
+        return "Traffic and DNS (UDP)";
+    }
 
     callback warp_toggle_clicked(bool);
     callback warp_mode_clicked(string);
@@ -113,30 +178,10 @@ export component WarpControlPanel inherits Rectangle {
                     width: 280px;
                 }
                 
-                // Operating mode active status badge & account type badge
+                // Account type badge
                 HorizontalLayout {
                     alignment: center;
                     spacing: 8px;
-
-                    if (root.warp_status_text == "Connected") : Rectangle {
-                        background: Theme.card-bg.transparentize(15%);
-                        border-width: 1px;
-                        border-color: Theme.border;
-                        border-radius: 12px;
-                        height: 22px;
-                        
-                        HorizontalLayout {
-                            padding-left: 12px;
-                            padding-right: 12px;
-                            Text {
-                                text: root.warp_mode_badge;
-                                font-size: 12px;
-                                font-weight: 800;
-                                color: Theme.text-secondary;
-                                vertical-alignment: center;
-                            }
-                        }
-                    }
 
                     Rectangle {
                         background: root.warp_account_type == "Unlimited" ? Theme.success.transparentize(85%) : Theme.card-bg.transparentize(15%);
@@ -210,71 +255,152 @@ export component WarpControlPanel inherits Rectangle {
                 }
             }
 
-            // WARP mode selection tabs
+            // WARP mode selection dropdown / menu
             VerticalLayout {
-                spacing: 8px;
-                padding-top: 4px;
+                spacing: 6px;
+                padding-top: 2px;
                 
                 Text {
                     text: "OPERATION TUNNEL MODE";
-                    font-size: 12px;
+                    font-size: 11px;
                     font-weight: 800;
                     color: Theme.text-section;
                     letter-spacing: 1.2px;
                     horizontal-alignment: center;
                 }
 
-                HorizontalLayout {
-                    spacing: 8px;
-                    alignment: center;
-                    // Tab 1: DNS Only
-                    Rectangle {
-                        width: 130px;
-                        height: 32px;
-                        background: root.warp_mode_doh_active ? Theme.accent-bg-trans : Theme.card-bg-opaque.transparentize(60%);
-                        border-width: 1px;
-                        border-color: root.warp_mode_doh_active ? Theme.accent : Theme.border;
-                        border-radius: 10px;
+                // Dropdown Trigger Selector Button
+                selector_btn := Rectangle {
+                    height: 36px;
+                    background: selector_touch.has-hover ? Theme.card-bg-opaque : Theme.interior-bg;
+                    border-width: 1px;
+                    border-color: Theme.border;
+                    border-radius: 10px;
+                    animate background { duration: 150ms; }
+                    animate border-color { duration: 150ms; }
+
+                    HorizontalLayout {
+                        padding-left: 12px;
+                        padding-right: 12px;
+                        alignment: space-between;
                         
-                        Text {
-                            text: "DoH DNS Only";
-                            font-size: 12px;
-                            font-weight: 800;
-                            color: root.warp_mode_doh_active ? Theme.accent : Theme.text-muted;
-                            horizontal-alignment: center;
-                            vertical-alignment: center;
-                        }
-                        
-                        TouchArea {
-                            clicked => {
-                                root.warp_mode_doh_active = true;
-                                root.warp_mode_clicked("doh");
+                        HorizontalLayout {
+                            spacing: 8px;
+                            alignment: start;
+                            Text {
+                                text: "🌐";
+                                font-size: 12px;
+                                vertical-alignment: center;
+                            }
+                            Text {
+                                text: root.get_mode_label(root.current_warp_mode);
+                                font-size: 12px;
+                                font-weight: 800;
+                                color: Theme.text-primary;
+                                vertical-alignment: center;
                             }
                         }
-                    }
- 
-                    // Tab 2: WARP+DoH Dual
-                    Rectangle {
-                        width: 130px;
-                        height: 32px;
-                        background: !root.warp_mode_doh_active ? Theme.warning-bg-trans : Theme.card-bg-opaque.transparentize(60%);
-                        border-width: 1px;
-                        border-color: !root.warp_mode_doh_active ? Theme.warning : Theme.border;
-                        border-radius: 10px;
-                        
+
                         Text {
-                            text: "WARP+DoH Dual";
-                            font-size: 12px;
+                            text: "▼";
+                            font-size: 10px;
                             font-weight: 800;
-                            color: !root.warp_mode_doh_active ? Theme.warning : Theme.text-muted;
-                            horizontal-alignment: center;
+                            color: Theme.text-muted;
                             vertical-alignment: center;
                         }
-                        
-                        TouchArea {
-                            clicked => {
-                                root.warp_mode_doh_active = false;
-                                root.warp_mode_clicked("warp+doh");
+                    }
+
+                    selector_touch := TouchArea {
+                        clicked => {
+                            mode_popup.show();
+                        }
+                    }
+
+                    // Floating Dropdown Popup attached to selector button (floats on top and overflows)
+                    mode_popup := PopupWindow {
+                        x: 0px;
+                        y: selector_btn.height + 4px;
+                        width: selector_btn.width;
+
+                        Rectangle {
+                            background: Theme.interior-bg;
+                            border-width: 1px;
+                            border-color: Theme.accent;
+                            border-radius: 12px;
+                            
+                            VerticalLayout {
+                                padding: 6px;
+                                spacing: 2px;
+                                
+                                // Option 1: DNS only (HTTPS)
+                                WarpModeRow {
+                                    label: "DNS only (HTTPS)";
+                                    is_active: root.current_warp_mode == "doh";
+                                    clicked => {
+                                        root.current_warp_mode = "doh";
+                                        root.warp_mode_clicked("doh");
+                                    }
+                                }
+
+                                // Option 2: DNS only (TLS)
+                                WarpModeRow {
+                                    label: "DNS only (TLS)";
+                                    is_active: root.current_warp_mode == "dot";
+                                    clicked => {
+                                        root.current_warp_mode = "dot";
+                                        root.warp_mode_clicked("dot");
+                                    }
+                                }
+
+                                // Option 3: Traffic and DNS (UDP)
+                                WarpModeRow {
+                                    label: "Traffic and DNS (UDP)";
+                                    is_active: root.current_warp_mode == "warp";
+                                    clicked => {
+                                        root.current_warp_mode = "warp";
+                                        root.warp_mode_clicked("warp");
+                                    }
+                                }
+
+                                // Option 4: Traffic and DNS (HTTPS)
+                                WarpModeRow {
+                                    label: "Traffic and DNS (HTTPS)";
+                                    is_active: root.current_warp_mode == "warp+doh";
+                                    clicked => {
+                                        root.current_warp_mode = "warp+doh";
+                                        root.warp_mode_clicked("warp+doh");
+                                    }
+                                }
+
+                                // Option 5: Traffic and DNS (TLS)
+                                WarpModeRow {
+                                    label: "Traffic and DNS (TLS)";
+                                    is_active: root.current_warp_mode == "warp+dot";
+                                    clicked => {
+                                        root.current_warp_mode = "warp+dot";
+                                        root.warp_mode_clicked("warp+dot");
+                                    }
+                                }
+
+                                // Option 6: Local proxy
+                                WarpModeRow {
+                                    label: "Local proxy";
+                                    is_active: root.current_warp_mode == "proxy";
+                                    clicked => {
+                                        root.current_warp_mode = "proxy";
+                                        root.warp_mode_clicked("proxy");
+                                    }
+                                }
+
+                                // Option 7: Traffic only
+                                WarpModeRow {
+                                    label: "Traffic only";
+                                    is_active: root.current_warp_mode == "tunnel_only";
+                                    clicked => {
+                                        root.current_warp_mode = "tunnel_only";
+                                        root.warp_mode_clicked("tunnel_only");
+                                    }
+                                }
                             }
                         }
                     }

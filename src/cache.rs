@@ -52,13 +52,7 @@ fn save_state_cache(cache: &AppStateCache) {
 }
 
 pub fn save_cache_from_ui(ui: &AppWindow) {
-    let badge = ui.get_warp_mode_badge().to_string();
-    let warp_mode = if badge.starts_with("Mode: ") {
-        badge.trim_start_matches("Mode: ").to_string()
-    } else {
-        badge
-    };
-
+    let warp_mode = ui.get_current_warp_mode().to_string();
     let warp_status = ui.get_warp_status_text().to_string();
 
     let active_wifi = ui.get_active_wifi();
@@ -142,7 +136,7 @@ mod tests {
             dns_secondary: Some("8.8.8.8".to_string()),
         };
         let cache = AppStateCache {
-            warp_mode: "WARP".to_string(),
+            warp_mode: "warp+dot".to_string(),
             warp_status: "Connected".to_string(),
             wifi_network: Some(wifi),
             geo_info: Some(geo),
@@ -152,7 +146,7 @@ mod tests {
         let serialized = serde_json::to_string(&cache).unwrap();
         let deserialized: AppStateCache = serde_json::from_str(&serialized).unwrap();
 
-        assert_eq!(deserialized.warp_mode, "WARP");
+        assert_eq!(deserialized.warp_mode, "warp+dot");
         assert_eq!(deserialized.warp_status, "Connected");
         assert_eq!(deserialized.wifi_network.as_ref().unwrap().ssid, "TestWiFi");
         assert_eq!(deserialized.geo_info.as_ref().unwrap().ip, "1.1.1.1");
@@ -162,7 +156,7 @@ mod tests {
     #[test]
     fn test_save_and_load_cache() {
         let cache = AppStateCache {
-            warp_mode: "DoH".to_string(),
+            warp_mode: "tunnel_only".to_string(),
             warp_status: "Disconnected".to_string(),
             wifi_network: None,
             geo_info: None,
@@ -178,7 +172,7 @@ mod tests {
 
         // Load the cache back
         let loaded = load_state_cache().unwrap();
-        assert_eq!(loaded.warp_mode, "DoH");
+        assert_eq!(loaded.warp_mode, "tunnel_only");
         assert_eq!(loaded.warp_status, "Disconnected");
         assert!(loaded.wifi_network.is_none());
         assert!(loaded.geo_info.is_none());
